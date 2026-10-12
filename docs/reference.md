@@ -13,7 +13,7 @@
 | Line | L | Hold **Shift** for 45° steps. |
 | Rectangle / Ellipse | R / O | **Shift** = square or circle, **Alt** = from the centre. Rectangle has a Corner radius option. |
 | Text | T | Click to type, double-click existing text to edit. **Esc** or clicking away finishes. |
-| Paint bucket | K | Fills a shape; hold **Alt** to set the stroke instead. |
+| Paint bucket | K | Click a shape to recolour its fill (hold **Alt** for the stroke). Click empty space enclosed by lines to fill that region. **Gap size** closes small breaks in the outline; **All layers** treats lines on every layer as walls. If **Fill type** is Linear or Radial, the bucket applies a gradient. |
 | Eyedropper | I | Copies a colour; hold **Alt** for the stroke. |
 | Hand | H | Pans the stage; holding **Space** does the same. |
 
@@ -39,7 +39,7 @@ Press **F** to pick the Fluid brush; the **Brush** tab opens with its settings. 
 
 ## Properties panel
 
-- **Object:** fill (solid, linear or radial gradient), stroke, width, cap and join, opacity, position and size, rotation, and for symbol instances the type, playback mode and instance name. The **Convert to symbol** button is here.
+- **Object:** fill (solid, linear or radial gradient: see *Gradients* below), stroke, width, cap and join, opacity, position and size, rotation, and for symbol instances the type, playback mode and instance name. The **Convert to symbol** button is here.
 - **Text:** font, size, bold, italic and alignment.
 - **Brush:** the Fluid brush settings and presets.
 - **Align:** align or distribute the selection, or align to the stage.
@@ -79,3 +79,13 @@ Press **F** to pick the Fluid brush; the **Brush** tab opens with its settings. 
 - Scripts run only in **▶ Preview** and in exported HTML, never in the editor itself. Preview runs in a sandbox, and errors appear next to the Preview title.
 - Scripts use a CreateJS-style API: `this.stop()`, `this.play()`, `this.gotoAndStop(frame)`, `this.gotoAndPlay(frame)`, named instances such as `this.btn_next`, mouse events, `createjs.Sound.play("id")` and `createjs.Ticker`.
 - A keyframe with a script shows a small **a** on the timeline; one with a sound shows ♪.
+
+
+## Gradients
+
+Select a shape and set **Fill type** to **Linear** or **Radial** in the Object tab.
+
+- **Stops:** each colour stop has a colour, a position (0 to 100%) and an opacity. **+ Stop** adds one in the widest gap and **×** removes one (a gradient keeps at least two).
+- **On canvas:** with **On canvas** ticked, the selected gradient shows handles on the stage instead of the usual resize box. Drag the end points to set the direction and length of a linear gradient. A radial gradient has a centre handle, a radius handle and a second handle for squashing it into an ellipse. Drag a square stop marker to move that stop, click on the gradient line to add a stop, and **Alt**-click a stop marker to remove it. Untick **On canvas** to get the resize box back.
+- **Paint bucket:** with a gradient Fill type chosen, the bucket fills regions and recolours shapes with that gradient.
+- **Tweens:** gradients animate between keyframes when both have the same type and number of stops.

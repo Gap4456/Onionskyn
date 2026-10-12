@@ -75,6 +75,12 @@ svg { display: block; }
 .sec { padding: 10px 12px; border-bottom: 1px solid var(--line2); }
 .sec h3 { margin: 0 0 8px; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--mut); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
 .sec h3 em { font-style: normal; letter-spacing: 0; text-transform: none; font-family: var(--f-mono); font-weight: 400; }
+.gs { display: flex; align-items: center; gap: 4px; margin: 0 0 4px 0; font-size: 11px; color: var(--mut); }
+.gs input[type=number] { width: 50px; min-width: 0; padding: 3px 4px; }
+.gs input[type=color] { width: 30px; padding: 0; }
+.gs .gx { padding: 0 6px; }
+#gAdd { white-space: nowrap; padding: 4px 8px; }
+.gchk { white-space: nowrap; display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--mut); }
 .row { display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 6px; margin-bottom: 6px; }
 .row > span { color: var(--mut); font-size: 12px; }
 .row .ctl { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -285,7 +291,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   <main id="stagewrap">
     <canvas id="stage" aria-label="Stage"></canvas>
-    <div id="toolopts" aria-label="Tool options"><label data-for="rect">Corner <input type="number" id="radius" min="0" max="500" step="1"></label><label data-for="brush">Size <input type="range" id="bsizeR" min="1" max="200" aria-label="Brush size"><input type="number" id="bsize" min="1" max="500" step="1" aria-label="Brush size in pixels"></label><label data-for="brush">Shape <select id="bshape" aria-label="Brush shape"></select></label><label data-for="brush">Angle <input type="range" id="bangleR" min="0" max="180" aria-label="Brush angle"><input type="number" id="bangle" min="0" max="180" step="1" aria-label="Brush angle in degrees">°</label><label data-for="brush">Colour <input type="color" id="bcolor" aria-label="Brush colour"></label><label data-for="brush"><input type="checkbox" id="bpress"> Pressure</label><label data-for="brush"><input type="checkbox" id="bmerge"> Merge strokes</label><label data-for="pencil brush">Smoothing <input type="range" id="smooth" min="0" max="100"></label></div>
+    <div id="toolopts" aria-label="Tool options"><label data-for="rect">Corner <input type="number" id="radius" min="0" max="500" step="1"></label><label data-for="brush">Size <input type="range" id="bsizeR" min="1" max="200" aria-label="Brush size"><input type="number" id="bsize" min="1" max="500" step="1" aria-label="Brush size in pixels"></label><label data-for="brush">Shape <select id="bshape" aria-label="Brush shape"></select></label><label data-for="brush">Angle <input type="range" id="bangleR" min="0" max="180" aria-label="Brush angle"><input type="number" id="bangle" min="0" max="180" step="1" aria-label="Brush angle in degrees">°</label><label data-for="brush">Colour <input type="color" id="bcolor" aria-label="Brush colour"></label><label data-for="brush"><input type="checkbox" id="bpress"> Pressure</label><label data-for="brush"><input type="checkbox" id="bmerge"> Merge strokes</label><label data-for="bucket">Gap size <select id="bgap" aria-label="Gap size for region fill"><option value="none">Close no gaps</option><option value="small">Close small gaps</option><option value="medium">Close medium gaps</option><option value="large">Close large gaps</option></select></label><label data-for="bucket"><input type="checkbox" id="ball"> All layers</label><label data-for="pencil brush">Smoothing <input type="range" id="smooth" min="0" max="100"></label></div>
     <div id="crumb"><button id="crumbBack" title="Back to scene (Esc)">◀ Back</button><span id="crumbPath"></span></div>
     <div id="hud"><span id="hCoord">x 0  y 0</span><span id="hFrame">Frame 1</span><span id="hTool"></span></div>
     <div id="drop">Drop a .fla, .xfl or project file to open</div>
@@ -309,6 +315,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <div class="mini" style="margin-bottom:8px"><button id="objConvert" title="Turn the selection into a reusable symbol (F8)">Convert to symbol</button></div>
       <div class="row"><span>Fill</span><div class="ctl"><input type="checkbox" id="fillOn" aria-label="Fill on"><input type="color" id="fillC" aria-label="Fill colour"><input type="range" id="fillA" min="0" max="100" aria-label="Fill opacity"></div></div>
       <div class="row"><span>Fill type</span><div class="ctl"><select id="fillType" aria-label="Fill type"><option value="solid">Solid</option><option value="linear">Linear</option><option value="radial">Radial</option></select><input type="color" id="fill2" aria-label="Gradient end colour" style="display:none"></div></div>
+      <div id="gradBox" style="display:none"><div id="gstops" aria-label="Gradient colour stops"></div><div class="row"><span></span><div class="ctl"><button id="gAdd" type="button" class="btn">+ Stop</button><label class="gchk"><input type="checkbox" id="gEdit" checked> On canvas</label></div></div></div>
       <div class="row"><span>Stroke</span><div class="ctl"><input type="checkbox" id="strokeOn" aria-label="Stroke on"><input type="color" id="strokeC" aria-label="Stroke colour"><input type="range" id="strokeA" min="0" max="100" aria-label="Stroke opacity"></div></div>
       <div class="row"><span>Width</span><div class="ctl"><input type="number" id="sw" min="0" max="200" step="0.5"></div></div>
       <div class="row"><span>Cap / join</span><div class="ctl"><select id="cap" aria-label="Line cap"><option value="round">Round</option><option value="butt">Flat</option><option value="square">Square</option></select><select id="join" aria-label="Line join"><option value="round">Round</option><option value="miter">Miter</option><option value="bevel">Bevel</option></select></div></div>
@@ -2356,7 +2363,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.9.0-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.10.1-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -2373,7 +2380,7 @@ setInterval(() => {
 
 const S = {
   doc: null, frame: 0, layerId: null, tool: 'select', sel: [], view: { z: 1, px: 0, py: 0 },
-  style: { font: 'Arial', size: 32, bold: false, italic: false, align: 'left', fill: '#3F5BFF', fillOn: true, fa: 1, stroke: '#1B2030', strokeOn: true, sa: 1, sw: 3, cap: 'round', join: 'round', radius: 0, smooth: 40, bsize: 14, bshape: 'round', bpress: true, bangle: 0, bcolor: '#1B2030', fb: { size: 12, stab: 25, smooth: 50, round: 100, angle: 0, taper: 25, vel: 0, press: 100, zoom: true, color: '#1B2030', alpha: 100, merge: true }, bmerge: true },
+  style: { font: 'Arial', size: 32, bold: false, italic: false, align: 'left', fill: '#3F5BFF', fillOn: true, fa: 1, stroke: '#1B2030', strokeOn: true, sa: 1, sw: 3, cap: 'round', join: 'round', radius: 0, smooth: 40, bsize: 14, bshape: 'round', bpress: true, bangle: 0, bcolor: '#1B2030', fb: { size: 12, stab: 25, smooth: 50, round: 100, angle: 0, taper: 25, vel: 0, press: 100, zoom: true, color: '#1B2030', alpha: 100, merge: true }, bmerge: true, bgap: 'small', ball: false, fillType: 'solid', gradEdit: true },
   onion: { on: false, b: 1, a: 1 }, playing: false, loop: true, pen: null, draw: null, drag: null, nodeSel: null,
   edit: [], space: false, clipboard: [], cursorW: { x: 0, y: 0 }, autoFit: true
 };
@@ -2619,7 +2626,8 @@ function drawOverlay(ctx) {
     ctx.closePath(); ctx.stroke();
   }
   const one = sels.length === 1 ? sels[0] : null;
-  if (one && S.tool === 'select') {
+  if (one && S.tool === 'select' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
+  else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
     const rot = hs.find((h) => h.id === 'rot'), nh = hs.find((h) => h.id === 'n');
     if (rot && nh) { const a = w2s(nh.x, nh.y), b = w2s(rot.x, rot.y); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
@@ -2856,6 +2864,7 @@ function onMove(e) {
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
+    else if (d.type === 'grad') gradDrag(p.w);
     return;
   }
   if (S.draw) {
@@ -2867,7 +2876,9 @@ function onMove(e) {
   if (S.tool === 'select' && !S.space) {
     const one = singleSel();
     let cur = 'default';
-    if (one && !getLayer(one.lid).locked) {
+    if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
+      cur = gradHit(one.o, p.sx, p.sy) ? 'pointer' : hitAt(p.w.x, p.w.y, 5) ? 'move' : 'default';
+    } else if (one && !getLayer(one.lid).locked) {
       const h = hitHandle(getHandles(one.o), p.sx, p.sy);
       if (h) cur = h.id === 'rot' ? 'grab' : (h.id === 'n' || h.id === 's') ? 'ns-resize' : (h.id === 'e' || h.id === 'w') ? 'ew-resize' : (h.id === 'nw' || h.id === 'se') ? 'nwse-resize' : 'nesw-resize';
       else if (hitAt(p.w.x, p.w.y, 5)) cur = 'move';
@@ -2881,7 +2892,7 @@ function onUp(e) {
   if (d) {
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
-    if (d.type === 'node' && d.started) { commit(); }
+    if ((d.type === 'node' || d.type === 'grad') && d.started) { commit(); }
     if ((d.type === 'move' || d.type === 'scale' || d.type === 'rotate') && d.started) commit();
     S.drag = null; invalidate();
     return;
@@ -2968,7 +2979,8 @@ function endTextEdit(ok) {
 /* ---------- selection tool ---------- */
 function selDown(e, p) {
   const w = p.w, one = singleSel();
-  if (one && !getLayer(one.lid).locked) {
+  if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
+  if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
     const h = hitHandle(getHandles(one.o), p.sx, p.sy);
     if (h) { S.drag = { type: h.id === 'rot' ? 'rotate' : 'scale', h, start: w, started: false, lid: one.lid, id: one.id }; return; }
   }
@@ -3522,15 +3534,287 @@ function deleteNode() {
   commit(); return true;
 }
 
+/* ---------- gradients: creation, canvas handles, stops ---------- */
+const GR = 819.2;
+function makeGrad(type, contours, c1, c2) {
+  const b = C.contoursBounds(contours);
+  if (!b) return null;
+  const w = Math.max(b.x1 - b.x0, 1), h = Math.max(b.y1 - b.y0, 1), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+  const k = Math.max(w, h) / (GR * 2);
+  const m = type === 'radial' ? [k, 0, 0, k, cx, cy] : [w / (GR * 2), 0, 0, h / (GR * 2), cx, cy];
+  return { type, stops: [{ o: 0, c: c1, a: 1 }, { o: 1, c: c2 === c1 ? '#FFFFFF' : c2, a: 1 }], m };
+}
+function gradColorAt(stops, t) {
+  const s = stops.slice().sort((a, b) => a.o - b.o);
+  if (t <= s[0].o) return { c: s[0].c, a: C.nz(s[0].a, 1) };
+  for (let i = 1; i < s.length; i++) if (t <= s[i].o) {
+    const u = (t - s[i - 1].o) / Math.max(1e-9, s[i].o - s[i - 1].o);
+    return { c: C.lerpHex(s[i - 1].c, s[i].c, u), a: C.nz(s[i - 1].a, 1) + (C.nz(s[i].a, 1) - C.nz(s[i - 1].a, 1)) * u };
+  }
+  const l = s[s.length - 1]; return { c: l.c, a: C.nz(l.a, 1) };
+}
+const gradEditing = (o) => S.style.gradEdit !== false && o && o.kind === 'path' && o.grad && Math.abs(o.grad.m[0] * o.grad.m[3] - o.grad.m[1] * o.grad.m[2]) > 1e-12;
+function gradPts(o) {
+  const g = o.grad, M = matOf(o.t);
+  const W = (x, y) => { const a = mapply(g.m, x, y), b = mapply(M, a[0], a[1]); return { x: b[0], y: b[1] }; };
+  const out = [], rad = g.type === 'radial';
+  if (rad) { out.push(Object.assign({ id: 'c' }, W(0, 0)), Object.assign({ id: 'r' }, W(GR, 0)), Object.assign({ id: 'y' }, W(0, GR))); }
+  else out.push(Object.assign({ id: 'a' }, W(-GR, 0)), Object.assign({ id: 'b' }, W(GR, 0)));
+  g.stops.forEach((s, i) => { if (s.o > 0.001 && s.o < 0.999) out.push(Object.assign({ id: 's', i, c: s.c }, rad ? W(s.o * GR, 0) : W(-GR + s.o * 2 * GR, 0))); });
+  return out;
+}
+function drawGradHandles(ctx, o) {
+  const pts = gradPts(o), g = o.grad, acc = CSSV.accent, sc = (q) => w2s(q.x, q.y);
+  const by = (id) => pts.find((q) => q.id === id);
+  ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = acc;
+  const line = (a, b) => { const p = sc(a), q = sc(b); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); };
+  if (g.type === 'radial') {
+    const c = by('c'), r = by('r'), y = by('y'); line(c, r); line(c, y);
+    const M = matOf(o.t); ctx.beginPath();
+    for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2, u = mapply(g.m, Math.cos(a) * GR, Math.sin(a) * GR), w = mapply(M, u[0], u[1]), s = w2s(w[0], w[1]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }
+    ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+  } else line(by('a'), by('b'));
+  for (const q of pts) {
+    const p = sc(q); ctx.beginPath();
+    if (q.id === 's') { ctx.rect(p[0] - 5, p[1] - 5, 10, 10); ctx.fillStyle = q.c; }
+    else {
+      ctx.arc(p[0], p[1], q.id === 'y' ? 4 : 6, 0, Math.PI * 2);
+      const first = q.id === 'a' || q.id === 'c', last = g.stops.slice().sort((a, b) => a.o - b.o);
+      ctx.fillStyle = q.id === 'a' || q.id === 'c' ? last[0].c : q.id === 'y' ? CSSV.accentFg : last[last.length - 1].c;
+    }
+    ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.lineWidth = 1; ctx.strokeStyle = acc; ctx.stroke();
+  }
+  ctx.restore();
+}
+function gradHit(o, sx, sy) {
+  const pts = gradPts(o), near = (q) => { const p = w2s(q.x, q.y); return Math.hypot(p[0] - sx, p[1] - sy) <= 9; };
+  return pts.filter((q) => q.id === 's').find(near) || pts.find((q) => q.id !== 's' && near(q)) || null;
+}
+function gradDown(e, p, one) {
+  const o = one.o;
+  if (!gradEditing(o)) return false;
+  const hit = gradHit(o, p.sx, p.sy);
+  if (hit) {
+    if (hit.id === 's' && e.altKey && o.grad.stops.length > 2) {
+      pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame);
+      const eo = findEditable(one.lid, one.id); if (!eo || !eo.grad) return true;
+      eo.grad.stops.splice(hit.i, 1); commit(); return true;
+    }
+    S.drag = { type: 'grad', part: hit.id, i: hit.i, lid: one.lid, id: one.id, start: p.w, started: false };
+    return true;
+  }
+  /* click on the gradient line: add a stop there */
+  const pts = gradPts(o), g = o.grad, rad = g.type === 'radial';
+  const A = pts.find((q) => q.id === (rad ? 'c' : 'a')), B = pts.find((q) => q.id === (rad ? 'r' : 'b'));
+  const a = w2s(A.x, A.y), b = w2s(B.x, B.y), dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+  if (L2 < 1) return false;
+  const t = ((p.sx - a[0]) * dx + (p.sy - a[1]) * dy) / L2;
+  if (t < 0 || t > 1 || Math.hypot(a[0] + dx * t - p.sx, a[1] + dy * t - p.sy) > 6) return false;
+  pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame);
+  const eo = findEditable(one.lid, one.id); if (!eo || !eo.grad) return true;
+  const col = gradColorAt(eo.grad.stops, t);
+  eo.grad.stops.push({ o: t, c: col.c, a: col.a });
+  eo.grad.stops.sort((u, v) => u.o - v.o);
+  const i = eo.grad.stops.findIndex((s) => s.o === t);
+  S.drag = { type: 'grad', part: 's', i, lid: one.lid, id: one.id, start: p.w, started: true, fresh: true };
+  const eo2 = eo; S.drag.o = eo2; S.drag.inv = minv(matOf(eo2.t)); S.drag.m0 = eo2.grad.m.slice();
+  commit();
+  return true;
+}
+function gradDrag(w) {
+  const d = S.drag;
+  if (!d.started) {
+    if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 2) return;
+    pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
+    const o = findEditable(d.lid, d.id);
+    if (!o || !o.grad) { S.drag = null; return; }
+    d.o = o; d.inv = minv(matOf(o.t)); d.m0 = o.grad.m.slice(); d.started = true;
+  }
+  const g = d.o.grad, m = d.m0, l = mapply(d.inv, w.x, w.y);
+  const P0 = mapply(m, -GR, 0), P1 = mapply(m, GR, 0), ctr = [m[4], m[5]];
+  const setLin = (A, B) => { const xv = [(B[0] - A[0]) / (2 * GR), (B[1] - A[1]) / (2 * GR)]; if (Math.hypot(xv[0], xv[1]) < 1e-6) return; g.m = [xv[0], xv[1], -xv[1], xv[0], (A[0] + B[0]) / 2, (A[1] + B[1]) / 2]; };
+  if (d.part === 'a') setLin(l, P1);
+  else if (d.part === 'b') setLin(P0, l);
+  else if (d.part === 'c') g.m = [m[0], m[1], m[2], m[3], l[0], l[1]];
+  else if (d.part === 'r') {
+    const nx = (l[0] - ctr[0]) / GR, ny = (l[1] - ctr[1]) / GR, den = m[0] * m[0] + m[1] * m[1];
+    if (den < 1e-12 || Math.hypot(nx, ny) < 1e-6) return;
+    const zr = (nx * m[0] + ny * m[1]) / den, zi = (ny * m[0] - nx * m[1]) / den;
+    g.m = [nx, ny, m[2] * zr - m[3] * zi, m[2] * zi + m[3] * zr, m[4], m[5]];
+  } else if (d.part === 'y') g.m = [m[0], m[1], (l[0] - ctr[0]) / GR, (l[1] - ctr[1]) / GR, m[4], m[5]];
+  else if (d.part === 's') {
+    let t;
+    if (g.type === 'radial') { const R = [m[0] * GR, m[1] * GR]; t = ((l[0] - ctr[0]) * R[0] + (l[1] - ctr[1]) * R[1]) / (R[0] * R[0] + R[1] * R[1]); }
+    else { const v = [P1[0] - P0[0], P1[1] - P0[1]]; t = ((l[0] - P0[0]) * v[0] + (l[1] - P0[1]) * v[1]) / (v[0] * v[0] + v[1] * v[1]); }
+    if (g.stops[d.i]) g.stops[d.i].o = Math.max(0, Math.min(1, t));
+  }
+  invalidate(); if (window.gsSync) window.gsSync();
+}
+
 /* ---------- bucket & eyedropper ---------- */
+/* ---------- region fill (Flash-style paint bucket on enclosed space) ---------- */
+const GAPS = { none: 0, small: 2, medium: 5, large: 10 };
+/* square dilation of a binary mask by r cells, separable with running sums */
+function dilateMask(m, W, H, r) {
+  if (r <= 0) return m;
+  const tmp = new Uint8Array(W * H), out = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    let cnt = 0; const row = y * W;
+    for (let x = -r; x < W; x++) {
+      const add = x + r, rem = x - r - 1;
+      if (add < W && add >= 0 && m[row + add]) cnt++;
+      if (rem >= 0 && m[row + rem]) cnt--;
+      if (x >= 0) tmp[row + x] = cnt > 0 ? 1 : 0;
+    }
+  }
+  for (let x = 0; x < W; x++) {
+    let cnt = 0;
+    for (let y = -r; y < H; y++) {
+      const add = y + r, rem = y - r - 1;
+      if (add < H && add >= 0 && tmp[add * W + x]) cnt++;
+      if (rem >= 0 && tmp[rem * W + x]) cnt--;
+      if (y >= 0) out[y * W + x] = cnt > 0 ? 1 : 0;
+    }
+  }
+  return out;
+}
+/* flood fill from (sx,sy) through cells where block==0; returns {mask, border} */
+function floodMask(block, W, H, sx, sy) {
+  const mask = new Uint8Array(W * H); let border = false;
+  const st = [sx, sy];
+  while (st.length) {
+    const y = st.pop(), x0 = st.pop();
+    if (block[y * W + x0] || mask[y * W + x0]) continue;
+    let a = x0, b = x0;
+    while (a > 0 && !block[y * W + a - 1] && !mask[y * W + a - 1]) a--;
+    while (b < W - 1 && !block[y * W + b + 1] && !mask[y * W + b + 1]) b++;
+    if (a === 0 || b === W - 1 || y === 0 || y === H - 1) border = true;
+    for (let x = a; x <= b; x++) {
+      mask[y * W + x] = 1;
+      if (y > 0 && !block[(y - 1) * W + x] && !mask[(y - 1) * W + x]) st.push(x, y - 1);
+      if (y < H - 1 && !block[(y + 1) * W + x] && !mask[(y + 1) * W + x]) st.push(x, y + 1);
+    }
+  }
+  return { mask, border };
+}
+/* boundary loops of a binary mask as arrays of [x,y] grid corners (interior on the right) */
+function traceMask(m, W, H) {
+  const V = W + 1, out = new Map();
+  const add = (x0, y0, x1, y1) => { const k = y0 * V + x0; let a = out.get(k); if (!a) { a = []; out.set(k, a); } a.push({ x1, y1, used: false }); };
+  const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H && m[y * W + x]);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!m[y * W + x]) continue;
+    if (!at(x, y - 1)) add(x, y, x + 1, y);
+    if (!at(x + 1, y)) add(x + 1, y, x + 1, y + 1);
+    if (!at(x, y + 1)) add(x + 1, y + 1, x, y + 1);
+    if (!at(x - 1, y)) add(x, y + 1, x, y);
+  }
+  const loops = [];
+  for (const [k0, list] of out) {
+    for (const e0 of list) {
+      if (e0.used) continue;
+      const pts = []; let x = k0 % V, y = (k0 / V) | 0, e = e0;
+      for (;;) {
+        e.used = true; pts.push([x, y]);
+        const dx = e.x1 - x, dy = e.y1 - y; x = e.x1; y = e.y1;
+        const nxt = (out.get(y * V + x) || []).filter((q) => !q.used);
+        if (!nxt.length) break;
+        let pick = nxt[0];
+        if (nxt.length > 1) { /* prefer the right turn so diagonal touches stay apart */
+          let best = -9;
+          for (const q of nxt) { const cx = dx * (q.y1 - y) - dy * (q.x1 - x); if (cx > best) { best = cx; pick = q; } }
+        }
+        e = pick;
+        if (x === k0 % V && y === ((k0 / V) | 0) && e === e0) break;
+      }
+      if (pts.length >= 4) loops.push(pts);
+    }
+  }
+  return loops;
+}
+function rdpClosed(pts, eps) {
+  /* drop collinear corners, then simplify the ring from two far anchors */
+  const n0 = pts.length, keep = [];
+  for (let i = 0; i < n0; i++) {
+    const a = pts[(i + n0 - 1) % n0], b = pts[i], c = pts[(i + 1) % n0];
+    if ((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]) !== 0) keep.push(b);
+  }
+  if (keep.length < 4) return keep;
+  const rdp = (p, i0, i1, out) => {
+    let md = 0, mi = -1;
+    const a = p[i0], b = p[i1], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1e-9;
+    for (let i = i0 + 1; i < i1; i++) { const d = Math.abs(dy * (p[i][0] - a[0]) - dx * (p[i][1] - a[1])) / L; if (d > md) { md = d; mi = i; } }
+    if (md > eps) { rdp(p, i0, mi, out); out.push(p[mi]); rdp(p, mi, i1, out); }
+  };
+  const half = keep.length >> 1, ring = keep.concat([keep[0]]);
+  const r = [keep[0]]; rdp(ring, 0, half, r); r.push(ring[half]); rdp(ring, half, ring.length - 1, r);
+  return r;
+}
+function regionFill(p, opt) {
+  if (!canDraw()) return false;
+  const doc = S.doc, st = S.style, gap = GAPS[opt.gap] || 0;
+  const pad = 40, bx = -pad, by = -pad, WW = doc.w + pad * 2, HH = doc.h + pad * 2;
+  const s = Math.min(2, 3600 / Math.max(WW, HH)), W = Math.ceil(WW * s), H = Math.ceil(HH * s);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.setTransform(s, 0, 0, s, -bx * s, -by * s);
+  const ents = opt.all ? C.evalDoc(doc, S.frame) : [{ layer: curLayer(), objs: C.evalLayerObjs(curLayer(), S.frame) }];
+  for (const en of ents) { if (en.layer.visible === false || en.layer.mask) continue; for (const o of en.objs) C.drawObj(ctx, o, {}); }
+  const d = ctx.getImageData(0, 0, W, H).data, obst = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) obst[i] = d[i * 4 + 3] >= 16 ? 1 : 0;
+  /* close gaps by morphological closing of the walls, so sharp corners of the region keep their exact shape */
+  const r = Math.round(gap * s);
+  let block = obst;
+  if (r > 0) {
+    const inv = dilateMask(obst, W, H, r).map((v) => 1 - v);
+    block = dilateMask(inv, W, H, r).map((v) => 1 - v);
+    for (let i = 0; i < W * H; i++) if (obst[i]) block[i] = 1;
+  }
+  const sx = Math.round((p.x - bx) * s), sy = Math.round((p.y - by) * s);
+  if (sx < 0 || sy < 0 || sx >= W || sy >= H) return false;
+  if (block[sy * W + sx]) { toast(obst[sy * W + sx] ? 'That spot is already filled.' : 'Too close to a line. Try a smaller gap size.'); return false; }
+  const fl = floodMask(block, W, H, sx, sy);
+  if (fl.border) { toast(gap < 10 ? 'This area isn\u2019t closed. Try a larger gap size in the tool options.' : 'This area isn\u2019t closed.'); return false; }
+  /* tuck the fill under the strokes so no antialiased halo shows at corners */
+  /* closing also swallows narrow wedges of the region: win them back by growing through the cells closing added (original free space only) */
+  if (r > 0) {
+    const m = fl.mask, st2 = [];
+    for (let i = 0; i < W * H; i++) if (m[i]) st2.push(i);
+    while (st2.length) {
+      const i = st2.pop(), x = i % W, y = (i / W) | 0;
+      const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
+      for (const j of nb) if (j >= 0 && !m[j] && block[j] && !obst[j]) { m[j] = 1; st2.push(j); }
+    }
+  }
+  const reg = dilateMask(fl.mask, W, H, Math.max(2, Math.ceil(1.5 * s)));
+  const loops = traceMask(reg, W, H).map((l) => rdpClosed(l, 0.7)).filter((l) => l.length >= 3);
+  if (!loops.length) return false;
+  const cs = loops.map((l) => ({ closed: true, nodes: l.map((q) => C.node(bx + q[0] / s, by + q[1] / s)) }));
+  pushUndo();
+  const kf = C.ensureEditable(curLayer(), S.frame);
+  const o = C.mkPath(cs, { fill: st.fill, fa: st.fa, stroke: null, sw: 0 });
+  o.nz = false;
+  C.recenter(o);
+  if (st.fillType && st.fillType !== 'solid') { const gr = makeGrad(st.fillType, o.contours, st.fill, st.fill2 || '#FFFFFF'); if (gr) o.grad = gr; }
+  kf.objs.unshift(o);
+  S.sel = [{ lid: curLayer().id, id: o.id }];
+  commit(); buildLayerList();
+  return true;
+}
+
 function bucketDown(e, p) {
   const hit = hitAt(p.w.x, p.w.y, 4);
-  if (!hit) return;
+  if (!hit) { if (!e.altKey) regionFill(p.w, { gap: S.style.bgap || 'small', all: !!S.style.ball }); return; }
   pushUndo(); C.ensureEditable(getLayer(hit.lid), S.frame);
   const o = findEditable(hit.lid, hit.id);
   if (!o) return;
   const st = S.style;
-  walkPaths(o, (q) => { if (e.altKey) { q.stroke = st.stroke; q.sa = st.sa; if (!(q.sw > 0)) q.sw = st.sw; } else { q.fill = st.fill; q.fa = st.fa; } });
+  const gt = st.fillType && st.fillType !== 'solid' ? st.fillType : null;
+  walkPaths(o, (q) => {
+    if (e.altKey) { q.stroke = st.stroke; q.sa = st.sa; if (!(q.sw > 0)) q.sw = st.sw; return; }
+    q.fill = st.fill; q.fa = st.fa;
+    if (q.kind === 'path') { const gr = gt && makeGrad(gt, q.contours, st.fill, st.fill2 || '#FFFFFF'); if (gr) q.grad = gr; else delete q.grad; }
+  });
   S.sel = [{ lid: hit.lid, id: hit.id }];
   commit();
 }
@@ -3905,6 +4189,29 @@ function refreshTransformFields() {
   setVal($('#tw'), r1((lb.x1 - lb.x0) * Math.abs(o.t.sx))); setVal($('#th'), r1((lb.y1 - lb.y0) * Math.abs(o.t.sy)));
   setVal($('#tr'), r1(o.t.r));
 }
+let gsLast = null;
+function gsSync(gr, one) {
+  if (!gr) gsLast = null;
+  if (arguments.length === 0) { const o = singleSel(); let g = null; if (o) walkPaths(o.o, (p) => { if (!g) g = p.grad; }); gr = g; one = o; }
+  const box = $('#gradBox'); box.style.display = gr ? '' : 'none';
+  if (!gr) return;
+  const list = $('#gstops'), key = (one ? one.id : '') + ':' + gr.stops.length;
+  if (list.dataset.key !== key) {
+    list.dataset.key = key; list.innerHTML = '';
+    gr.stops.forEach((st, i) => {
+      const d = document.createElement('div'); d.className = 'gs'; d.dataset.i = i;
+      d.innerHTML = '<input type="color" class="gc" aria-label="Stop colour"><input type="number" class="go" min="0" max="100" step="1" aria-label="Stop position in percent">%<input type="number" class="ga" min="0" max="100" step="1" aria-label="Stop opacity in percent" title="Opacity"><button type="button" class="gx btn" aria-label="Remove stop" title="Remove stop">\u00d7</button>';
+      list.appendChild(d);
+    });
+  }
+  gr.stops.forEach((st, i) => {
+    const d = list.children[i]; if (!d) return;
+    const set = (cls, v) => { const el = d.querySelector(cls); if (el && document.activeElement !== el && el.value !== String(v)) el.value = v; };
+    set('.gc', st.c); set('.go', Math.round(st.o * 100)); set('.ga', Math.round(C.nz(st.a, 1) * 100));
+    d.querySelector('.gx').disabled = gr.stops.length <= 2;
+  });
+}
+window.gsSync = () => gsSync();
 function refreshProps() {
   if (!S.doc) return;
   const sels = selEval(), one = sels.length === 1 ? sels[0] : null, st = S.style;
@@ -3915,8 +4222,11 @@ function refreshProps() {
   $('#fillOn').checked = !!fill; setVal($('#fillC'), fill || st.fill); setVal($('#fillA'), Math.round((src ? C.nz(src.fa, 1) : st.fa) * 100));
   $('#strokeOn').checked = !!stroke; setVal($('#strokeC'), stroke || st.stroke); setVal($('#strokeA'), Math.round((src ? C.nz(src.sa, 1) : st.sa) * 100));
   const gr = src && src.grad;
-  setVal($('#fillType'), gr ? gr.type : 'solid'); setVal($('#fill2'), gr ? gr.stops[gr.stops.length - 1].c : st.fill2 || '#FFFFFF');
-  $('#fill2').style.display = gr ? '' : 'none';
+  const gType = gr ? gr.type : src ? 'solid' : (st.fillType || 'solid');
+  setVal($('#fillType'), gType); setVal($('#fill2'), gr ? gr.stops[gr.stops.length - 1].c : st.fill2 || '#FFFFFF');
+  $('#fill2').style.display = gr || gType !== 'solid' ? '' : 'none';
+  $('#gEdit').checked = st.gradEdit !== false;
+  gsSync(gr, one);
   let tx = null;
   for (const s of sels) if (s.o.kind === 'text') { tx = s.o; break; }
   const tr0 = tx ? tx.runs[0] : null;
@@ -3937,7 +4247,7 @@ function refreshProps() {
   $$('[data-act]').forEach((b) => { b.disabled = !sels.length; });
   refreshTransformFields();
   setVal($('#radius'), st.radius); setVal($('#smooth'), st.smooth);
-  setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
+  setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; $('#bgap').value = st.bgap || 'small'; $('#ball').checked = !!st.ball; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
   const l = curLayer(), kf = l && C.kfFor(l, S.frame), nx = kf && l.kfs[l.kfs.indexOf(kf) + 1];
   $('#tweenType').value = kf ? kf.tween : 'none';
   $('#easeType').value = kf && kf.ease ? kf.ease.type : 'linear'; setVal($('#easeAmt'), kf && kf.ease ? kf.ease.amt : 50);
@@ -3974,19 +4284,45 @@ function bindProps() {
   on('#fill2', 'input', (e) => { const c = e.target.value; styleEdit({ fill2: c }, (p) => { if (p.grad) p.grad.stops[p.grad.stops.length - 1].c = c; }); });
   on('#fillType', 'change', (e) => {
     const ty = e.target.value;
-    styleEdit({}, (p) => {
+    styleEdit({ fillType: ty }, (p) => {
       if (p.kind !== 'path') return;
       if (ty === 'solid') { delete p.grad; return; }
-      const b = C.contoursBounds(p.contours);
-      if (!b) return;
       if (!p.fill) { p.fill = S.style.fill; p.fa = 1; }
-      const w = Math.max(b.x1 - b.x0, 1), h = Math.max(b.y1 - b.y0, 1), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
-      const c2 = $('#fill2').value || '#FFFFFF';
-      const m = ty === 'radial' ? [Math.max(w, h) / 1638.4, 0, 0, Math.max(w, h) / 1638.4, cx, cy] : [w / 1638.4, 0, 0, h / 1638.4, cx, cy];
-      p.grad = { type: ty, stops: [{ o: 0, c: p.fill, a: 1 }, { o: 1, c: c2 === p.fill ? '#FFFFFF' : c2, a: 1 }], m };
+      const c2 = $('#fill2').value || '#FFFFFF', old = p.grad;
+      const g = makeGrad(ty, p.contours, p.fill, c2);
+      if (!g) return;
+      if (old && old.stops && old.stops.length > 2) { g.stops = old.stops.map((x) => Object.assign({}, x)); }
+      p.grad = g;
     });
     refreshProps();
   });
+  /* gradient stop list */
+  const gsBox = $('#gstops');
+  const gsEdit = (i, fn) => styleEdit({}, (p) => { if (p.grad && p.grad.stops[i]) fn(p.grad.stops[i], p); });
+  gsBox.addEventListener('input', (e) => {
+    const row = e.target.closest('.gs'); if (!row) return; const i = +row.dataset.i, t = e.target;
+    if (t.classList.contains('gc')) gsEdit(i, (st, p) => { st.c = t.value; if (i === 0) p.fill = t.value; });
+    else if (t.classList.contains('ga')) gsEdit(i, (st) => { st.a = Math.max(0, Math.min(1, (+t.value || 0) / 100)); });
+  });
+  gsBox.addEventListener('change', (e) => {
+    const row = e.target.closest('.gs'); if (!row || !e.target.classList.contains('go')) return;
+    const i = +row.dataset.i, v = Math.max(0, Math.min(100, +e.target.value || 0)) / 100;
+    gsEdit(i, (st) => { st.o = v; });
+  });
+  gsBox.addEventListener('click', (e) => {
+    const b = e.target.closest('.gx'); if (!b) return; const i = +b.closest('.gs').dataset.i;
+    styleEdit({}, (p) => { if (p.grad && p.grad.stops.length > 2) p.grad.stops.splice(i, 1); });
+  });
+  on('#gAdd', 'click', () => {
+    styleEdit({}, (p) => {
+      if (!p.grad) return;
+      const s = p.grad.stops.slice().sort((a, b) => a.o - b.o); let bi = 0, bg = -1;
+      for (let i = 0; i < s.length - 1; i++) if (s[i + 1].o - s[i].o > bg) { bg = s[i + 1].o - s[i].o; bi = i; }
+      const t = (s[bi].o + s[bi + 1].o) / 2, col = gradColorAt(s, t);
+      p.grad.stops.push({ o: t, c: col.c, a: col.a }); p.grad.stops.sort((a, b) => a.o - b.o);
+    });
+  });
+  on('#gEdit', 'change', (e) => { S.style.gradEdit = e.target.checked; invalidate(); });
   const textEdit = (patch, tpatch) => {
     Object.assign(S.style, patch);
     const sel = S.sel.map((s) => ({ s, o: null }));
@@ -4058,6 +4394,8 @@ function bindProps() {
   window.__angOff = angOff;
   on('#bpress', 'change', (e) => { S.style.bpress = e.target.checked; });
   on('#bmerge', 'change', (e) => { S.style.bmerge = e.target.checked; });
+  on('#bgap', 'change', (e) => { S.style.bgap = e.target.value; });
+  on('#ball', 'change', (e) => { S.style.ball = e.target.checked; });
   window.__setBSize = setBSize;
   on('#tweenType', 'change', (e) => frameAction(e.target.value === 'none' ? 'notween' : e.target.value));
   const easeEdit = () => {
@@ -5596,7 +5934,7 @@ function init() {
   ]); });
   if (restored) toast('Restored your last session. File → Load sample brings back the demo.');
   else toast('Sample loaded. Press Enter to play, then try the Selection tool on the ball.');
-  if (window.__FC_TEST) window.__FC = { renderFrameCanvas, snap, S, C, toggleMask, openExport, buildPlayer, brushOutline, fluidOutline, fbSet, refreshProps, setTab, alignSel, distribute, convertToSymbol, renderLibrary, frameAction, setFrame, setTool, importFLAFile, openFile, exportDialog, loadDoc, buildSample };
+  if (window.__FC_TEST) window.__FC = { renderFrameCanvas, snap, S, C, toggleMask, openExport, buildPlayer, brushOutline, fluidOutline, fbSet, gradPts, w2s, gradDown, refreshProps, setTab, alignSel, distribute, convertToSymbol, renderLibrary, frameAction, setFrame, setTool, importFLAFile, openFile, exportDialog, loadDoc, buildSample };
 }
 init();
 })();
