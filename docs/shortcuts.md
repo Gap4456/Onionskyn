@@ -5,7 +5,7 @@ Press **?** in the app to see this list any time. On a Mac, use Cmd in place of 
 | Keys | Action |
 | --- | --- |
 | V / A | Selection / Node edit |
-| P / Y / B | Pen / Pencil / Brush |
+| P / Y / B / F | Pen / Pencil / Brush / Fluid brush |
 | [ and ] | Brush size smaller / larger |
 | L, R, O | Line, Rectangle, Ellipse |
 | T | Text |

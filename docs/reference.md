@@ -9,6 +9,7 @@
 | Pen | P | Click for corners, drag for curves, **Enter** to finish. |
 | Pencil | Y | Freehand line. |
 | Brush | B | Paints a filled shape. **[** and **]** change size; the options bar sets size, shape, angle and colour. A pen or stylus adds pressure. |
+| Fluid brush | F | Smooth, tapered, variable-width strokes. Settings live in the **Brush** tab (see below). **[** and **]** change size. |
 | Line | L | Hold **Shift** for 45° steps. |
 | Rectangle / Ellipse | R / O | **Shift** = square or circle, **Alt** = from the centre. Rectangle has a Corner radius option. |
 | Text | T | Click to type, double-click existing text to edit. **Esc** or clicking away finishes. |
@@ -16,10 +17,31 @@
 | Eyedropper | I | Copies a colour; hold **Alt** for the stroke. |
 | Hand | H | Pans the stage; holding **Space** does the same. |
 
+## Fluid brush
+
+Press **F** to pick the Fluid brush; the **Brush** tab opens with its settings. It paints a smooth filled shape (a normal path you can edit with Node edit, recolour or tween). Brush strokes are not left selected, so you can keep drawing without handles in the way. Settings:
+
+| Setting | What it does |
+| --- | --- |
+| Fill colour / Fill opacity | Colour and transparency of the stroke. |
+| Size | Brush width, 1 to 200. |
+| Stabilizer | Makes the brush follow your pointer on a "rope", so shaky hands give smooth lines. Higher = more lag and smoother. |
+| Curve smoothing | Relaxes the finished path. Higher = smoother, rounder curves. |
+| Roundness | 100 is a round tip; lower values make a flat, calligraphy-style tip. |
+| Angle | Rotates the flat tip (only visible when Roundness is below 100). |
+| Taper | Thins the start and end of each stroke to a point. 100 makes a whole stroke a spindle. |
+| Velocity | Positive: faster strokes get thinner. Negative: faster strokes get thicker. |
+| Pressure | How much pen pressure changes the width. Has no effect with a mouse. |
+| Zoom size with stage | On: the size is in stage units and scales with zoom. Off: the brush stays the same size on screen at any zoom. |
+| Merge strokes into one shape | When on (the default), strokes of the same colour drawn one after another join into a single shape, so a drawing isn't a pile of separate pieces. A different colour, or drawing something else in between, starts a new shape. Turn it off to keep every stroke separate. The classic Brush has the same **Merge strokes** checkbox in its options bar. |
+
+**Presets.** Type a name and click **Save as preset** to keep the current settings. Click a preset to use it, **Save changes** to overwrite the selected one, and ✕ to delete it. Presets are stored in your browser, not in the project file.
+
 ## Properties panel
 
 - **Object:** fill (solid, linear or radial gradient), stroke, width, cap and join, opacity, position and size, rotation, and for symbol instances the type, playback mode and instance name. The **Convert to symbol** button is here.
 - **Text:** font, size, bold, italic and alignment.
+- **Brush:** the Fluid brush settings and presets.
 - **Align:** align or distribute the selection, or align to the stage.
 - **Frame:** tween type and easing, frame label, sound, and frame script.
 - **Library:** symbols, images and sounds in the document.

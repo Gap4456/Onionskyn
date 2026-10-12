@@ -169,6 +169,15 @@ input[type=checkbox] { accent-color: var(--accent); }
 #ptabs .pin { flex: none; width: 26px; border: 0; background: transparent; color: var(--mut); display: grid; place-items: center; }
 #ptabs .pin svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linejoin: round; }
 #ptabs .pin[aria-pressed="true"] { color: var(--accent); } #ptabs .pin[aria-pressed="true"] svg { fill: currentColor; }
+#ptabs [role=tab][hidden] { display: none !important; }
+.fbr { display: grid; grid-template-columns: minmax(0, 1fr) 54px; gap: 2px 8px; margin-bottom: 8px; align-items: center; }
+.fbr label { grid-column: 1 / -1; font-size: 12px; color: var(--mut); display: flex; justify-content: space-between; }
+.fbr input[type=range] { width: 100%; min-width: 0; }
+.fbr input[type=number] { text-align: right; }
+.fbchk { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px; font-size: 12px; }
+.fbitem { display: grid; grid-template-columns: minmax(0, 1fr) 28px; gap: 4px; margin-bottom: 4px; }
+.fbitem button { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fbitem button[aria-pressed=true] { outline: 2px solid var(--accent); }
 .pane { display: none; flex: 1; min-height: 0; overflow: auto; padding-bottom: 12px; } .pane.on { display: block; }
 #libFilter, #dname { width: 100%; }
 #libFilter { height: 26px; margin-bottom: 6px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--cell); }
@@ -276,7 +285,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   <main id="stagewrap">
     <canvas id="stage" aria-label="Stage"></canvas>
-    <div id="toolopts" aria-label="Tool options"><label data-for="rect">Corner <input type="number" id="radius" min="0" max="500" step="1"></label><label data-for="brush">Size <input type="range" id="bsizeR" min="1" max="200" aria-label="Brush size"><input type="number" id="bsize" min="1" max="500" step="1" aria-label="Brush size in pixels"></label><label data-for="brush">Shape <select id="bshape" aria-label="Brush shape"></select></label><label data-for="brush">Angle <input type="range" id="bangleR" min="0" max="180" aria-label="Brush angle"><input type="number" id="bangle" min="0" max="180" step="1" aria-label="Brush angle in degrees">°</label><label data-for="brush">Colour <input type="color" id="bcolor" aria-label="Brush colour"></label><label data-for="brush"><input type="checkbox" id="bpress"> Pressure</label><label data-for="pencil brush">Smoothing <input type="range" id="smooth" min="0" max="100"></label></div>
+    <div id="toolopts" aria-label="Tool options"><label data-for="rect">Corner <input type="number" id="radius" min="0" max="500" step="1"></label><label data-for="brush">Size <input type="range" id="bsizeR" min="1" max="200" aria-label="Brush size"><input type="number" id="bsize" min="1" max="500" step="1" aria-label="Brush size in pixels"></label><label data-for="brush">Shape <select id="bshape" aria-label="Brush shape"></select></label><label data-for="brush">Angle <input type="range" id="bangleR" min="0" max="180" aria-label="Brush angle"><input type="number" id="bangle" min="0" max="180" step="1" aria-label="Brush angle in degrees">°</label><label data-for="brush">Colour <input type="color" id="bcolor" aria-label="Brush colour"></label><label data-for="brush"><input type="checkbox" id="bpress"> Pressure</label><label data-for="brush"><input type="checkbox" id="bmerge"> Merge strokes</label><label data-for="pencil brush">Smoothing <input type="range" id="smooth" min="0" max="100"></label></div>
     <div id="crumb"><button id="crumbBack" title="Back to scene (Esc)">◀ Back</button><span id="crumbPath"></span></div>
     <div id="hud"><span id="hCoord">x 0  y 0</span><span id="hFrame">Frame 1</span><span id="hTool"></span></div>
     <div id="drop">Drop a .fla, .xfl or project file to open</div>
@@ -287,6 +296,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <div id="ptabs" role="tablist" aria-label="Property tabs">
       <button role="tab" id="tab-obj" data-tab="obj" aria-controls="pane-obj" aria-selected="false" tabindex="-1"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5l9 5.5-4 1.2-1.6 4z"/></svg><span>Object</span></button>
       <button role="tab" id="tab-text" data-tab="text" aria-controls="pane-text" aria-selected="false" tabindex="-1"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4V2.8h9V4M8 2.8v10.4M6 13.2h4"/></svg><span>Text</span></button>
+      <button role="tab" id="tab-brush" data-tab="brush" hidden aria-controls="pane-brush" aria-selected="false" tabindex="-1"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 2.5c-3.2.2-6.6 3-7.6 6.6l1.2 1.2c3.6-1 6.4-4.4 6.6-7.6z"/><path d="M5.6 10.4c-1.3 0-2.1 1-2.1 2.3 0 .6-.3 1-.8 1.3 1.8.3 3.7-.5 3.7-2.2"/></svg><span>Brush</span></button>
       <button role="tab" id="tab-align" data-tab="align" aria-controls="pane-align" aria-selected="false" tabindex="-1"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 2v12M5 4h8M5 8h5M5 12h7"/></svg><span>Align</span></button>
       <button role="tab" id="tab-frame" data-tab="frame" aria-controls="pane-frame" aria-selected="false" tabindex="-1"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M6 3.5v9M10 3.5v9"/></svg><span>Frame</span></button>
       <button role="tab" id="tab-lib" data-tab="lib" aria-controls="pane-lib" aria-selected="false" tabindex="-1"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h3v10H3zM7 3h3v10H7zM11.5 3.6l2.6.7-2.4 9.3-2.6-.7z"/></svg><span>Library</span></button>
@@ -323,6 +333,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <div class="row"><span>Size</span><div class="ctl"><input type="number" id="tSize" min="1" max="600" step="1"><label><input type="checkbox" id="tBold"> B</label><label><input type="checkbox" id="tItalic"> I</label></div></div>
       <div class="row"><span>Align</span><div class="ctl"><select id="tAlign" aria-label="Text align"><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></div></div>
       <p class="hint" style="margin:6px 0 0">Styles the selected text. With nothing selected, these set the look of the next text you type (Text tool, T).</p>
+    </div>
+    </div>
+    <div class="pane" role="tabpanel" id="pane-brush" data-pane="brush" aria-labelledby="tab-brush">
+    <div class="sec">
+      <h3>Fluid brush <em>press F</em></h3>
+      <div id="fbBox"></div>
+      <div class="fbpre">
+        <div class="mini" style="display:flex;gap:6px;margin:8px 0 6px"><input type="text" id="fbName" placeholder="Preset name" spellcheck="false" aria-label="Preset name" style="flex:1"><button id="fbSave" title="Save the current settings as a preset">Save as preset</button></div>
+        <div class="mini" style="margin-bottom:6px"><button id="fbUpdate" title="Overwrite the selected preset with the current settings" disabled>Save changes</button> <button id="fbReset" title="Back to the default settings">Reset</button></div>
+        <div class="hint" style="margin:0 0 4px">Saved presets (kept in this browser)</div>
+        <div id="fbList" class="mini" style="display:block"></div>
+      </div>
     </div>
     </div>
     <div class="pane" role="tabpanel" id="pane-align" data-pane="align" aria-labelledby="tab-align">
@@ -2351,7 +2373,7 @@ setInterval(() => {
 
 const S = {
   doc: null, frame: 0, layerId: null, tool: 'select', sel: [], view: { z: 1, px: 0, py: 0 },
-  style: { font: 'Arial', size: 32, bold: false, italic: false, align: 'left', fill: '#3F5BFF', fillOn: true, fa: 1, stroke: '#1B2030', strokeOn: true, sa: 1, sw: 3, cap: 'round', join: 'round', radius: 0, smooth: 40, bsize: 14, bshape: 'round', bpress: true, bangle: 0, bcolor: '#1B2030' },
+  style: { font: 'Arial', size: 32, bold: false, italic: false, align: 'left', fill: '#3F5BFF', fillOn: true, fa: 1, stroke: '#1B2030', strokeOn: true, sa: 1, sw: 3, cap: 'round', join: 'round', radius: 0, smooth: 40, bsize: 14, bshape: 'round', bpress: true, bangle: 0, bcolor: '#1B2030', fb: { size: 12, stab: 25, smooth: 50, round: 100, angle: 0, taper: 25, vel: 0, press: 100, zoom: true, color: '#1B2030', alpha: 100, merge: true }, bmerge: true },
   onion: { on: false, b: 1, a: 1 }, playing: false, loop: true, pen: null, draw: null, drag: null, nodeSel: null,
   edit: [], space: false, clipboard: [], cursorW: { x: 0, y: 0 }, autoFit: true
 };
@@ -2645,6 +2667,7 @@ const TOOLS = [
   { id: 'pen', k: 'P', n: 'Pen (click, or drag for curves; Enter to finish)', svg: '<path d="M3.5 16.5l1.8-5.2 7.6-7.6 3.4 3.4-7.6 7.6z"/><path d="M5.3 11.3l3.4 3.4"/>', cur: 'crosshair' },
   { id: 'pencil', k: 'Y', n: 'Pencil (freehand)', svg: '<path d="M4 16l.8-3.6 8.5-8.5 2.8 2.8-8.5 8.5z"/><path d="M12 5.2l2.8 2.8"/>', cur: 'crosshair' },
   { id: 'brush', k: 'B', n: 'Brush (paints a filled shape; [ and ] change size)', svg: '<path d="M16.5 3.5c-3 .6-6.5 4-8 7l1.5 1.5c3-1.5 6.4-5 7-8.5z"/><path d="M8.3 11.3c-2 0-3.3 1.2-3.3 3.2 0 1-.5 1.6-1.2 2 2.6.6 6-.2 6-3.4"/>', cur: 'crosshair' },
+  { id: 'fluid', k: 'F', n: 'Fluid brush (smooth, tapered strokes; [ and ] change size)', svg: '<path d="M16.8 3.2c-4 .2-8.4 3.6-9.6 8.2l1.4 1.4c4.6-1.2 8-5.6 8.2-9.6z"/><path d="M7 12.6c-1.6 0-2.6 1.2-2.6 2.8 0 .8-.4 1.3-1 1.6 2.2.4 4.6-.6 4.6-2.8"/><path d="M10.5 16.5c1.6.4 3.2-.2 5-1.8" stroke-dasharray="1.6 2"/>', cur: 'crosshair' },
   { id: 'line', k: 'L', n: 'Line (Shift = 45°)', svg: '<path d="M4 16L16 4"/>', cur: 'crosshair' },
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
@@ -2679,7 +2702,13 @@ function setTool(id) {
   stage.style.cursor = t ? t.cur : 'default';
   $('#hTool').textContent = t ? t.n.replace(/ \(.*\)/, '') : '';
   { let any = false; $$('#toolopts label').forEach((lb) => { const m = lb.dataset.for.split(' ').includes(id); lb.classList.toggle('on', m); any = any || m; }); $('#toolopts').classList.toggle('on', any); }
-  if (id === 'text') autoTab('text');
+  { const was = S.tool0; S.tool0 = id; const tb = $('#tab-brush');
+    if (tb) {
+      tb.hidden = id !== 'fluid';
+      if (id === 'fluid' && was !== 'fluid') { if (S.tab !== 'brush') S.tabBefore = S.tab; }
+      else if (id !== 'fluid' && S.tab === 'brush') setTab(S.tabBefore && S.tabBefore !== 'brush' ? S.tabBefore : 'obj');
+    } }
+  if (id === 'text') autoTab('text'); else if (id === 'fluid') autoTab('brush');
   invalidate();
 }
 
@@ -2715,6 +2744,24 @@ function addObject(o) {
   const kf = C.ensureEditable(l, S.frame);
   kf.objs.push(o);
   S.sel = [{ lid: l.id, id: o.id }];
+  commit(); buildLayerList();
+  return true;
+}
+/* freehand strokes: don't select the result, and optionally merge into the previous stroke of the same colour so a drawing stays one shape */
+function contourArea(c) { let a = 0; const n = c.nodes; for (let i = 0; i < n.length; i++) { const p = n[i], q = n[(i + 1) % n.length]; a += p.x * q.y - q.x * p.y; } return a / 2; }
+function facePositive(cs) { for (const c of cs) if (contourArea(c) < 0) c.nodes.reverse(); return cs; }
+function addStroke(o, merge, tag) {
+  const l = curLayer();
+  if (!l || l.locked || l.visible === false) return false;
+  pushUndo();
+  const kf = C.ensureEditable(l, S.frame);
+  const q = kf.objs[kf.objs.length - 1];
+  o.fl = tag;
+  if (merge && q && q.kind === 'path' && q.fl === tag && q.fill === o.fill && q.fa === o.fa && !q.stroke && !q.grad && q.t.r === 0 && q.t.sx === 1 && q.t.sy === 1 && (q.op == null || q.op === 1)) {
+    for (const c of o.contours) { for (const n of c.nodes) { n.x += o.t.x - q.t.x; n.y += o.t.y - q.t.y; } q.contours.push(c); }
+    C.recenter(q);
+  } else kf.objs.push(o);
+  S.sel = [];
   commit(); buildLayerList();
   return true;
 }
@@ -2789,6 +2836,7 @@ function onDown(e) {
     case 'pen': penDown(e, p); break;
     case 'pencil': if (canDraw()) S.draw = { type: 'pencil', pts: [p.w] }; break;
     case 'brush': if (canDraw()) S.draw = { type: 'brush', pts: [brushPt(p.w, e)] }; break;
+    case 'fluid': if (canDraw()) S.draw = { type: 'fluid', pts: [brushPt(p.w, e)] }; break;
     case 'line': case 'rect': case 'ellipse': if (canDraw()) S.draw = { type: S.tool, start: p.w, cur: p.w, shift: e.shiftKey, alt: e.altKey }; break;
     case 'text': textDown(e, p); break;
     case 'bucket': bucketDown(e, p); break;
@@ -2799,7 +2847,7 @@ function onDown(e) {
 function onMove(e) {
   const p = stagePt(e);
   S.cursorW = p.w;
-  if (S.tool === 'brush') { S.brushHover = p.w; if (!S.draw) invalidate(); }
+  if (S.tool === 'brush' || S.tool === 'fluid') { S.brushHover = p.w; if (!S.draw) invalidate(); }
   $('#hCoord').textContent = 'x ' + Math.round(p.w.x) + '  y ' + Math.round(p.w.y);
   const d = S.drag;
   if (d) {
@@ -2812,7 +2860,7 @@ function onMove(e) {
   }
   if (S.draw) {
     const dr = S.draw;
-    if (dr.type === 'pencil') dr.pts.push(p.w); else if (dr.type === 'brush') dr.pts.push(brushPt(p.w, e)); else { dr.cur = p.w; dr.shift = e.shiftKey; dr.alt = e.altKey; }
+    if (dr.type === 'pencil') dr.pts.push(p.w); else if (dr.type === 'brush' || dr.type === 'fluid') dr.pts.push(brushPt(p.w, e)); else { dr.cur = p.w; dr.shift = e.shiftKey; dr.alt = e.altKey; }
     invalidate(); return;
   }
   if (S.pen) { penMove(p.w); return; }
@@ -2842,6 +2890,7 @@ function onUp(e) {
     const dr = S.draw; S.draw = null;
     if (dr.type === 'pencil') finishPencil(dr.pts);
     else if (dr.type === 'brush') finishBrush(dr.pts);
+    else if (dr.type === 'fluid') finishFluid(dr.pts);
     else finishShape(dr);
     invalidate(); return;
   }
@@ -3044,6 +3093,11 @@ function drawPreview(ctx) {
     ctx.beginPath();
     for (const c of cs) { c.nodes.forEach((n, i) => { const q = w2s(n.x, n.y); i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1]); }); p.closePath(); }
     ctx.fillStyle = st.bcolor; ctx.fill(p, 'nonzero');
+  } else if (d.type === 'fluid') {
+    const cs = fluidOutline(d.pts, S.style.fb, S.view.z), p = new Path2D();
+    ctx.setLineDash([]);
+    for (const c of cs) { c.nodes.forEach((n, i) => { const q = w2s(n.x, n.y); i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1]); }); p.closePath(); }
+    ctx.globalAlpha = S.style.fb.alpha / 100; ctx.fillStyle = S.style.fb.color; ctx.fill(p, 'nonzero');
   } else if (d.type === 'pencil') {
     ctx.beginPath();
     d.pts.forEach((p, i) => { const q = w2s(p.x, p.y); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); });
@@ -3120,7 +3174,7 @@ function nibOf(shape, base, angle) {
   if (angle && shape !== 'round') { const r = angle * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r); V = V.map((v) => [v[0] * c - v[1] * sn, v[0] * sn + v[1] * c]); }
   return V;
 }
-function brushPt(w, e) { return { x: w.x, y: w.y, pr: e && e.pointerType === 'pen' ? clamp(e.pressure || 0.5, 0.02, 1) : 1 }; }
+function brushPt(w, e) { return { x: w.x, y: w.y, pr: e && e.pointerType === 'pen' ? clamp(e.pressure || 0.5, 0.02, 1) : 1, t: e && e.timeStamp ? e.timeStamp : undefined }; }
 function brushOutline(raw, st, z) {
   const base = Math.max(0.5, st.bsize / 2), V = nibOf(st.bshape, base, st.bangle), K = V.length;
   const sc = (p) => (st.bpress ? lerp(0.15, 1, p.pr == null ? 1 : p.pr) : 1);
@@ -3144,6 +3198,13 @@ function brushOutline(raw, st, z) {
     const Q = R; R = Q.map((p, i) => (i === 0 || i === Q.length - 1 ? p : { x: (Q[i - 1].x + 2 * p.x + Q[i + 1].x) / 4, y: (Q[i - 1].y + 2 * p.y + Q[i + 1].y) / 4, pr: p.pr }));
   }
   R = rdp(R, Math.max(0.3 / z, st.bsize * 0.015) * (1 + st.smooth / 40));
+  return sweepNib(R, V, base, sc, asNodes);
+}
+/* sweeps convex nib V (scaled by base * sc(point)) along polyline Q and returns the filled outline contour */
+function sweepNib(R, V, base, sc, asNodes) {
+  const K = V.length, hy = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const pt = (p, k) => ({ x: p.x + V[k][0] * base * sc(p), y: p.y + V[k][1] * base * sc(p) });
+  const sup = (nx, ny) => { let bk = 0, bd = -1e18; for (let k = 0; k < K; k++) { const d = V[k][0] * nx + V[k][1] * ny; if (d > bd + 1e-9) { bd = d; bk = k; } } return bk; };
   const walk = (Q) => {
     const out = [], segs = [];
     for (let i = 0; i + 1 < Q.length; i++) { const L = hy(Q[i], Q[i + 1]); if (L < 1e-9) continue; const dx = (Q[i + 1].x - Q[i].x) / L, dy = (Q[i + 1].y - Q[i].y) / L; segs.push({ i, dx, dy, a: sup(dy, -dx) }); }
@@ -3165,18 +3226,113 @@ function brushOutline(raw, st, z) {
   const clean = pts.filter((q, i) => i === 0 || Math.abs(q.x - pts[i - 1].x) + Math.abs(q.y - pts[i - 1].y) > 1e-6);
   return [asNodes(clean)];
 }
+
 function finishBrush(raw) {
   if (!raw.length) return;
   const st = S.style, cs = brushOutline(raw, st, S.view.z);
+  facePositive(cs);
   const o = C.mkPath(cs, { fill: st.bcolor, fa: 1, stroke: null, sw: 0 });
   o.nz = true;
   C.recenter(o);
-  addObject(o);
+  addStroke(o, st.bmerge !== false, 'b');
 }
+/* ---------- fluid brush: stabilised, smoothed, tapered variable-width strokes ---------- */
+const FB_DEFAULT = { size: 12, stab: 25, smooth: 50, round: 100, angle: 0, taper: 25, vel: 0, press: 100, zoom: true, color: '#1B2030', alpha: 100, merge: true };
+function fbSize(fb, z) { return Math.max(0.3, fb.zoom ? fb.size : fb.size / z); }
+function fbNib(fb) {
+  const n = 28, ry = clamp(fb.round / 100, 0.06, 1), rot = (fb.angle || 0) * Math.PI / 180, c = Math.cos(rot), sn = Math.sin(rot);
+  return Array.from({ length: n }, (_, i) => { const a = i / n * Math.PI * 2, x = Math.cos(a), y = Math.sin(a) * ry; return [x * c - y * sn, x * sn + y * c]; });
+}
+/* lazy-rope stabiliser: the brush follows the pointer at the end of a rope of length stab */
+function fbStabilize(raw, ropeLen) {
+  const out = [{ x: raw[0].x, y: raw[0].y, pr: raw[0].pr, t: raw[0].t }];
+  if (ropeLen <= 1e-9) { for (let i = 1; i < raw.length; i++) out.push({ x: raw[i].x, y: raw[i].y, pr: raw[i].pr, t: raw[i].t }); return out; }
+  let b = { x: raw[0].x, y: raw[0].y };
+  for (let i = 1; i < raw.length; i++) {
+    const p = raw[i], d = Math.hypot(p.x - b.x, p.y - b.y);
+    if (d > ropeLen) { const k = (d - ropeLen) / d; b = { x: b.x + (p.x - b.x) * k, y: b.y + (p.y - b.y) * k }; out.push({ x: b.x, y: b.y, pr: p.pr, t: p.t }); }
+  }
+  const l = raw[raw.length - 1], e = out[out.length - 1];
+  if (Math.hypot(l.x - e.x, l.y - e.y) > 1e-6) out.push({ x: l.x, y: l.y, pr: l.pr, t: l.t });
+  return out;
+}
+function fbRdp(pts, tolG, tolW) {
+  if (pts.length < 3) return pts.slice();
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    let md = 0, mi = -1;
+    const A = pts[a], B = pts[b], dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy), ds = B.s - A.s;
+    for (let i = a + 1; i < b; i++) {
+      const P = pts[i];
+      const g = L < 1e-9 ? Math.hypot(P.x - A.x, P.y - A.y) : Math.abs(dy * P.x - dx * P.y + B.x * A.y - B.y * A.x) / L;
+      const kk = A.k + (B.k - A.k) * (ds > 1e-9 ? (P.s - A.s) / ds : 0);
+      const dd = Math.max(g / tolG, Math.abs(P.k - kk) / tolW);
+      if (dd > md) { md = dd; mi = i; }
+    }
+    if (md > 1 && mi > 0) { keep[mi] = 1; stack.push([a, mi], [mi, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+function fluidOutline(raw, fb, z) {
+  fb = Object.assign({}, FB_DEFAULT, fb || {});
+  const size = fbSize(fb, z), base = size / 2, V = fbNib(fb);
+  const asNodes = (pts) => ({ closed: true, nodes: pts.map((q) => C.node(q.x, q.y)) });
+  const hy = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const P = clamp(fb.press, 0, 100) / 100, VEL = clamp(fb.vel, -100, 100) / 100;
+  const pf = (pr) => clamp(1 - P * (1 - (pr == null ? 1 : pr)), 0.08, 1);
+  const st = fbStabilize(raw, clamp(fb.stab, 0, 100) / 100 * 40 / z);
+  /* resample evenly, carrying pressure and time */
+  let total = 0; for (let i = 1; i < st.length; i++) total += hy(st[i - 1], st[i]);
+  const step = Math.max(1 / z, size * 0.08, total / 3000);
+  const mk = (q) => ({ x: q.x, y: q.y, pr: q.pr == null ? 1 : q.pr, t: q.t });
+  let a = mk(st[0]), need = step; let R = [a];
+  const lt = (u, v, t) => (u == null || v == null ? undefined : u + (v - u) * t);
+  for (let i = 1; i < st.length; i++) {
+    const b = mk(st[i]);
+    let d = hy(a, b);
+    while (d >= need && d > 1e-9) { const t = need / d; a = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, pr: lerp(a.pr, b.pr, t), t: lt(a.t, b.t, t) }; R.push(a); d = hy(a, b); need = step; }
+    need -= d; a = b;
+  }
+  const lastP = mk(st[st.length - 1]);
+  if (hy(R[R.length - 1], lastP) > step * 0.2 || R.length < 2) R.push(lastP);
+  if (R.length < 2 || total < 1e-6) { const q = R[0]; return [asNodes(V.map((v) => ({ x: q.x + v[0] * base * pf(q.pr), y: q.y + v[1] * base * pf(q.pr) })))]; }
+  /* curve smoothing: relax the path, keeping both ends */
+  const sigma = clamp(fb.smooth, 0, 100) / 100 * (10 / z + size * 0.6);
+  for (let k = 0, n = Math.min(600, Math.round(2 * (sigma / step) * (sigma / step))); k < n && R.length > 2; k++) {
+    const Q = R; R = Q.map((p, i) => (i === 0 || i === Q.length - 1 ? p : { x: (Q[i - 1].x + 2 * p.x + Q[i + 1].x) / 4, y: (Q[i - 1].y + 2 * p.y + Q[i + 1].y) / 4, pr: p.pr, t: p.t }));
+  }
+  /* arc length, speed (screen px per ms; needs timestamps) */
+  R[0].s = 0; for (let i = 1; i < R.length; i++) R[i].s = R[i - 1].s + hy(R[i - 1], R[i]);
+  const L = R[R.length - 1].s;
+  let sp = R.map((p, i) => { const u = R[Math.max(0, i - 2)], v = R[Math.min(R.length - 1, i + 2)]; const dt = (u.t != null && v.t != null) ? v.t - u.t : 0; return dt > 0 ? hy(u, v) * z / dt : 0; });
+  for (let k = 0; k < 3; k++) sp = sp.map((v, i) => (sp[Math.max(0, i - 1)] + v + sp[Math.min(sp.length - 1, i + 1)]) / 3);
+  const tl = clamp(fb.taper, 0, 100) / 100 * L / 2, ss = (x) => x * x * (3 - 2 * x);
+  R.forEach((p, i) => {
+    const vn = clamp(sp[i] / 2, 0, 1), vf = VEL >= 0 ? 1 - VEL * vn * 0.85 : 1 + (-VEL) * vn * 0.6;
+    const tf = tl > 1e-9 ? Math.max(0.04, ss(clamp(Math.min(p.s, L - p.s) / tl, 0, 1))) : 1;
+    p.k = clamp(pf(p.pr) * vf * tf, 0.03, 2);
+  });
+  R = fbRdp(R, Math.max(0.2 / z, size * 0.01), Math.max(0.01, 0.2 / z / base));
+  R.forEach((p) => { p.pr = p.k; });
+  return sweepNib(R, V, base, (p) => p.pr, asNodes);
+}
+function finishFluid(raw) {
+  if (!raw.length) return;
+  const fb = S.style.fb, cs = fluidOutline(raw, fb, S.view.z);
+  facePositive(cs);
+  const o = C.mkPath(cs, { fill: fb.color, fa: fb.alpha / 100, stroke: null, sw: 0 });
+  o.nz = true;
+  C.recenter(o);
+  addStroke(o, fb.merge !== false, 'f');
+}
+
 function drawBrushCursor(ctx) {
   const w = S.brushHover, st = S.style;
-  if (!w || S.tool !== 'brush' || S.space || (S.draw && S.draw.type === 'brush')) return;
-  const V = nibOf(st.bshape, st.bsize / 2, st.bangle), r = st.bsize / 2;
+  if (!w || (S.tool !== 'brush' && S.tool !== 'fluid') || S.space || (S.draw && (S.draw.type === 'brush' || S.draw.type === 'fluid'))) return;
+  const fl = S.tool === 'fluid';
+  const V = fl ? fbNib(st.fb) : nibOf(st.bshape, st.bsize / 2, st.bangle), r = fl ? fbSize(st.fb, S.view.z) / 2 : st.bsize / 2;
   ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.beginPath();
   V.forEach((v, i) => { const q = w2s(w.x + v[0] * r, w.y + v[1] * r); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.closePath(); ctx.stroke();
   ctx.strokeStyle = 'rgba(20,24,40,.85)'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.restore();
@@ -3781,7 +3937,7 @@ function refreshProps() {
   $$('[data-act]').forEach((b) => { b.disabled = !sels.length; });
   refreshTransformFields();
   setVal($('#radius'), st.radius); setVal($('#smooth'), st.smooth);
-  setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff();
+  setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
   const l = curLayer(), kf = l && C.kfFor(l, S.frame), nx = kf && l.kfs[l.kfs.indexOf(kf) + 1];
   $('#tweenType').value = kf ? kf.tween : 'none';
   $('#easeType').value = kf && kf.ease ? kf.ease.type : 'linear'; setVal($('#easeAmt'), kf && kf.ease ? kf.ease.amt : 50);
@@ -3901,6 +4057,7 @@ function bindProps() {
   on('#bcolor', 'input', (e) => { S.style.bcolor = e.target.value; invalidate(); });
   window.__angOff = angOff;
   on('#bpress', 'change', (e) => { S.style.bpress = e.target.checked; });
+  on('#bmerge', 'change', (e) => { S.style.bmerge = e.target.checked; });
   window.__setBSize = setBSize;
   on('#tweenType', 'change', (e) => frameAction(e.target.value === 'none' ? 'notween' : e.target.value));
   const easeEdit = () => {
@@ -4638,7 +4795,7 @@ async function startExport() {
 
 /* ---------- help ---------- */
 function showHelp() {
-  const rows = [['V / A', 'Selection / node edit'], ['P / Y / B', 'Pen / pencil / brush'], ['[ and ]', 'Brush size smaller / larger'], ['L R O', 'Line, rectangle, ellipse'], ['T', 'Text (Esc or click away to finish)'], ['K / I / H', 'Bucket, eyedropper, hand'],
+  const rows = [['V / A', 'Selection / node edit'], ['P / Y / B / F', 'Pen / pencil / brush / fluid brush'], ['[ and ]', 'Brush size smaller / larger'], ['L R O', 'Line, rectangle, ellipse'], ['T', 'Text (Esc or click away to finish)'], ['K / I / H', 'Bucket, eyedropper, hand'],
     ['F8', 'Convert selection to symbol (Fn+F8 on some laptops)'], ['F9', 'Script editor'],
     ['F5 / F6 / F7', 'Insert frame / keyframe / blank keyframe'], ['⇧F5 / ⇧F6', 'Remove frame / clear keyframe'], [', and .', 'Previous / next frame'],
     ['Enter', 'Play or stop (finishes a pen path)'], ['Ctrl+G / ⇧G', 'Group / ungroup'], ['Ctrl+C X V D', 'Copy, cut, paste, duplicate'],
@@ -4933,10 +5090,10 @@ function bindCed() {
 
 
 /* ---------- properties tabs ---------- */
-const TABS = ['obj', 'text', 'align', 'frame', 'lib', 'doc'];
+const TABS = ['obj', 'text', 'brush', 'align', 'frame', 'lib', 'doc'];
 const LS_TAB = 'flashcraft.tab', LS_PIN = 'flashcraft.tabpin';
 function setTab(id) {
-  if (!TABS.includes(id)) id = 'obj';
+  if (!TABS.includes(id) || (id === 'brush' && S.tool !== 'fluid')) id = 'obj';
   S.tab = id;
   $$('#ptabs [role=tab]').forEach((b) => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
   $$('#props .pane').forEach((p) => p.classList.toggle('on', p.dataset.pane === id));
@@ -4952,13 +5109,13 @@ function setPin(v) {
 }
 function bindTabs() {
   const tabs = $$('#ptabs [role=tab]');
-  tabs.forEach((b, i) => {
+  tabs.forEach((b) => {
     b.addEventListener('click', () => setTab(b.dataset.tab));
     b.addEventListener('keydown', (e) => {
       const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-      if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); const t = tabs[e.key === 'Home' ? 0 : tabs.length - 1]; setTab(t.dataset.tab); t.focus(); return; }
+      if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); const vis = tabs.filter((x) => !x.hidden), t = vis[e.key === 'Home' ? 0 : vis.length - 1]; setTab(t.dataset.tab); t.focus(); return; }
       if (!d) return;
-      e.preventDefault(); const t = tabs[(i + d + tabs.length) % tabs.length]; setTab(t.dataset.tab); t.focus();
+      e.preventDefault(); const vis = tabs.filter((x) => !x.hidden), j = vis.indexOf(b), t = vis[(j + d + vis.length) % vis.length]; setTab(t.dataset.tab); t.focus();
     });
   });
   $('#ptabPin').addEventListener('click', () => setPin(!S.tabPin));
@@ -4972,8 +5129,76 @@ function trackSelTab(sels) {
   const k = S.sel.map((s) => s.id).join(',');
   if (k === selKey) return;
   selKey = k;
-  if (!sels.length) return;
+  if (!sels.length || S.tool === 'fluid') return;
   autoTab(sels.some((s) => s.o.kind === 'text') && sels.length === 1 ? 'text' : 'obj');
+}
+
+/* ---------- fluid brush panel ---------- */
+const LS_FBP = 'flashcraft.fbpresets';
+const FB_ROWS = [['size', 'Size', 1, 200], ['stab', 'Stabilizer', 0, 100], ['smooth', 'Curve smoothing', 0, 100], ['round', 'Roundness', 5, 100], ['angle', 'Angle', 0, 180], ['taper', 'Taper', 0, 100], ['vel', 'Velocity', -100, 100], ['press', 'Pressure', 0, 100], ['alpha', 'Fill opacity', 0, 100]];
+const FB_KEYS = FB_ROWS.map((r) => r[0]).concat(['zoom', 'color']);
+let fbPresets = [], fbActive = -1;
+function fbLoad() { try { const a = JSON.parse(localStorage.getItem(LS_FBP) || '[]'); fbPresets = Array.isArray(a) ? a.filter((x) => x && typeof x.name === 'string').slice(0, 40) : []; } catch (e) { fbPresets = []; } }
+function fbStore() { try { localStorage.setItem(LS_FBP, JSON.stringify(fbPresets)); } catch (e) { toast('Couldn’t save presets in this browser.'); } }
+function fbCur() { const o = {}; for (const k of FB_KEYS) o[k] = S.style.fb[k]; return o; }
+function fbSame(a, b) { return FB_KEYS.every((k) => a[k] === b[k]); }
+function fbSet(key, v) {
+  const r = FB_ROWS.find((x) => x[0] === key), fb = S.style.fb;
+  if (r) { v = Number(v); if (!isFinite(v)) return; fb[key] = clamp(Math.round(v), r[2], r[3]); }
+  else if (key === 'zoom') fb.zoom = !!v; else if (key === 'color') fb.color = String(v);
+  fbSync(); invalidate();
+}
+function fbSync() {
+  const box = $('#fbBox'); if (!box || !box.firstChild) return;
+  const fb = S.style.fb;
+  for (const r of FB_ROWS) { setVal($('#fb_' + r[0]), fb[r[0]]); setVal($('#fb_' + r[0] + 'N'), fb[r[0]]); }
+  $('#fb_zoom').checked = !!fb.zoom; $('#fb_merge').checked = fb.merge !== false; setVal($('#fb_color'), fb.color);
+  const act = fbPresets[fbActive];
+  $('#fbUpdate').disabled = !(act && !fbSame(act, fbCur()));
+  $$('#fbList .fbitem button[data-fa]').forEach((b) => b.setAttribute('aria-pressed', String(!!act && +b.dataset.fa === fbActive && fbSame(act, fbCur()))));
+}
+function fbRender() {
+  const l = $('#fbList'); l.textContent = '';
+  if (!fbPresets.length) { const p = document.createElement('div'); p.className = 'hint'; p.style.margin = '0'; p.textContent = 'No presets yet.'; l.appendChild(p); return; }
+  fbPresets.forEach((pr, i) => {
+    const d = document.createElement('div'); d.className = 'fbitem';
+    const a = document.createElement('button'); a.dataset.fa = i; a.textContent = pr.name; a.title = 'Use this preset';
+    const x = document.createElement('button'); x.dataset.fd = i; x.textContent = '✕'; x.title = 'Delete this preset'; x.setAttribute('aria-label', 'Delete preset ' + pr.name);
+    d.appendChild(a); d.appendChild(x); l.appendChild(d);
+  });
+}
+function bindFluid() {
+  fbLoad();
+  const box = $('#fbBox');
+  let h = '<div class="fbr"><label>Fill colour</label><input type="color" id="fb_color" aria-label="Fluid brush colour" style="width:100%"></div>';
+  for (const r of FB_ROWS) h += '<div class="fbr"><label for="fb_' + r[0] + '">' + r[1] + '</label><input type="range" id="fb_' + r[0] + '" min="' + r[2] + '" max="' + r[3] + '" step="1"><input type="number" id="fb_' + r[0] + 'N" min="' + r[2] + '" max="' + r[3] + '" step="1" aria-label="' + r[1] + ' value"></div>';
+  h += '<label class="fbchk"><input type="checkbox" id="fb_zoom"> Zoom size with stage</label>';
+  h += '<label class="fbchk" title="Strokes of the same colour drawn one after another join into a single shape. Turn off to keep every stroke separate."><input type="checkbox" id="fb_merge"> Merge strokes into one shape</label>';
+  h += '<div class="hint" style="margin:0 0 4px">Velocity: positive = faster strokes get thinner, negative = thicker. Pressure needs a pen; velocity needs real mouse or pen movement.</div>';
+  box.innerHTML = h;
+  for (const r of FB_ROWS) {
+    $('#fb_' + r[0]).addEventListener('input', (e) => fbSet(r[0], e.target.value));
+    $('#fb_' + r[0] + 'N').addEventListener('input', (e) => { if (e.target.value !== '') fbSet(r[0], e.target.value); });
+  }
+  $('#fb_zoom').addEventListener('change', (e) => fbSet('zoom', e.target.checked));
+  $('#fb_merge').addEventListener('change', (e) => { S.style.fb.merge = e.target.checked; });
+  $('#fb_color').addEventListener('input', (e) => fbSet('color', e.target.value));
+  $('#fbSave').addEventListener('click', () => {
+    const nm = ($('#fbName').value || '').trim().slice(0, 40) || ('Preset ' + (fbPresets.length + 1));
+    const i = fbPresets.findIndex((p) => p.name === nm), pr = Object.assign({ name: nm }, fbCur());
+    if (i >= 0) fbPresets[i] = pr; else { fbPresets.push(pr); if (fbPresets.length > 40) fbPresets.shift(); }
+    fbActive = fbPresets.findIndex((p) => p.name === nm); $('#fbName').value = ''; fbStore(); fbRender(); fbSync(); toast('Saved preset “' + nm + '”.');
+  });
+  $('#fbUpdate').addEventListener('click', () => { const a = fbPresets[fbActive]; if (!a) return; Object.assign(a, fbCur()); fbStore(); fbSync(); toast('Updated “' + a.name + '”.'); });
+  $('#fbReset').addEventListener('click', () => { Object.assign(S.style.fb, FB_DEFAULT); fbActive = -1; fbSync(); invalidate(); });
+  $('#fbList').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-fa]'), d = e.target.closest('[data-fd]');
+    if (a) { const pr = fbPresets[+a.dataset.fa]; if (!pr) return; for (const k of FB_KEYS) if (pr[k] !== undefined) S.style.fb[k] = pr[k]; fbActive = +a.dataset.fa; fbSync(); invalidate(); }
+    else if (d) { const i = +d.dataset.fd; fbPresets.splice(i, 1); if (fbActive === i) fbActive = -1; else if (fbActive > i) fbActive--; fbStore(); fbRender(); fbSync(); }
+  });
+  window.__fbSet = fbSet;
+  window.__fbPresets = () => fbPresets;
+  fbRender(); fbSync();
 }
 
 /* ---------- align / distribute ---------- */
@@ -5168,7 +5393,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -5184,6 +5409,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'F8') { e.preventDefault(); if (!modalBg.classList.contains('on')) { convertToSymbol(); setTab('lib'); } return; }
   if (modalBg.classList.contains('on')) return;
   if (typing) { if (k === 'Enter' && tag === 'input') t.blur(); return; }
+  if (!mod && S.tool === 'fluid' && (k === '[' || k === ']')) { e.preventDefault(); const v = S.style.fb.size; window.__fbSet('size', k === ']' ? v + Math.max(1, Math.round(v * 0.15)) : v - Math.max(1, Math.round(v * 0.15))); return; }
   if (!mod && S.tool === 'brush' && (k === '[' || k === ']')) { e.preventDefault(); const v = S.style.bsize, nv = k === ']' ? v + Math.max(1, Math.round(v * 0.15)) : v - Math.max(1, Math.round(v * 0.15)); window.__setBSize(nv); return; }
   if (k === ' ') {
     e.preventDefault();
@@ -5288,7 +5514,7 @@ function init() {
     applyTheme(theme);
   });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); invalidate(); });
-  buildTools(); bindProps(); bindEase(); bindTabs(); bindAlign(); bindLib();
+  buildTools(); bindProps(); bindEase(); bindTabs(); bindFluid(); bindAlign(); bindLib();
   $('#crumbBack').addEventListener('click', exitSym);
   $('#bPreview').addEventListener('click', openPreview);
   bindCed();
@@ -5370,7 +5596,7 @@ function init() {
   ]); });
   if (restored) toast('Restored your last session. File → Load sample brings back the demo.');
   else toast('Sample loaded. Press Enter to play, then try the Selection tool on the ball.');
-  if (window.__FC_TEST) window.__FC = { renderFrameCanvas, snap, S, C, toggleMask, openExport, buildPlayer, brushOutline, refreshProps, setTab, alignSel, distribute, convertToSymbol, renderLibrary, frameAction, setFrame, setTool, importFLAFile, openFile, exportDialog, loadDoc, buildSample };
+  if (window.__FC_TEST) window.__FC = { renderFrameCanvas, snap, S, C, toggleMask, openExport, buildPlayer, brushOutline, fluidOutline, fbSet, refreshProps, setTab, alignSel, distribute, convertToSymbol, renderLibrary, frameAction, setFrame, setTool, importFLAFile, openFile, exportDialog, loadDoc, buildSample };
 }
 init();
 })();
