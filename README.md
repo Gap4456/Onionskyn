@@ -14,6 +14,10 @@ Onionskyn is an independent project and is not affiliated with Adobe.
 - [Keyboard shortcuts](docs/shortcuts.md)
 - [Troubleshooting and known limits](docs/troubleshooting.md)
 
+## Building from source
+
+The app is a single HTML file built from the files in `source/src/`. From the `source/` folder, run `bash build.sh` to produce `dist/onionskyn.html`, and `npm test` to run the regression suites. See [Building from source](source/building.md) for the layout and the tests.
+
 ## Reporting a problem
 
 Use **File → Report a problem…** in the app, describe what happened, and choose **Email report**. It opens your email app addressed to onionskyn.support@gmail.com with technical details attached. If no email app opens, use **Copy report** and paste it into an email yourself.

@@ -21,7 +21,7 @@ Onionskyn ships as one standalone HTML file, but that file is a build output. Th
 You need Node.js 18 or newer.
 
 ```bash
-./build.sh
+bash build.sh
 ```
 
 This writes `dist/onionskyn.html`, checks the syntax of every inline script, and prints the file size. That file is the whole app: open it straight from disk, or publish it as `index.html` on GitHub Pages.
@@ -44,6 +44,7 @@ npm test
 | `smoke2`, `beta` | Broad editor smoke tests, project save and load, the problem report |
 | `brush`, `fluid`, `merge` | Brush tools, the Fluid Brush and its tab, stroke merging |
 | `bucket`, `gradient` | Region fill, gradient editing and handles |
+| `undotext` | Typing in text fields is one undo step |
 | `ease`, `mask`, `clip`, `sym`, `symdel` | Easing, masks, clipping, symbols |
 | `xss`, `explimit`, `audit1` to `audit3` | Escaping in exports, export limits, long action sequences |
 
