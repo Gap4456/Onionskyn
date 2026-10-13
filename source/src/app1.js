@@ -5,7 +5,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.10.1-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.10.2-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -114,7 +114,14 @@ function redo() { if (!H.redo.length) return; H.stack.push(snap()); restoreSnap(
 function updateHistoryButtons() { $('#bUndo').disabled = !H.stack.length; $('#bRedo').disabled = !H.redo.length; }
 /* push undo once per gesture (a drag, a slider sweep, a typed value) */
 function beginEditOnce() { if (!editGesture) { pushUndo(); editGesture = true; } }
-['pointerup', 'change', 'blur', 'keyup'].forEach((ev) => window.addEventListener(ev, () => { editGesture = false; }, true));
+['pointerup', 'change', 'blur'].forEach((ev) => window.addEventListener(ev, () => { editGesture = false; }, true));
+/* a key press ends the edit gesture, except while typing in a text field: there the gesture stays open until a short pause, so a burst of typing is one undo step */
+let gestureTimer = 0;
+window.addEventListener('keyup', (e) => {
+  const t = e.target, typing = t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|search|url|email|tel|password)?$/.test(t.type || '')));
+  clearTimeout(gestureTimer);
+  if (typing) gestureTimer = setTimeout(() => { editGesture = false; }, 900); else editGesture = false;
+}, true);
 
 /* ---------- redraw scheduling ---------- */
 let dirty = false;
