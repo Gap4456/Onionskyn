@@ -2,6 +2,14 @@
 
 All notable changes to Onionskyn are listed here, newest first.
 
+## 0.10.2-beta
+
+### Fixed
+- Typing in a text field (frame script, frame label, document name) is now one undo step instead of one per keystroke. Reported by a contributor.
+
+### Tests
+- Added the `undotext` suite.
+
 ## 0.10.1-beta
 
 ### Added
@@ -22,3 +30,4 @@ All notable changes to Onionskyn are listed here, newest first.
 
 ### Docs
 - Added the user guide, tutorials, reference, and the README, LICENSE and THIRD-PARTY files for GitHub.
+- Added the source files, build script and regression tests to the repository, with a "Building from source" guide.
