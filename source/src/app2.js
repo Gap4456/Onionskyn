@@ -7,6 +7,7 @@ const TOOLS = [
   { id: 'pencil', k: 'Y', n: 'Pencil (freehand)', svg: '<path d="M4 16l.8-3.6 8.5-8.5 2.8 2.8-8.5 8.5z"/><path d="M12 5.2l2.8 2.8"/>', cur: 'crosshair' },
   { id: 'brush', k: 'B', n: 'Brush (paints a filled shape; [ and ] change size)', svg: '<path d="M16.5 3.5c-3 .6-6.5 4-8 7l1.5 1.5c3-1.5 6.4-5 7-8.5z"/><path d="M8.3 11.3c-2 0-3.3 1.2-3.3 3.2 0 1-.5 1.6-1.2 2 2.6.6 6-.2 6-3.4"/>', cur: 'crosshair' },
   { id: 'fluid', k: 'F', n: 'Fluid brush (smooth, tapered strokes; [ and ] change size)', svg: '<path d="M16.8 3.2c-4 .2-8.4 3.6-9.6 8.2l1.4 1.4c4.6-1.2 8-5.6 8.2-9.6z"/><path d="M7 12.6c-1.6 0-2.6 1.2-2.6 2.8 0 .8-.4 1.3-1 1.6 2.2.4 4.6-.6 4.6-2.8"/><path d="M10.5 16.5c1.6.4 3.2-.2 5-1.8" stroke-dasharray="1.6 2"/>', cur: 'crosshair' },
+  { id: 'eraser', k: 'E', n: 'Eraser (cuts fills and lines on the active layer; [ and ] change size)', svg: '<path d="M7.5 16.5h8"/><path d="M4.2 11.8L11 5l4.2 4.2-6.8 6.8H6z"/><path d="M8 8.2l4.2 4.2"/>', cur: 'crosshair' },
   { id: 'line', k: 'L', n: 'Line (Shift = 45°)', svg: '<path d="M4 16L16 4"/>', cur: 'crosshair' },
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
@@ -176,6 +177,7 @@ function onDown(e) {
     case 'pencil': if (canDraw()) S.draw = { type: 'pencil', pts: [p.w] }; break;
     case 'brush': if (canDraw()) S.draw = { type: 'brush', pts: [brushPt(p.w, e)] }; break;
     case 'fluid': if (canDraw()) S.draw = { type: 'fluid', pts: [brushPt(p.w, e)] }; break;
+    case 'eraser': if (canDraw()) { S.draw = { type: 'erase', last: p.w, changed: false, undone: false }; eraseSweep(S.draw, p.w, p.w); S.brushHover = p.w; } break;
     case 'line': case 'rect': case 'ellipse': if (canDraw()) S.draw = { type: S.tool, start: p.w, cur: p.w, shift: e.shiftKey, alt: e.altKey }; break;
     case 'text': textDown(e, p); break;
     case 'bucket': bucketDown(e, p); break;
@@ -187,6 +189,7 @@ function onMove(e) {
   const p = stagePt(e);
   S.cursorW = p.w;
   if (S.tool === 'brush' || S.tool === 'fluid') { S.brushHover = p.w; if (!S.draw) invalidate(); }
+  if (S.tool === 'eraser') { S.brushHover = p.w; if (!S.draw) invalidate(); }
   $('#hCoord').textContent = 'x ' + Math.round(p.w.x) + '  y ' + Math.round(p.w.y);
   const d = S.drag;
   if (d) {
@@ -200,6 +203,7 @@ function onMove(e) {
   }
   if (S.draw) {
     const dr = S.draw;
+    if (dr.type === 'erase') { if (Math.hypot(p.w.x - dr.last.x, p.w.y - dr.last.y) * S.view.z >= 1.5) { eraseSweep(dr, dr.last, p.w); dr.last = p.w; } S.brushHover = p.w; invalidate(); return; }
     if (dr.type === 'pencil') dr.pts.push(p.w); else if (dr.type === 'brush' || dr.type === 'fluid') dr.pts.push(brushPt(p.w, e)); else { dr.cur = p.w; dr.shift = e.shiftKey; dr.alt = e.altKey; }
     invalidate(); return;
   }
@@ -230,7 +234,8 @@ function onUp(e) {
   }
   if (S.draw) {
     const dr = S.draw; S.draw = null;
-    if (dr.type === 'pencil') finishPencil(dr.pts);
+    if (dr.type === 'erase') { if (dr.changed) { S.sel = []; commit(); buildLayerList(); } }
+    else if (dr.type === 'pencil') finishPencil(dr.pts);
     else if (dr.type === 'brush') finishBrush(dr.pts);
     else if (dr.type === 'fluid') finishFluid(dr.pts);
     else finishShape(dr);
@@ -429,6 +434,7 @@ function finishShape(d) {
 }
 function drawPreview(ctx) {
   const d = S.draw;
+  if (d.type === 'erase') return;
   ctx.save(); ctx.strokeStyle = CSSV.accent; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
   if (d.type === 'brush') {
     const cs = brushOutline(d.pts, S.style, S.view.z), p = new Path2D(), st = S.style;
@@ -1157,4 +1163,183 @@ function dropperDown(e, p) {
     syncStyleUI();
     toast((e.altKey ? 'Stroke' : 'Fill') + ' colour ' + hex.toUpperCase());
   } catch (err) { /* canvas read blocked */ }
+}
+
+/* ---------- eraser ----------
+   Fills are cut with polygon boolean ops (polygon-clipping); lines are trimmed where the eraser passes.
+   All geometry is done in world space so the eraser stays a true circle on scaled or rotated shapes. */
+const eraserR = () => Math.max(0.5, (S.style.esize || 20) / 2);
+function eFlatten(c, m) {
+  const n = c.nodes, out = [], cnt = c.closed ? n.length : n.length - 1;
+  if (!n.length) return out;
+  const sc = Math.max(0.01, Math.hypot(m[0], m[1]), Math.hypot(m[2], m[3]));
+  out.push(C.mapply(m, n[0].x, n[0].y));
+  for (let i = 0; i < cnt; i++) {
+    const a = n[i], b = n[(i + 1) % n.length], last = c.closed && i === cnt - 1;
+    if (a.ox || a.oy || b.ix || b.iy) {
+      const L = Math.hypot(a.ox, a.oy) + Math.hypot(b.ix, b.iy) + Math.hypot(b.x - a.x, b.y - a.y);
+      const k = Math.min(64, Math.max(4, Math.ceil(L * sc / 3)));
+      for (let j = 1; j < k; j++) { const q = C.bezPt(a, b, j / k); out.push(C.mapply(m, q[0], q[1])); }
+    }
+    if (!last) out.push(C.mapply(m, b.x, b.y));
+  }
+  return out;
+}
+const eArea = (r) => { let s = 0; for (let i = 0, n = r.length; i < n; i++) { const a = r[i], b = r[(i + 1) % n]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; };
+function eInRing(pt, r) {
+  let ins = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) ins = !ins;
+  }
+  return ins;
+}
+/* the filled area of a path as a polygon-clipping MultiPolygon, honouring its fill rule */
+function eFillGeom(o, m) {
+  const rings = o.contours.filter((c) => c.closed && c.nodes.length >= 3).map((c) => eFlatten(c, m)).filter((r) => r.length >= 3);
+  if (!rings.length) return null;
+  const pc = polygonClipping;
+  if (!o.nz) return rings.length === 1 ? [[rings[0]]] : pc.xor(...rings.map((r) => [[r]]));
+  const ar = rings.map(eArea);
+  let big = 0; ar.forEach((a, i) => { if (Math.abs(a) > Math.abs(ar[big])) big = i; });
+  const sg = Math.sign(ar[big]), solid = [], maybe = [];
+  rings.forEach((r, i) => (Math.sign(ar[i]) === sg ? solid : maybe).push(i));
+  const holes = maybe.filter((i) => solid.some((j) => eInRing(rings[i][0], rings[j])));
+  const solidIdx = solid.concat(maybe.filter((i) => !holes.includes(i)));
+  let g = pc.union(...solidIdx.map((i) => [[rings[i]]]));
+  if (holes.length) g = pc.difference(g, ...holes.map((i) => [[rings[i]]]));
+  return g;
+}
+function eCapsule(P, Q, r) {
+  const N = 14, th = Math.atan2(Q[1] - P[1], Q[0] - P[0]), pts = [];
+  if (Math.hypot(Q[0] - P[0], Q[1] - P[1]) < 1e-6) { for (let i = 0; i < N * 2; i++) { const a = i / (N * 2) * Math.PI * 2; pts.push([P[0] + Math.cos(a) * r, P[1] + Math.sin(a) * r]); } return pts; }
+  for (let i = 0; i <= N; i++) { const a = th - Math.PI / 2 + i / N * Math.PI; pts.push([Q[0] + Math.cos(a) * r, Q[1] + Math.sin(a) * r]); }
+  for (let i = 0; i <= N; i++) { const a = th + Math.PI / 2 + i / N * Math.PI; pts.push([P[0] + Math.cos(a) * r, P[1] + Math.sin(a) * r]); }
+  return pts;
+}
+const eDistSeg = (x, y, P, Q) => {
+  const dx = Q[0] - P[0], dy = Q[1] - P[1], L = dx * dx + dy * dy;
+  const t = L < 1e-12 ? 0 : Math.max(0, Math.min(1, ((x - P[0]) * dx + (y - P[1]) * dy) / L));
+  return Math.hypot(x - P[0] - t * dx, y - P[1] - t * dy);
+};
+/* the part of segment AB closer than r to segment PQ, as [t0, t1] (a convex distance, so one interval), or null */
+function eInterval(A, B, P, Q, r) {
+  const f = (t) => eDistSeg(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, P, Q);
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 28; i++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (f(m1) < f(m2)) hi = m2; else lo = m1; }
+  const tm = (lo + hi) / 2;
+  if (f(tm) >= r) return null;
+  let t0 = 0, t1 = 1;
+  if (f(0) >= r) { let a = 0, b = tm; for (let i = 0; i < 26; i++) { const m = (a + b) / 2; if (f(m) < r) b = m; else a = m; } t0 = b; }
+  if (f(1) >= r) { let a = tm, b = 1; for (let i = 0; i < 26; i++) { const m = (a + b) / 2; if (f(m) < r) a = m; else b = m; } t1 = a; }
+  return [t0, t1];
+}
+/* trim a polyline; returns the surviving pieces, or null when the eraser never touched it */
+function eCutLine(pts, closed, P, Q, r) {
+  const L = pts.slice(); if (closed) L.push(pts[0]);
+  const pieces = []; let cur = [], touched = false, startKept = false, endKept = false;
+  const at = (A, B, t) => [A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t];
+  for (let i = 0; i + 1 < L.length; i++) {
+    const A = L[i], B = L[i + 1];
+    const near = Math.min(A[0], B[0]) - r > Math.max(P[0], Q[0]) || Math.max(A[0], B[0]) + r < Math.min(P[0], Q[0]) || Math.min(A[1], B[1]) - r > Math.max(P[1], Q[1]) || Math.max(A[1], B[1]) + r < Math.min(P[1], Q[1]);
+    const iv = near ? null : eInterval(A, B, P, Q, r);
+    if (!iv) { if (!cur.length) cur.push(A); cur.push(B); if (i === 0) startKept = true; continue; }
+    touched = true;
+    if (iv[0] > 1e-6) { if (!cur.length) cur.push(A); cur.push(at(A, B, iv[0])); if (i === 0) startKept = true; }
+    if (cur.length > 1) pieces.push(cur);
+    cur = [];
+    if (iv[1] < 1 - 1e-6) { cur = [at(A, B, iv[1]), B]; }
+  }
+  if (!touched) return null;
+  if (cur.length > 1) { pieces.push(cur); endKept = true; }
+  if (closed && startKept && endKept && pieces.length > 1) { const last = pieces.pop(); pieces[0] = last.concat(pieces[0].slice(1)); }
+  return pieces.filter((p) => p.length > 1 && p.some((q) => Math.hypot(q[0] - p[0][0], q[1] - p[0][1]) > 1e-3));
+}
+const eNode = (inv, p) => { const q = C.mapply(inv, p[0], p[1]); return C.node(q[0], q[1]); };
+/* erase one path object; returns null (untouched) or the list of objects that replace it */
+function eErasePath(o, P, Q, r) {
+  const m = C.matOf(o.t), inv = C.minv(m), pc = polygonClipping;
+  const hasFill = o.fill != null && o.contours.some((c) => c.closed);
+  const hasStroke = !!o.stroke && o.sw > 0;
+  let fillRings = null, strokeContours = null;
+  if (hasFill) {
+    const g = eFillGeom(o, m);
+    if (g && g.length) {
+      const cap = [[eCapsule(P, Q, r)]];
+      if (pc.intersection(g, cap).length) {
+        fillRings = [];
+        for (const poly of pc.difference(g, cap)) for (const ring of poly) {
+          const pts = ring.slice(0, -1);
+          const s = rdpClosed(pts, 0.12);
+          if (s.length >= 3) fillRings.push({ closed: true, nodes: s.map((p) => eNode(inv, p)) });
+        }
+      }
+    }
+  }
+  if (hasStroke) {
+    let any = false; const out = [];
+    for (const c of o.contours) {
+      const pts = eFlatten(c, m), pieces = pts.length > 1 ? eCutLine(pts, c.closed, P, Q, r) : null;
+      if (!pieces) { out.push(c); continue; }
+      any = true;
+      for (const pc2 of pieces) out.push({ closed: false, nodes: pc2.map((p) => eNode(inv, p)) });
+    }
+    if (any) strokeContours = out;
+  }
+  if (!fillRings && !strokeContours) return null;
+  const res = [];
+  const make = (contours, fill, stroke) => {
+    const k = C.clone(o); k.id = C.uid(); k.contours = contours;
+    if (!fill) k.fill = null; if (!stroke) k.stroke = null;
+    if (fill) k.nz = false;
+    C.recenter(k); return k;
+  };
+  if (hasFill && hasStroke) {
+    const fr = fillRings || o.contours.filter((c) => c.closed);
+    if (fr.length) res.push(make(fr, true, false));
+    const sc = strokeContours || o.contours;
+    if (sc.length) res.push(make(sc, false, true));
+  } else if (hasFill) {
+    const open = o.contours.filter((c) => !c.closed);
+    const cs = (fillRings || []).concat(open);
+    if (cs.length) { const k = make(cs, true, false); k.id = o.id; res.push(k); }
+  } else {
+    if (strokeContours.length) { const k = make(strokeContours, false, true); k.id = o.id; res.push(k); }
+  }
+  if (res.length) res[0].id = o.id;
+  return res;
+}
+/* one eraser sweep from world point a to b on the active layer; returns true if anything changed */
+function eraseSweep(dr, a, b) {
+  const l = curLayer();
+  if (!l || l.locked || l.visible === false) return false;
+  const r = eraserR(), P = [a.x, a.y], Q = [b.x, b.y];
+  const bx0 = Math.min(P[0], Q[0]) - r, bx1 = Math.max(P[0], Q[0]) + r, by0 = Math.min(P[1], Q[1]) - r, by1 = Math.max(P[1], Q[1]) + r;
+  const cand = C.evalLayerObjs(l, S.frame).filter((o) => {
+    if (o.kind !== 'path') return false;
+    const wb = C.worldBounds(o); if (!wb) return false;
+    const pad = (o.stroke ? o.sw : 0) / 2 + 1;
+    return !(wb.x0 - pad > bx1 || wb.x1 + pad < bx0 || wb.y0 - pad > by1 || wb.y1 + pad < by0);
+  });
+  if (!cand.length) return false;
+  const ids = new Set(cand.map((o) => o.id));
+  let kf = C.kfFor(l, S.frame);
+  const targets = (kf && (kf.f === S.frame || kf.tween === 'none') ? kf.objs : cand).filter((o) => ids.has(o.id));
+  const plan = [];
+  for (const o of targets) { const rep = eErasePath(o, P, Q, r); if (rep) plan.push([o.id, rep]); }
+  if (!plan.length) return false;
+  if (!dr.undone) { pushUndo(); dr.undone = true; }
+  kf = C.ensureEditable(l, S.frame);
+  for (const [id, rep] of plan) {
+    const i = kf.objs.findIndex((x) => x.id === id);
+    if (i >= 0) kf.objs.splice(i, 1, ...rep);
+  }
+  dr.changed = true;
+  return true;
+}
+function drawEraserCursor(ctx) {
+  const w = S.brushHover;
+  if (!w || S.tool !== 'eraser' || S.space) return;
+  const c = w2s(w.x, w.y), rr = eraserR() * S.view.z;
+  ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(c[0], c[1], rr, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(20,24,40,.85)'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.restore();
 }

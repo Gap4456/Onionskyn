@@ -418,7 +418,7 @@ function refreshProps() {
   $$('[data-act]').forEach((b) => { b.disabled = !sels.length; });
   refreshTransformFields();
   setVal($('#radius'), st.radius); setVal($('#smooth'), st.smooth);
-  setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; $('#bgap').value = st.bgap || 'small'; $('#ball').checked = !!st.ball; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
+  setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#esize'), st.esize || 20); setVal($('#esizeR'), Math.min(200, st.esize || 20)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; $('#bgap').value = st.bgap || 'small'; $('#ball').checked = !!st.ball; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
   const l = curLayer(), kf = l && C.kfFor(l, S.frame), nx = kf && l.kfs[l.kfs.indexOf(kf) + 1];
   $('#tweenType').value = kf ? kf.tween : 'none';
   $('#easeType').value = kf && kf.ease ? kf.ease.type : 'linear'; setVal($('#easeAmt'), kf && kf.ease ? kf.ease.amt : 50);
@@ -568,6 +568,9 @@ function bindProps() {
   on('#bgap', 'change', (e) => { S.style.bgap = e.target.value; });
   on('#ball', 'change', (e) => { S.style.ball = e.target.checked; });
   window.__setBSize = setBSize;
+  const setESize = (v) => { S.style.esize = clamp(Math.round(v) || 1, 1, 500); setVal($('#esize'), S.style.esize); setVal($('#esizeR'), Math.min(200, S.style.esize)); invalidate(); };
+  on('#esizeR', 'input', (e) => setESize(+e.target.value)); on('#esize', 'input', (e) => { if (e.target.value !== '') setESize(+e.target.value); });
+  window.__setESize = setESize;
   on('#tweenType', 'change', (e) => frameAction(e.target.value === 'none' ? 'notween' : e.target.value));
   const easeEdit = () => {
     const l = curLayer(), kf = l && C.kfFor(l, S.frame);
@@ -1012,7 +1015,7 @@ function fit(){
 window.addEventListener('resize',fit);fit();
 })();`;
   const al = center === 'both' || center === 'h' ? 'center' : 'flex-start', jc = center === 'both' || center === 'v' ? 'center' : 'flex-start';
-  const pageBg = bgMode === 'page' ? d.bg : bgMode === 'transparent' ? 'transparent' : '#1b1f2a';
+  const pageBg = bgMode === 'page' ? (/^(#[0-9a-f]{3,8}|transparent)$/i.test(String(d.bg)) ? d.bg : '#FFFFFF') : bgMode === 'transparent' ? 'transparent' : '#1b1f2a';
   const flat = resp !== 'none';
   const css = 'html,body{margin:0;background:' + pageBg + ';color:#e8ebf3;font:14px system-ui,sans-serif;min-height:100%}body{display:flex;flex-direction:column;align-items:' + al + ';justify-content:' + jc + ';gap:' + (flat ? 0 : 10) + 'px;padding:' + (flat ? 0 : 12) + 'px;box-sizing:border-box;min-height:100vh' + (flat && fill ? ';overflow:hidden' : '') + '}canvas{display:block;max-width:100%;height:auto;' + (bgMode === 'stage' ? 'box-shadow:0 6px 24px rgba(0,0,0,.45);' : '') + 'touch-action:manipulation}.c{display:flex;gap:10px;align-items:center;width:min(' + d.w + 'px,100%);' + (flat ? 'padding:6px 10px;box-sizing:border-box;' : '') + '}.c input{flex:1}button{height:30px;padding:0 14px;border-radius:6px;border:1px solid #4a5370;background:#2a3040;color:inherit}#err{display:none;position:fixed;left:8px;right:8px;bottom:8px;background:#5b1620;color:#ffd9de;padding:6px 10px;border-radius:6px;font:12px ui-monospace,monospace}';
   const bodyHtml = '<canvas id="cv" style="width:' + d.w + 'px"></canvas><div class="c" id="ctl"><button id="pp">Pause</button><input id="bar" type="range" min="0" value="0" aria-label="Frame"></div><div id="err"></div>\n';
@@ -1902,7 +1905,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -1919,6 +1922,7 @@ window.addEventListener('keydown', (e) => {
   if (modalBg.classList.contains('on')) return;
   if (typing) { if (k === 'Enter' && tag === 'input') t.blur(); return; }
   if (!mod && S.tool === 'fluid' && (k === '[' || k === ']')) { e.preventDefault(); const v = S.style.fb.size; window.__fbSet('size', k === ']' ? v + Math.max(1, Math.round(v * 0.15)) : v - Math.max(1, Math.round(v * 0.15))); return; }
+  if (!mod && S.tool === 'eraser' && (k === '[' || k === ']')) { e.preventDefault(); const v = S.style.esize || 20; window.__setESize(k === ']' ? v + Math.max(1, Math.round(v * 0.15)) : v - Math.max(1, Math.round(v * 0.15))); return; }
   if (!mod && S.tool === 'brush' && (k === '[' || k === ']')) { e.preventDefault(); const v = S.style.bsize, nv = k === ']' ? v + Math.max(1, Math.round(v * 0.15)) : v - Math.max(1, Math.round(v * 0.15)); window.__setBSize(nv); return; }
   if (k === ' ') {
     e.preventDefault();

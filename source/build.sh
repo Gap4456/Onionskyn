@@ -8,6 +8,10 @@ mkdir -p dist
   echo '<script>'
   cat src/vendor/jszip.min.js
   echo '</script>'
+  echo '<script>'
+  echo '/* polygon-clipping v0.15.7, (c) 2018 Mike Fogel, portions (c) 2016 Alexander Milevski. MIT licence: https://github.com/mfogel/polygon-clipping/blob/master/LICENSE.md */'
+  cat src/vendor/polygon-clipping.min.js
+  echo '</script>'
   sed -e '1,/<!--JSZIP-->/d' src/head.html
   echo '<script id="fcCore">'
   cat src/core.js

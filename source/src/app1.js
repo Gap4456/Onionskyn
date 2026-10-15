@@ -5,7 +5,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.10.2-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.11.0-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -22,7 +22,7 @@ setInterval(() => {
 
 const S = {
   doc: null, frame: 0, layerId: null, tool: 'select', sel: [], view: { z: 1, px: 0, py: 0 },
-  style: { font: 'Arial', size: 32, bold: false, italic: false, align: 'left', fill: '#3F5BFF', fillOn: true, fa: 1, stroke: '#1B2030', strokeOn: true, sa: 1, sw: 3, cap: 'round', join: 'round', radius: 0, smooth: 40, bsize: 14, bshape: 'round', bpress: true, bangle: 0, bcolor: '#1B2030', fb: { size: 12, stab: 25, smooth: 50, round: 100, angle: 0, taper: 25, vel: 0, press: 100, zoom: true, color: '#1B2030', alpha: 100, merge: true }, bmerge: true, bgap: 'small', ball: false, fillType: 'solid', gradEdit: true },
+  style: { font: 'Arial', size: 32, bold: false, italic: false, align: 'left', fill: '#3F5BFF', fillOn: true, fa: 1, stroke: '#1B2030', strokeOn: true, sa: 1, sw: 3, cap: 'round', join: 'round', radius: 0, smooth: 40, bsize: 14, esize: 20, bshape: 'round', bpress: true, bangle: 0, bcolor: '#1B2030', fb: { size: 12, stab: 25, smooth: 50, round: 100, angle: 0, taper: 25, vel: 0, press: 100, zoom: true, color: '#1B2030', alpha: 100, merge: true }, bmerge: true, bgap: 'small', ball: false, fillType: 'solid', gradEdit: true },
   onion: { on: false, b: 1, a: 1 }, playing: false, loop: true, pen: null, draw: null, drag: null, nodeSel: null,
   edit: [], space: false, clipboard: [], cursorW: { x: 0, y: 0 }, autoFit: true
 };
@@ -314,5 +314,6 @@ function drawOverlay(ctx) {
   }
   if (S.draw) drawPreview(ctx);
   drawBrushCursor(ctx);
+  drawEraserCursor(ctx);
   if (S.pen) drawPenPreview(ctx);
 }

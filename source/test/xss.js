@@ -1,17 +1,20 @@
 const {start}=require('./audit_lib');const fs=require('fs');
-const SP=require('os').tmpdir();const FX=__dirname+'/fixtures';
-fs.copyFileSync(FX+'/t.png',SP+'/a<img src=x onerror=window.__x=1>.png');fs.copyFileSync(FX+'/t.wav',SP+'/s<img src=x onerror=window.__x=2>.wav');
+const SP='/tmp/claude-0/-home-claude/b9deede6-df59-5a19-a906-fb0279000983/scratchpad';
 (async()=>{const T=await start();const p=T.page;let bad=0;const ok=(c,m)=>{console.log(c?'ok  ':'FAIL',m);if(!c)bad++;};
 const EVIL='<img src=x onerror=window.__x=3>"\'&</script>';
 await T.newDoc();
 await p.setInputFiles('#imgIn',[SP+'/a<img src=x onerror=window.__x=1>.png']);await p.waitForTimeout(500);
 await p.setInputFiles('#sndIn',[SP+'/s<img src=x onerror=window.__x=2>.wav']);await p.waitForTimeout(500);
-await T.st((E)=>{const F=window.__FC,C=F.C,d=F.S.doc;d.name=E;d.layers[0].name=E;
+await T.st((E)=>{const F=window.__FC,C=F.C,d=F.S.doc;d.name=E;d.layers[0].name=E;window.__evilBg='#fff}</style><img src=x onerror=window.__x=4>';d.bg=window.__evilBg;
  const k=d.layers[0].kfs[0];k.label=E;k.script='// '+E;
  const t={id:C.uid(),kind:'text',runs:[{t:E,font:'Arial',size:20,c:'#000'}],t:{x:10,y:30,sx:1,sy:1,r:0},op:1,fill:'#000',fa:1,align:'left',ls:0};k.objs.push(t);
  d.lib[E]={frames:1,layers:[C.mkLayer(E)]};C.setLib(d.lib);
  k.objs.push({id:C.uid(),kind:'clip',sym:E,mc:true,mode:'loop',first:0,pv:[0,0],op:1,name:'a_b',t:{x:50,y:50,sx:1,sy:1,r:0}});
  F.loadDoc(d);},EVIL);
+{const [dl]=await Promise.all([p.waitForEvent('download',{timeout:5000}),p.keyboard.press('Control+s')]);await dl.saveAs(SP+'/xss-bg.onionskyn.json');
+ const j=JSON.parse(fs.readFileSync(SP+'/xss-bg.onionskyn.json','utf8'));(j.doc||j).bg='#fff}</style><img src=x onerror=window.__x=4>';fs.writeFileSync(SP+'/xss-bg.onionskyn.json',JSON.stringify(j));
+ await p.setInputFiles('#fileIn',[SP+'/xss-bg.onionskyn.json']);await p.waitForTimeout(700);
+ ok(await T.st(()=>/^#[0-9a-f]{3,8}$|^transparent$/i.test(window.__FC.S.doc.bg)),'opening a project file with a crafted background colour sanitises it (now '+await T.st(()=>window.__FC.S.doc.bg)+')');}
 for(const tab of ['obj','text','align','frame','lib','doc']){await T.st((t)=>window.__FC.setTab(t),tab);await p.waitForTimeout(80);}
 await p.click('#mFile');await p.getByText('Report a problem').first().click().catch(()=>{});await p.keyboard.press('Escape');
 await p.keyboard.press('F9');await p.waitForTimeout(200);await p.keyboard.press('Escape');
@@ -20,7 +23,8 @@ ok(await T.st(()=>window.__x===undefined),'no script execution in app UI (__x='+
 ok(await T.st(()=>document.querySelectorAll('img[src="x"], #tlLayers img, #libSyms img[src="x"], #libSnds img, #mBody img[src="x"]').length===0),'no injected img elements');
 const svg=await T.st(()=>window.__FC.C.frameSVG(window.__FC.S.doc,0));
 const doc=new (require('jsdom').JSDOM)(svg,{contentType:'image/svg+xml'}).window.document;ok(!doc.querySelector('parsererror'),'SVG parses as XML');
-const html=(await p.evaluate(()=>{const r=window.__FC.buildPlayer({});return typeof r==='string'?r:r.html})); 
+const html=(await p.evaluate(()=>{const r=window.__FC.buildPlayer({bg:'page'});return typeof r==='string'?r:r.html}));
+ok(!/<img src=x onerror/i.test(html.split('<script')[0]),'player head/CSS has no injected tag from the background colour');
 ok(!/<img src=x onerror/i.test(html.replace(/\\u003c/g,'')),'player html has no raw injected tag outside JSON');
 fs.writeFileSync(SP+'/xss.html',html);
 const p2=await T.ctx.newPage();const e2=[];p2.on('pageerror',e=>e2.push(e.message));await p2.goto('file://'+SP+'/xss.html');await p2.waitForTimeout(800);

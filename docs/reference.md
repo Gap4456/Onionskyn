@@ -10,6 +10,7 @@
 | Pencil | Y | Freehand line. |
 | Brush | B | Paints a filled shape. **[** and **]** change size; the options bar sets size, shape, angle and colour. A pen or stylus adds pressure. |
 | Fluid brush | F | Smooth, tapered, variable-width strokes. Settings live in the **Brush** tab (see below). **[** and **]** change size. |
+| Eraser | E | Cuts away fills and trims lines on the **active layer** as you drag (a whole drag is one undo step). **[** and **]** change size. A shape with both fill and outline is split into a fill object and an outline object. Groups, symbols, text and images are not affected; use Selection and Delete for those. Locked or hidden layers are skipped. |
 | Line | L | Hold **Shift** for 45° steps. |
 | Rectangle / Ellipse | R / O | **Shift** = square or circle, **Alt** = from the centre. Rectangle has a Corner radius option. |
 | Text | T | Click to type, double-click existing text to edit. **Esc** or clicking away finishes. |

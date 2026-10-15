@@ -6,7 +6,8 @@ Press **?** in the app to see this list any time. On a Mac, use Cmd in place of 
 | --- | --- |
 | V / A | Selection / Node edit |
 | P / Y / B / F | Pen / Pencil / Brush / Fluid brush |
-| [ and ] | Brush size smaller / larger |
+| E | Eraser |
+| [ and ] | Brush or eraser size smaller / larger |
 | L, R, O | Line, Rectangle, Ellipse |
 | T | Text |
 | K / I / H | Paint bucket / Eyedropper / Hand |

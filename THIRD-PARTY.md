@@ -1,6 +1,12 @@
 # Third-party software
 
-Onionskyn's single-file build (`onionskyn.html`) includes the following library, inlined so the app works offline.
+Onionskyn's single-file build (`onionskyn.html`) includes the following libraries, inlined so the app works offline.
+
+## polygon-clipping v0.15.7
+
+- Copyright (c) 2018 Mike Fogel; portions Copyright (c) 2016 Alexander Milevski (from martinez)
+- MIT licence. Used by the Eraser tool to cut filled shapes.
+- Source and full licence text: https://github.com/mfogel/polygon-clipping (also kept in `source/src/vendor/polygon-clipping.LICENSE.md`)
 
 ## JSZip v3.10.1
 

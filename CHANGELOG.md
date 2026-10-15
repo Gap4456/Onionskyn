@@ -2,6 +2,26 @@
 
 All notable changes to Onionskyn are listed here, newest first.
 
+## 0.11.0-beta
+
+### Added
+- **Eraser** (key `E`): drag to cut away fills and trim lines on the active layer. It works on curves, rotated and scaled shapes, gradients and shapes with holes. A whole drag is one undo step, and **[** and **]** change the size. A shape with both a fill and an outline is split into a fill object and an outline object so each can be cut cleanly. Groups, symbols, text and images are not affected.
+
+### Changed
+- Added the MIT-licensed [polygon-clipping](https://github.com/mfogel/polygon-clipping) library (about 29 KB) for the eraser. It is credited in `THIRD-PARTY.md`.
+
+### Tests
+- Added the `eraser` suite.
+
+## 0.10.3-beta
+
+### Security
+- The project background colour is now validated when a file is opened and again when the HTML player is exported. A crafted project file could previously inject script into an exported player.
+
+### Tests
+- The `xss` suite covers a crafted background colour end to end (save, edit, reopen, export).
+- The `undotext` suite now uses exact undo counts and also covers the document name and number-field arrow keys.
+
 ## 0.10.2-beta
 
 ### Fixed

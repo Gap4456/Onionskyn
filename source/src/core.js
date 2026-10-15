@@ -363,7 +363,7 @@ function mkDoc() {
 function normalizeDoc(d) {
   d.w = clamp(+d.w || 640, 16, 4096); d.h = clamp(+d.h || 360, 16, 4096);
   d.lib = d.lib || {}; d.sounds = d.sounds || {}; d.images = d.images || {};
-  d.fps = clamp(+d.fps || 24, 1, 120); d.bg = d.bg || '#FFFFFF'; d.frames = clamp(Math.round(+d.frames || 1), 1, 900);
+  d.fps = clamp(+d.fps || 24, 1, 120); d.bg = /^(#[0-9a-f]{3,8}|transparent)$/i.test(String(d.bg || '')) ? String(d.bg) : '#FFFFFF'; d.frames = clamp(Math.round(+d.frames || 1), 1, 900);
   if (!Array.isArray(d.layers) || !d.layers.length) d.layers = [mkLayer('Layer 1')];
   for (const l of d.layers) {
     l.id = l.id || uid(); l.name = l.name || 'Layer'; l.visible = l.visible !== false; l.locked = !!l.locked;
