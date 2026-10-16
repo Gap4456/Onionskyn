@@ -142,6 +142,8 @@ input[type=checkbox] { accent-color: var(--accent); }
 #prev .ph button { height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid #4a5370; background: #2a3040; color: inherit; }
 #prev iframe { flex: 1; border: 0; border-radius: 8px; background: #1b1f2a; width: 100%; }
 #kfScript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
+#iscript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
+small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
 #kfScript:disabled, #iname:disabled, #kfLabel:disabled { opacity: .5; }
 #iname, #kfLabel { width: 100%; box-sizing: border-box; }
 .mini1 { height: 26px; width: 30px; border-radius: 6px; border: 1px solid var(--line); background: var(--cell); flex: none; }
@@ -355,8 +357,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <label>W<input type="number" id="tw" step="1"></label><label>H<input type="number" id="th" step="1"></label>
         <label>R<input type="number" id="tr" step="1"></label>
       </div>
-      <div class="row" id="iclipRow"><span>Symbol</span><div class="ctl"><select id="itype" aria-label="Symbol type"><option value="mc">Movie clip</option><option value="gr">Graphic</option></select><select id="imode" aria-label="Playback"><option value="loop">Loop</option><option value="once">Play once</option><option value="single">Single frame</option></select><input type="number" id="ifirst" min="1" step="1" style="width:56px" aria-label="First frame" title="First frame to show (1 = start)"></div></div>
+      <div class="row" id="iclipRow"><span>Symbol</span><div class="ctl"><select id="itype" aria-label="Symbol type"><option value="mc">Movie clip</option><option value="btn">Button</option><option value="gr">Graphic</option></select><select id="imode" aria-label="Playback"><option value="loop">Loop</option><option value="once">Play once</option><option value="single">Single frame</option></select><input type="number" id="ifirst" min="1" step="1" style="width:56px" aria-label="First frame" title="First frame to show (1 = start)"></div></div>
       <div class="row"><span>Instance</span><div class="ctl"><input type="text" id="iname" placeholder="name (e.g. btn_next)" spellcheck="false" aria-label="Instance name"></div></div>
+      <div class="row" id="iscriptRow" style="align-items:flex-start"><span>Script</span><div class="ctl"><textarea id="iscript" rows="4" spellcheck="false" placeholder="Runs when this clip appears, e.g. on (release) { gotoAndPlay(&quot;menu&quot;); }" aria-label="Instance script"></textarea></div></div>
       <div class="mini" style="margin-top:8px"><button data-act="edit" title="Edit symbol timeline (double-click)">Edit symbol</button><button data-act="dup" title="Duplicate (Ctrl+D)">Duplicate</button><button data-act="del" title="Delete">Delete</button></div>
     </div>
     </div>
@@ -448,8 +451,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <label>W<input type="number" id="dw" min="16" max="4096"></label><label>H<input type="number" id="dh" min="16" max="4096"></label>
         <label>fps<input type="number" id="dfps" min="1" max="120"></label><label>Fr<input type="number" id="dframes" min="1" max="2000"></label>
       </div>
+      <div class="row" style="margin-top:8px"><span>Scripts</span><div class="ctl"><select id="dlang" aria-label="Script language"><option value="js">JavaScript</option><option value="as1">ActionScript 1/2</option></select></div></div>
+      <div id="dscenesRow" style="display:none"><div class="row"><span>Scenes</span><div class="ctl" id="dscenes" style="flex-wrap:wrap;gap:4px"></div></div></div>
+      <div class="row"><span>Pasteboard</span><div class="ctl"><input type="color" id="pbg" aria-label="Pasteboard colour"><button class="tbtn" id="pbgReset" title="Back to the theme colour">Reset</button></div></div>
       <div class="row" style="margin-top:8px"><span>Stage</span><div class="ctl"><input type="color" id="dbg" aria-label="Stage colour"></div></div>
-      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><input type="number" id="onionB" min="0" max="5" title="Frames before"><input type="number" id="onionA" min="0" max="5" title="Frames after"></div></div>
+      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><small class="mut">Before</small><input type="number" id="onionB" min="0" max="5" title="Frames before"><small class="mut">After</small><input type="number" id="onionA" min="0" max="5" title="Frames after"></div></div>
     </div>
     </div>
   </aside>
@@ -470,6 +476,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button class="tbtn" data-fr="blank" title="Insert blank keyframe (F7)">+ Blank</button>
       <button class="tbtn" data-fr="motion" title="Create motion tween">Motion</button>
       <button class="tbtn" data-fr="shape" title="Create shape tween">Shape</button>
+      <button class="tbtn" data-fr="reverse" title="Reverse the selected frames (Shift+click to select a range; Shift+click the numbers to select all layers)">Reverse</button>
     </div>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl-inner">
@@ -872,11 +879,12 @@ function normalizeDoc(d) {
     if (!Array.isArray(l.kfs) || !l.kfs.length) l.kfs = [mkKf(0)];
     l.kfs.sort((a, b) => a.f - b.f);
     if (l.kfs[0].f !== 0) l.kfs.unshift(mkKf(0));
-    for (const k of l.kfs) { k.objs = k.objs || []; k.tween = k.tween || 'none'; k.ease = k.ease || { type: 'linear', amt: 50 }; }
+    for (const k of l.kfs) { k.objs = k.objs || []; k.tween = k.tween || 'none'; k.ease = k.ease || { type: 'linear', amt: 50 }; if (k.scene != null) k.scene = String(k.scene).slice(0, 80); }
     const mx = l.kfs[l.kfs.length - 1].f + 1;
     if (mx > d.frames) d.frames = mx;
   }
   d.frames = Math.min(d.frames, 900);
+  if (d.lang !== 'as1') delete d.lang;
   return d;
 }
 
@@ -1107,6 +1115,39 @@ function moveKeyframe(layer, from, to) {
   const k = kfAt(layer, from);
   if (!k || from === 0 || to <= 0 || kfAt(layer, to)) return false;
   k.f = to; sortKfs(layer);
+  return true;
+}
+/* frame ranges: reverse the order of the keyframes inside frames a..b, or slide a block of keyframes together */
+function reverseFrames(layers, a, b, doc) {
+  b = Math.min(b, doc.frames - 1);
+  if (!(b > a)) return 0;
+  let n = 0;
+  for (const layer of layers) {
+    if (a > 0) insertKeyframe(layer, a, false);
+    if (b + 1 < doc.frames) insertKeyframe(layer, b + 1, false);
+    const ps = layer.kfs.filter((k) => k.f >= a && k.f <= b);
+    if (ps.length < 1) continue;
+    const old = ps.map((k) => ({ t: k.tween || 'none', e: k.ease }));
+    ps.forEach((k, i) => { const nx = ps[i + 1]; k.nf = a + b + 1 - (nx ? nx.f : b + 1); });
+    ps.forEach((k, i) => { k.f = k.nf; delete k.nf; k.tween = i ? old[i - 1].t : 'none'; if (i && old[i - 1].e) k.ease = old[i - 1].e; });
+    sortKfs(layer); n++;
+  }
+  return n;
+}
+function moveKeyframes(layers, a, b, delta, doc, only) {
+  if (!delta) return true;
+  const plan = [];
+  let top = 0;
+  for (const layer of layers) {
+    const mv = layer.kfs.filter((k) => k.f > 0 && (only ? only.has(k) : k.f >= a && k.f <= b));
+    if (!mv.length) continue;
+    const stay = new Set(layer.kfs.filter((k) => !mv.includes(k)).map((k) => k.f));
+    for (const k of mv) { const t = k.f + delta; if (t < 1 || stay.has(t)) return false; top = Math.max(top, t); }
+    plan.push([layer, mv]);
+  }
+  if (!plan.length || top + 1 > 900) return false;
+  for (const [layer, mv] of plan) { for (const k of mv) k.f += delta; sortKfs(layer); }
+  if (top + 1 > doc.frames) doc.frames = top + 1;
   return true;
 }
 /* returns {ok, msg} ; creates an end keyframe at the last doc frame when none follows */
@@ -1732,6 +1773,7 @@ function importInstance(el, ctx, depth, id) {
     ctx.inProg.delete(name);
   }
   const g = { id, kind: 'clip', sym: name, name: attr(el, 'name', ''), mc: type === 'movie clip', mode: 'loop', first: 0, pv: [0, 0], op: 1, t: newT() };
+  { const ae = xmlKid(el, 'Actionscript'), tx = ae ? (xmlKid(ae, 'script') || ae).textContent.trim() : ''; if (tx) { g.script = tx; ctx.rep.instScripts++; ctx.scripts.push(tx); } }
   if (type === 'button') { g.mode = 'single'; g.btn = true; ctx.rep.buttons++; }
   else if (type === 'graphic') {
     const lm = attr(el, 'loop', 'loop');
@@ -1779,7 +1821,7 @@ function importTimeline(tl, ctx, depth) {
       const kf = mkKf(f, objs);
       const scEl = xmlKid(fe, 'Framescript') || xmlKid(fe, 'Actionscript');
       const scTxt = scEl ? (xmlKid(scEl, 'script') || scEl).textContent.trim() : '';
-      if (scTxt) { kf.script = scTxt; ctx.rep.scripts++; }
+      if (scTxt) { kf.script = scTxt; ctx.rep.scripts++; ctx.scripts.push(scTxt); }
       const sn = attr(fe, 'soundName', '');
       if (sn) {
         const lm = attr(fe, 'soundLoopMode', ''), cnt = parseInt(attr(fe, 'soundLoop', 0), 10) || 0;
@@ -1926,7 +1968,7 @@ async function importFLA(buf) {
   let root;
   try { root = parseXML((await zip.file(domName).async('string')).replace(/^\uFEFF/, '')); }
   catch (e) { const er = new Error('badxml'); er.detail = String(e && e.message || e); throw er; }
-  const rep = { soundFrames: 0, soundMissing: 0, sounds: 0, gradient: 0, bitmap: 0, images: 0, bitmapMissing: 0, tlf: 0, textCount: 0, mask: 0, masked: 0, guide: 0, missing: 0, other: 0, motionObject: 0, scripts: 0, buttons: 0, animatedSyms: new Set() };
+  const rep = { soundFrames: 0, soundMissing: 0, sounds: 0, gradient: 0, bitmap: 0, images: 0, bitmapMissing: 0, tlf: 0, textCount: 0, mask: 0, masked: 0, guide: 0, missing: 0, other: 0, motionObject: 0, scripts: 0, instScripts: 0, buttons: 0, animatedSyms: new Set() };
   const lib = new Map();
   for (const name of Object.keys(zip.files)) {
     if (!name.startsWith(base) || !/^LIBRARY\/.*\.xml$/i.test(name.slice(base.length)) || zip.files[name].dir) continue;
@@ -1936,22 +1978,139 @@ async function importFLA(buf) {
     } catch (e) { /* skip unreadable library item */ }
   }
   const bms = await importBitmaps(root, zip, base, names, rep);
-  const ctx = { rep, lib, libOut: {}, inProg: new Set(), bitmaps: bms.map };
+  const ctx = { rep, lib, libOut: {}, inProg: new Set(), bitmaps: bms.map, scripts: [] };
   const timelines = xmlKid(root, 'timelines');
   const tls = xmlKids(timelines, 'DOMTimeline');
   if (!tls.length) throw new Error('nodom');
-  const tl = importTimeline(tls[0], ctx, 0);
+  /* scenes are joined into one timeline, as Flash does when it publishes: each scene's layers only have content inside that scene's frame range, and the first keyframe of each scene carries a scene marker */
+  const multi = tls.length > 1, parts = [];
+  let total = 0;
+  tls.forEach((te, i) => {
+    const t = importTimeline(te, ctx, 0), nm = attr(te, 'name', 'Scene ' + (i + 1));
+    if (!t.layers.length) { const l = mkLayer('Layer 1'); l.kfs = [mkKf(0)]; t.layers.push(l); }
+    parts.push({ t, nm, start: total }); total += t.frames;
+  });
+  const layers = [];
+  for (const { t, nm, start } of parts) {
+    const end = start + t.frames;
+    t.layers.forEach((l, li) => {
+      if (start > 0) { for (const k of l.kfs) k.f += start; l.kfs.unshift(mkKf(0)); }
+      if (end < total && !l.kfs.some((k) => k.f === end)) l.kfs.push(mkKf(end));
+      if (multi) l.name = nm + ': ' + l.name;
+      if (li === 0) { const k0 = l.kfs.find((k) => k.f === start); if (k0) k0.scene = nm; }
+      layers.push(l);
+    });
+  }
   const doc = {
     w: Math.round(+attr(root, 'width', 550)), h: Math.round(+attr(root, 'height', 400)), fps: +attr(root, 'frameRate', 24),
-    bg: attr(root, 'backgroundColor', '#FFFFFF'), frames: tl.frames, layers: tl.layers, lib: ctx.libOut
+    bg: attr(root, 'backgroundColor', '#FFFFFF'), frames: total, layers, lib: ctx.libOut
   };
+  /* scripts written for ActionScript 1/2 (the document says so, or the code gives it away) run through the player's AS1 layer */
+  { let asv = '';
+    try { const pf = zip.file(base + 'PublishSettings.xml'); if (pf) { const m = /<ActionScriptVersion>\s*(\d)/.exec(await pf.async('string')); if (m) asv = m[1]; } } catch (e) { /* no publish settings */ }
+    if (asv === '1' || asv === '2') { doc.lang = 'as1'; rep.lang = 'ActionScript ' + asv; }
+    else if (ctx.scripts.some(as1Looks)) { doc.lang = 'as1'; rep.lang = 'ActionScript 1/2 (detected)'; } }
   normalizeDoc(doc);
   doc.images = bms.images;
   doc.sounds = await importSounds(root, zip, base, names, rep);
   rep.sounds = Object.keys(doc.sounds).length;
   rep.scenes = tls.length;
+  if (total > 900) rep.truncated = total;
   rep.animatedSyms = Array.from(rep.animatedSyms);
   return { doc, report: rep };
+}
+
+
+/* ---------- ActionScript 1 / 2 support (parsing helpers; the runtime provides the AS1 environment) ---------- */
+const AS1_MARK = /\b(getURL|_root|_parent|_level0|onClipEvent|tellTarget|loadMovie|loadVariables|duplicateMovieClip|attachMovie|removeMovieClip|setProperty|getProperty|stopAllSounds|prevScene|nextScene)\b|\bon\s*\(\s*(press|release|releaseOutside|rollOver|rollOut|dragOver|dragOut|keyPress)\b|\b_(x|y|alpha|rotation|xscale|yscale|visible|currentframe|totalframes|xmouse|ymouse)\b|\.on(Press|Release|RollOver|RollOut|EnterFrame|Load)\s*=/;
+function as1Looks(src) { return AS1_MARK.test(String(src || '')); }
+function as1EndStr(s, i) { const q = s[i]; let j = i + 1; while (j < s.length && s[j] !== q) { if (s[j] === '\\') j++; j++; } return Math.min(s.length, j + 1); }
+function as1MatchBrace(s, i) { /* s[i] is '{' (or '('); returns the index after its partner */
+  const open = s[i], close = open === '{' ? '}' : ')'; let d = 0, j = i;
+  while (j < s.length) {
+    const c = s[j];
+    if (c === '"' || c === "'") { j = as1EndStr(s, j); continue; }
+    if (c === '/' && s[j + 1] === '/') { while (j < s.length && s[j] !== '\n') j++; continue; }
+    if (c === '/' && s[j + 1] === '*') { const e = s.indexOf('*/', j + 2); j = e < 0 ? s.length : e + 2; continue; }
+    if (c === open) d++; else if (c === close) { d--; if (d === 0) return j + 1; }
+    j++;
+  }
+  return -1;
+}
+/* drop AS2 type annotations: var x:Type, function f(a:Type):Type */
+function as1StripTypes(src) {
+  const T = '[A-Za-z_$][\\w$.]*';
+  const fix = (code) => code
+    .replace(new RegExp('\\bvar\\s+([\\w$]+)\\s*:\\s*' + T, 'g'), 'var $1')
+    .replace(new RegExp('\\bfunction\\s*([\\w$]*)\\s*\\(([^()]*)\\)\\s*(?::\\s*' + T + ')?', 'g'), (m, n, ps) => 'function ' + n + '(' + ps.replace(new RegExp('\\s*:\\s*' + T, 'g'), '') + ')');
+  let out = '', i = 0, seg = 0; const s = String(src);
+  while (i < s.length) {
+    const c = s[i];
+    let e = -1;
+    if (c === '"' || c === "'") e = as1EndStr(s, i);
+    else if (c === '/' && s[i + 1] === '/') { e = s.indexOf('\n', i); if (e < 0) e = s.length; }
+    else if (c === '/' && s[i + 1] === '*') { e = s.indexOf('*/', i + 2); e = e < 0 ? s.length : e + 2; }
+    if (e < 0) { i++; continue; }
+    out += fix(s.slice(seg, i)) + s.slice(i, e); i = seg = e;
+  }
+  return out + fix(s.slice(seg));
+}
+/* rewrite one AS1 script into JavaScript for the player's AS1 scope:
+   on(...) / onClipEvent(...) blocks -> __on / __clip registrations; top-level function and var become timeline variables;
+   tellTarget(x) { } -> with (__tt(x)) { } */
+function as1Prepare(src, inner) {
+  const s = inner ? String(src) : as1StripTypes(src), n = s.length;
+  let out = '', i = 0, depth = 0, stmt = true; const fns = [];
+  const ws = (j) => { while (j < n && /\s/.test(s[j])) j++; return j; };
+  const wordAt = (j) => { let k = j; while (k < n && /[\w$]/.test(s[k])) k++; return k; };
+  while (i < n) {
+    const c = s[i];
+    if (c === '"' || c === "'") { const e = as1EndStr(s, i); out += s.slice(i, e); i = e; stmt = false; continue; }
+    if (c === '/' && s[i + 1] === '/') { let e = s.indexOf('\n', i); if (e < 0) e = n; out += s.slice(i, e); i = e; continue; }
+    if (c === '/' && s[i + 1] === '*') { let e = s.indexOf('*/', i + 2); e = e < 0 ? n : e + 2; out += s.slice(i, e); i = e; continue; }
+    if (/[A-Za-z_$]/.test(c)) {
+      const j = wordAt(i), w = s.slice(i, j), prev = out.replace(/\s+$/, '').slice(-1);
+      const top = !inner && depth === 0 && prev !== '.';
+      if (top && (w === 'on' || w === 'onClipEvent')) {
+        const k = ws(j);
+        if (s[k] === '(') {
+          const pe = as1MatchBrace(s, k);
+          const b = pe < 0 ? -1 : ws(pe);
+          if (pe > 0 && s[b] === '{') {
+            const be = as1MatchBrace(s, b);
+            if (be > 0) {
+              const raw = s.slice(k + 1, pe - 1), evs = [];
+              raw.replace(/(\w+)(?:\s*"([^"]*)")?/g, (m, e, key) => { evs.push(key != null ? e + ':' + key : e); return m; });
+              out += (w === 'on' ? '__on(' : '__clip(') + JSON.stringify(evs) + ', function () {' + as1Prepare(s.slice(b + 1, be - 1), true) + '});';
+              i = be; stmt = true; continue;
+            }
+          }
+        }
+      }
+      if (top && w === 'function') {
+        const k = ws(j), e2 = wordAt(k);
+        if (e2 > k && s[ws(e2)] === '(') {
+          const name = s.slice(k, e2), pk = ws(e2), pe = as1MatchBrace(s, pk), b = pe < 0 ? -1 : ws(pe);
+          if (pe > 0 && s[b] === '{') {
+            const be = as1MatchBrace(s, b);
+            if (be > 0) { fns.push(name + ' = function ' + s.slice(pk, pe) + ' {' + as1Prepare(s.slice(b + 1, be - 1), true) + '};'); i = be; stmt = true; continue; }
+          }
+        }
+      }
+      if (top && w === 'var' && stmt) { i = ws(j); continue; }
+      if (w === 'tellTarget' && prev !== '.') {
+        const k = ws(j);
+        if (s[k] === '(') { const pe = as1MatchBrace(s, k); if (pe > 0) { out += 'with (__tt(' + s.slice(k + 1, pe - 1) + '))'; i = pe; stmt = false; continue; } }
+      }
+      out += w; i = j; stmt = false; continue;
+    }
+    if (c === '{') { depth++; stmt = true; }
+    else if (c === '}') { depth--; stmt = true; }
+    else if (c === ';') stmt = true;
+    else if (!/\s/.test(c)) stmt = false;
+    out += c; i++;
+  }
+  return fns.join('\n') + (fns.length ? '\n' : '') + out;
 }
 
 root.FCCore = {
@@ -1959,8 +2118,8 @@ root.FCCore = {
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,
   groupEntries, drawUnits, maskedDraw, groupAlpha, tweenPairs, shapeTweenIssues, ease, bezierEase, morphContours, evalLayerObjs, evalDoc, kfIndexAt, kfAt, kfFor, sortKfs, ensureEditable, insertKeyframe, insertFrames, removeFrames,
-  clearKeyframe, moveKeyframe, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
-  importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
+  clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
+  as1Looks, as1StripTypes, as1Prepare, importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
 };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -1985,7 +2144,7 @@ function create(doc, cv, opt) {
   /* ---- helpers ---- */
   const isInst = (o) => (o.kind === 'clip' && (o.mc || o.btn)) || (o.kind === 'text' && !!o.name);
   function hasScripts() {
-    const chk = (layers) => layers.some((l) => l.kfs.some((k) => k.script && String(k.script).trim()));
+    const chk = (layers) => layers.some((l) => l.kfs.some((k) => (k.script && String(k.script).trim()) || k.objs.some((o) => o.kind === 'clip' && o.script && String(o.script).trim())));
     if (chk(doc.layers)) return true;
     for (const k of Object.keys(lib)) if (chk(lib[k].layers)) return true;
     return false;
@@ -2068,6 +2227,7 @@ function create(doc, cv, opt) {
       if (!k) {
         k = newInst(o.kind === 'clip' ? (lib[o.sym] || { layers: [], frames: 1 }) : { layers: [], frames: 1 }, inst, key, o);
         k.sym = o.sym; inst.kids.set(key, k); link(inst, k); born.push(k);
+        if (o.kind === 'clip' && o.script && String(o.script).trim()) runInstScript(k, o);
       }
       k.last = o;
     }
@@ -2204,6 +2364,7 @@ function create(doc, cv, opt) {
     Sound, Tween, Ease, Touch: { enable() { return true; } }
   };
   function exec(inst, kf) {
+    if (AS1) { runAS1(inst, String(kf.script), inst, inst); return; }
     let fn = fnCache.get(kf);
     if (fn === undefined) {
       try { fn = new Function('createjs', 'exportRoot', 'stage', 'lib', 'images', String(kf.script)); }
@@ -2229,7 +2390,7 @@ function create(doc, cv, opt) {
       const born = sync(inst);
       runSounds(inst);
       runScripts(inst);
-      for (const k of born) if (k.alive) enter(k);
+      for (const k of born) if (k.alive) { enter(k); if (AS1) fireH(k, 'load'); }
     } finally { inst.depth--; }
   }
   function goto(inst, f, play) {
@@ -2243,11 +2404,199 @@ function create(doc, cv, opt) {
     if (!inst.alive) return;
     if (inst.fresh) inst.fresh = false;
     else if (inst.playing && inst.total > 1) { if (inst === rootInst && opt.loop === false && inst.cur >= inst.total - 1) inst.playing = false; else { inst.cur = (inst.cur + 1) % inst.total; enter(inst); } }
+    if (AS1 && inst.alive) fireH(inst, 'enterFrame');
     for (const k of Array.from(inst.kids.values())) tick(k);
   }
   function tickAll() {
     tick(rootInst);
     for (const fn of tickers.slice()) { try { fn({ type: 'tick', delta: 1000 / doc.fps, paused: false }); } catch (e) { report('Ticker error: ' + (e && e.message || e)); } }
+  }
+
+  /* ---- ActionScript 1/2 layer: gives AS1 code the environment it expects (_root, _x, on(release), gotoAndPlay("scene", 1), ...) ---- */
+  const AS1 = doc.lang === 'as1';
+  const scenes = (() => {
+    const a = [];
+    for (const l of doc.layers) for (const k of l.kfs) if (k.scene) a.push({ name: String(k.scene), start: k.f });
+    a.sort((x, y) => x.start - y.start);
+    const out = [];
+    for (const x of a) if (!out.some((o) => o.start === x.start)) out.push(x);
+    if (!out.length || out[0].start > 0) out.unshift({ name: 'Scene 1', start: 0 });
+    out.forEach((x, i) => { x.end = (i + 1 < out.length ? out[i + 1].start : doc.frames) - 1; });
+    return out;
+  })();
+  const sceneAt = (f) => { let r = scenes[0]; for (const x of scenes) if (x.start <= f) r = x; return r; };
+  const t0 = performance.now(), asWarned = new Set();
+  const warnOnce = (what) => { if (!asWarned.has(what)) { asWarned.add(what); report(what + ' is not supported by the player yet and was ignored.'); } };
+  const isNum = (v) => typeof v === 'number' || (typeof v === 'string' && /^\s*\d+\s*$/.test(v));
+  function as1Goto(inst, a, b, play) {
+    if (b !== undefined && inst === rootInst) {
+      const sc = scenes.find((x) => x.name === String(a));
+      if (sc) {
+        if (isNum(b)) return goto(inst, Math.min(sc.end, sc.start + Math.max(1, Math.floor(+b)) - 1), play);
+        const m = labelsOf(inst); return goto(inst, m.has(String(b)) ? m.get(String(b)) : sc.start, play);
+      }
+      a = b;
+    }
+    if (isNum(a)) {
+      const n = Math.max(1, Math.floor(+a));
+      if (inst === rootInst) { const cs = sceneAt(inst.cur); return goto(inst, Math.min(cs.end, cs.start + n - 1), play); }
+      return goto(inst, n - 1, play);
+    }
+    return goto(inst, a, play);
+  }
+  function as1Scene(delta) {
+    const i = scenes.indexOf(sceneAt(rootInst.cur)), j = i + delta;
+    if (j >= 0 && j < scenes.length) goto(rootInst, scenes[j].start, true);
+  }
+  let mouse = { x: 0, y: 0 };
+  const kidByName = (inst, n) => { for (const k of inst.kids.values()) if (k.alive && k.name === n) return k; return null; };
+  const AS_PROPS = { _x: ['x', 1], _y: ['y', 1], _rotation: ['rotation', 1], _xscale: ['scaleX', 100], _yscale: ['scaleY', 100], _alpha: ['alpha', 100] };
+  const AS_HANDLERS = { onPress: 'press', onRelease: 'release', onReleaseOutside: 'releaseOutside', onRollOver: 'rollOver', onRollOut: 'rollOut', onEnterFrame: 'enterFrame', onLoad: 'load', onMouseDown: 'mouseDown', onMouseUp: 'mouseUp', onMouseMove: 'mouseMove', onKeyDown: 'keyDown', onKeyUp: 'keyUp' };
+  const AS_METHODS = new Set(['gotoAndPlay', 'gotoAndStop', 'play', 'stop', 'nextFrame', 'prevFrame', 'nextScene', 'prevScene']);
+  function as1Wrap(inst) {
+    if (inst.w1) return inst.w1;
+    const vars = inst.vars || (inst.vars = Object.create(null)), P = inst.proxy;
+    const meth = {
+      gotoAndPlay: (a, b) => as1Goto(inst, a, b, true), gotoAndStop: (a, b) => as1Goto(inst, a, b, false),
+      play: () => { inst.playing = true; }, stop: () => { inst.playing = false; },
+      nextFrame: () => goto(inst, Math.min(inst.total - 1, inst.cur + 1), false), prevFrame: () => goto(inst, Math.max(0, inst.cur - 1), false),
+      nextScene: () => as1Scene(1), prevScene: () => as1Scene(-1)
+    };
+    const own = (p) => !!AS_PROPS[p] || AS_METHODS.has(p) || p === '_visible' || p === '_name' || p === '_parent' || p === '_root' || p === '_currentframe' || p === '_totalframes' || p === '_xmouse' || p === '_ymouse' || !!kidByName(inst, p) || p in vars;
+    inst.w1 = new Proxy({}, {
+      has: (_, p) => typeof p === 'string' && own(p),
+      get(_, p) {
+        if (typeof p !== 'string') return undefined;
+        const ap = AS_PROPS[p];
+        if (ap) return P[ap[0]] * ap[1];
+        if (meth[p]) return meth[p];
+        switch (p) {
+          case '_visible': return P.visible;
+          case '_name': return inst.name;
+          case '_parent': return inst.parent ? as1Wrap(inst.parent) : undefined;
+          case '_root': case '_level0': return as1Wrap(rootInst);
+          case '_currentframe': return inst.cur + 1;
+          case '_totalframes': return inst.total;
+          case '_xmouse': return mouse.x; case '_ymouse': return mouse.y;
+        }
+        if (p in vars) return vars[p];
+        const k = kidByName(inst, p);
+        return k ? as1Wrap(k) : undefined;
+      },
+      set(_, p, v) {
+        if (typeof p !== 'string') return true;
+        const ap = AS_PROPS[p];
+        if (ap) { P[ap[0]] = (+v || 0) / ap[1]; return true; }
+        if (p === '_visible') { P.visible = !!v; return true; }
+        if (AS_HANDLERS[p]) { (inst.hset || (inst.hset = {}))[AS_HANDLERS[p]] = v; return true; }
+        vars[p] = v; return true;
+      }
+    });
+    return inst.w1;
+  }
+  function fireH(inst, name, arg) {
+    let n = 0;
+    const run = (fn) => { n++; try { fn.call(as1Wrap(inst), arg); } catch (e) { report('Script error in ' + (inst.name || 'clip') + ' (' + name + '): ' + (e && e.message || e)); } };
+    for (const fn of ((inst.hs && inst.hs[name]) || []).slice()) run(fn);
+    const f = inst.hset && inst.hset[name];
+    if (typeof f === 'function') run(f);
+    return n;
+  }
+  const fireUp = (inst, name) => { for (let k = inst; k; k = k.parent) if (fireH(k, name) > 0) return; };
+  function walk(inst, fn) { if (!inst.alive) return; fn(inst); for (const k of Array.from(inst.kids.values())) walk(k, fn); }
+  const KEYS = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, SPACE: 32, ENTER: 13, ESCAPE: 27, BACKSPACE: 8, TAB: 9, SHIFT: 16, CONTROL: 17, DELETEKEY: 46, INSERT: 45, HOME: 36, END: 35, PGUP: 33, PGDN: 34, CAPSLOCK: 20 };
+  const KEYNAMES = { '<Left>': 37, '<Up>': 38, '<Right>': 39, '<Down>': 40, '<Space>': 32, '<Enter>': 13, '<Escape>': 27, '<Backspace>': 8, '<Tab>': 9, '<Delete>': 46, '<Insert>': 45, '<Home>': 36, '<End>': 35, '<PageUp>': 33, '<PageDown>': 34 };
+  const keyDown = new Set(), keyListeners = []; let lastKey = 0;
+  const KeyObj = Object.assign({ isDown: (c) => keyDown.has(+c), getCode: () => lastKey, getAscii: () => lastKey, addListener: (o) => { if (o && keyListeners.indexOf(o) < 0) keyListeners.push(o); }, removeListener: (o) => { const i = keyListeners.indexOf(o); if (i >= 0) keyListeners.splice(i, 1); }, isToggled: () => false }, KEYS);
+  const onKey = (e, down) => {
+    const t = e.target; if (t && /^(input|textarea|select)$/i.test(t.tagName || '')) return;
+    lastKey = e.keyCode || 0;
+    if (down) keyDown.add(lastKey); else keyDown.delete(lastKey);
+    walk(rootInst, (k) => {
+      fireH(k, down ? 'keyDown' : 'keyUp');
+      if (down && k.hs) for (const nm of Object.keys(k.hs)) if (nm.indexOf('keyPress:') === 0) { const kn = nm.slice(9); if (KEYNAMES[kn] === lastKey || (kn.length === 1 && kn.toUpperCase().charCodeAt(0) === lastKey)) fireH(k, nm); }
+    });
+    for (const o of keyListeners.slice()) { const f = down ? o.onKeyDown : o.onKeyUp; if (typeof f === 'function') { try { f.call(o); } catch (er) { report('Key listener error: ' + (er && er.message || er)); } } }
+  };
+  const keyDn = (e) => onKey(e, true), keyUp = (e) => onKey(e, false);
+  if (AS1) { document.addEventListener('keydown', keyDn); document.addEventListener('keyup', keyUp); }
+  function resolvePath(from, str) {
+    if (str && typeof str === 'object') return str;
+    let cur = from; const p = String(str == null ? '' : str);
+    let parts = p.split(/[\/.]/);
+    if (p[0] === '/') { cur = rootInst; parts = parts.slice(1); }
+    for (const part of parts) {
+      if (!part || part === '.') continue;
+      if (part === '..' || part === '_parent') cur = cur && cur.parent;
+      else if (part === '_root' || part === '_level0') cur = rootInst;
+      else cur = cur && kidByName(cur, part);
+      if (!cur) return null;
+    }
+    return cur;
+  }
+  const toInst = (from, t) => (t && t.__inst ? t.__inst : resolvePath(from, t));
+  function AS1Sound(target) {
+    const o = this; let id = null, h = null; o.onSoundComplete = null;
+    o.attachSound = (name) => { id = sndIds.get(String(name)) || null; if (!id) report('Sound "' + name + '" was not found in the library.'); };
+    o.start = (off, loops) => { if (!id) return; if (h) h.stop(); h = makeSound(id, { loop: Math.max(0, (loops | 0) - 1) }, true); h.on('complete', () => { if (typeof o.onSoundComplete === 'function') { try { o.onSoundComplete(); } catch (e) { report('onSoundComplete error: ' + (e && e.message || e)); } } }); if (o._vol != null) h.volume = o._vol; };
+    o.stop = () => { if (h) h.stop(); };
+    o.setVolume = (v) => { o._vol = Math.max(0, +v || 0) / 100; if (h) h.volume = o._vol; };
+    o.getVolume = () => Math.round((o._vol == null ? 1 : o._vol) * 100);
+    o.setPan = () => {}; o.getPan = () => 0;
+    Object.defineProperty(o, 'position', { get: () => (h ? h.position : 0) });
+    Object.defineProperty(o, 'duration', { get: () => (h ? h.duration : 0) });
+  }
+  const JS_GLOBALS = new Set(['Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean', 'RegExp', 'Error', 'Function', 'JSON', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'NaN', 'Infinity', 'undefined', 'escape', 'unescape', 'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'arguments', 'console']);
+  function as1Scope(owner, target) {
+    const tw = as1Wrap(target);
+    const G = {
+      __on: (evs, fn) => { const h = owner.hs || (owner.hs = {}); for (const e of evs) (h[e] || (h[e] = [])).push(fn); },
+      __clip: (evs, fn) => { const h = owner.hs || (owner.hs = {}); for (const e of evs) (h[e] || (h[e] = [])).push(fn); },
+      __tt: (p) => { const k = resolvePath(target, p); return k ? as1Wrap(k) : {}; },
+      trace: (...a) => { try { console.log.apply(console, a); } catch (e) { /* no console */ } },
+      getURL: (u, w) => { const url = String(u == null ? '' : u); if (/^\s*(javascript|data|vbscript):/i.test(url)) { report('getURL blocked an unsafe address.'); return; } if (opt.onURL) opt.onURL(url, w); else { try { root.open(url, w || '_self'); } catch (e) { /* blocked */ } } },
+      random: (n) => Math.floor(Math.random() * Math.floor(+n || 0)),
+      getTimer: () => Math.round(performance.now() - t0),
+      int: (v) => Math.trunc(+v) || 0,
+      stopAllSounds: () => Sound.stop(),
+      setProperty: (t, p, v) => { const k = toInst(target, t); if (k) as1Wrap(k)[p] = v; },
+      getProperty: (t, p) => { const k = toInst(target, t); return k ? as1Wrap(k)[p] : undefined; },
+      Key: KeyObj, Mouse: { addListener() {}, removeListener() {}, hide() {}, show() {} },
+      Sound: AS1Sound,
+      attachMovie: () => warnOnce('attachMovie()'), duplicateMovieClip: () => warnOnce('duplicateMovieClip()'), removeMovieClip: () => warnOnce('removeMovieClip()'),
+      loadMovie: () => warnOnce('loadMovie()'), loadMovieNum: () => warnOnce('loadMovieNum()'), loadVariables: () => warnOnce('loadVariables()'), unloadMovie: () => warnOnce('unloadMovie()'),
+      fscommand: () => {}, updateAfterEvent: () => {}, startDrag: () => warnOnce('startDrag()'), stopDrag: () => {}
+    };
+    return new Proxy({}, {
+      has: (_, p) => typeof p === 'string' && !JS_GLOBALS.has(p),
+      get: (_, p) => { if (typeof p !== 'string') return undefined; return Object.prototype.hasOwnProperty.call(G, p) ? G[p] : tw[p]; },
+      set: (_, p, v) => { if (typeof p === 'string') tw[p] = v; return true; }
+    });
+  }
+  const asCache = new Map();
+  function runAS1(owner, src, target, self) {
+    let fn = asCache.get(src);
+    if (fn === undefined) {
+      try { fn = new Function('__s', 'with (__s) {\n' + Core.as1Prepare(src) + '\n}'); }
+      catch (e) { report('Script syntax error: ' + e.message); fn = null; }
+      asCache.set(src, fn);
+    }
+    if (!fn) return;
+    try { fn.call(as1Wrap(self), as1Scope(owner, target)); }
+    catch (e) { report('Script error' + (owner.name ? ' in ' + owner.name : '') + ': ' + (e && e.message || e)); }
+  }
+  function runInstScript(k, o) {
+    const src = String(o.script);
+    if (AS1) { runAS1(k, src, k.btn ? k.parent : k, k); return; }
+    let fn = fnCache.get(src);
+    if (fn === undefined) {
+      try { fn = new Function('createjs', 'exportRoot', 'stage', 'lib', 'images', src); }
+      catch (e) { report('Script syntax error: ' + e.message); fn = null; }
+      fnCache.set(src, fn);
+    }
+    if (!fn) return;
+    try { fn.call(k.proxy, createjs, rootInst.proxy, stageShim(), {}, {}); }
+    catch (e) { report('Script error' + (k.name ? ' in ' + k.name : '') + ': ' + (e && e.message || e)); }
   }
 
   /* ---- drawing ---- */
@@ -2313,7 +2662,9 @@ function create(doc, cv, opt) {
     return null;
   }
   const chainOf = (inst) => { const s = new Set(); for (let k = inst; k; k = k.parent) s.add(k); return s; };
+  const AS_MOUSE = { mousedown: 'press', click: 'release', mouseover: 'rollOver', mouseout: 'rollOut' };
   function dispatch(target, evt, from, bubble) {
+    if (AS1 && AS_MOUSE[evt.type] && from === undefined) fireUp(target, AS_MOUSE[evt.type]);
     evt.target = target.proxy;
     for (let k = from || target; k; k = bubble === false ? null : k.parent) {
       evt.currentTarget = k.proxy;
@@ -2321,7 +2672,7 @@ function create(doc, cv, opt) {
     }
   }
   const mk = (type, p) => ({ type, stageX: p.x / dpr, stageY: p.y / dpr, rawX: p.x / dpr, rawY: p.y / dpr });
-  function wantsPointer(chain) { for (const k of chain) if (k.btn || k.ls.click || k.ls.mousedown || k.ls.pressup) return true; return false; }
+  function wantsPointer(chain) { for (const k of chain) if (k.btn || k.ls.click || k.ls.mousedown || k.ls.pressup || (k.hs && (k.hs.press || k.hs.release || k.hs.releaseOutside)) || (k.hset && (k.hset.press || k.hset.release))) return true; return false; }
   function setHover(t, p) {
     if (t !== hoverTop) {
       if (hoverTop && hoverTop.alive) dispatch(hoverTop, mk('mouseout', p));
@@ -2330,19 +2681,22 @@ function create(doc, cv, opt) {
     }
     cv.style.cursor = t && wantsPointer(hoverChain) ? 'pointer' : '';
   }
-  cv.addEventListener('pointermove', (e) => { const p = evtPt(e); setHover(pick(p.x, p.y), p); if (paused) render(); });
+  cv.addEventListener('pointermove', (e) => { const p = evtPt(e); mouse = { x: p.x / dpr, y: p.y / dpr }; setHover(pick(p.x, p.y), p); if (AS1) walk(rootInst, (k) => fireH(k, 'mouseMove')); if (paused) render(); });
   cv.addEventListener('pointerleave', (e) => { setHover(null, evtPt(e)); });
   cv.addEventListener('pointerdown', (e) => {
     const p = evtPt(e), t = pick(p.x, p.y);
     down = t; downChain = t ? chainOf(t) : new Set();
     dispatch(rootInst, mk('stagemousedown', p), rootInst, false);
+    if (AS1) walk(rootInst, (k) => fireH(k, 'mouseDown'));
     if (t) dispatch(t, mk('mousedown', p));
   });
   cv.addEventListener('pointerup', (e) => {
     const p = evtPt(e), t = pick(p.x, p.y), d = down;
     down = null; downChain = new Set();
     dispatch(rootInst, mk('stagemouseup', p), rootInst, false);
+    if (AS1) walk(rootInst, (k) => fireH(k, 'mouseUp'));
     if (d && d.alive) dispatch(d, mk('pressup', p));
+    if (AS1 && d && d.alive && t !== d) fireUp(d, 'releaseOutside');
     if (t && d && t === d) dispatch(t, mk('click', p));
     if (paused) render();
   });
@@ -2375,7 +2729,7 @@ function create(doc, cv, opt) {
     root: rootInst.proxy, errors, start, render, hasScripts: hasScripts(),
     setPaused: (v) => { paused = !!v; }, isPaused: () => paused, tick: tickAll,
     scrub: (f) => { goto(rootInst, f, false); render(); },
-    stop: () => cancelAnimationFrame(raf)
+    stop: () => { cancelAnimationFrame(raf); document.removeEventListener('keydown', keyDn); document.removeEventListener('keyup', keyUp); }
   };
 }
 root.FCRuntime = { create };
@@ -2390,7 +2744,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.11.0-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.12.1-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -2597,7 +2951,7 @@ function renderStage() {
   if (!S.doc) return;
   const ctx = sctx, z = S.view.z, d = S.doc;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = CSSV.pasteboard; ctx.fillRect(0, 0, stage.width, stage.height);
+  ctx.fillStyle = S.editBg || CSSV.pasteboard; ctx.fillRect(0, 0, stage.width, stage.height);
   ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * S.view.px, dpr * S.view.py);
   ctx.save();
   const inSym = S.edit.length > 0;
@@ -4152,6 +4506,15 @@ function layerOp(op) {
   refreshAll();
 }
 
+/* ---------- frame range selection ---------- */
+function fselInfo() {
+  const r = S.fsel; if (!r) return null;
+  const all = layers();
+  const ls = r.all ? all.filter((l) => !l.locked) : all.filter((l) => l.id === r.lid && !l.locked);
+  if (!ls.length) return null;
+  return { a: Math.min(r.a, r.b), b: Math.min(Math.max(r.a, r.b), S.doc.frames - 1), layers: ls, all: r.all };
+}
+
 /* ---------- frame actions ---------- */
 function frameAction(kind) {
   const l = curLayer(), f = S.frame, d = S.doc;
@@ -4175,6 +4538,12 @@ function frameAction(kind) {
       break;
     }
     case 'notween': C.setTweenAt(d, l, f, 'none'); break;
+    case 'reverse': {
+      const r = fselInfo();
+      if (!r) { fail = 'Shift+click a frame to select a range first (Shift+click the frame numbers to include every layer).'; break; }
+      if (r.b <= r.a) { fail = 'Select at least two frames to reverse.'; break; }
+      C.reverseFrames(r.layers, r.a, r.b, d); break;
+    }
   }
   if (fail) { H.stack.pop(); updateHistoryButtons(); toast(fail); return; }
   pruneSel(); refreshAll();
@@ -4285,10 +4654,12 @@ function drawTimeline() {
       ctx.beginPath(); ctx.arc(x0 + CW / 2, cy, 3.6, 0, Math.PI * 2);
       if (has) ctx.fill(); else { ctx.fillStyle = CSSV.cell; ctx.fill(); ctx.stroke(); }
       if (k.sound) { ctx.fillStyle = CSSV.fg; ctx.font = '700 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('♪', x0 + CW / 2, cy + 11); ctx.textAlign = 'start'; }
+      if (k.scene) { ctx.fillStyle = CSSV.accent; ctx.font = '700 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('S', x0 + CW / 2 + 9, cy - 6); ctx.textAlign = 'start'; }
       if (k.script) { ctx.fillStyle = CSSV.fg; ctx.font = '700 9px ' + 'sans-serif'; ctx.textAlign = 'center'; ctx.fillText('a', x0 + CW / 2, cy - 6); ctx.textAlign = 'start'; }
     }
     ctx.restore();
     drawWaves(ctx, l, y, cy, n);
+    { const fi = S.fsel && fselInfo(); if (fi && fi.layers.includes(l)) { ctx.fillStyle = CSSV.accent; ctx.globalAlpha = 0.25; ctx.fillRect(fi.a * CW, y, (fi.b - fi.a + 1) * CW, RH); ctx.globalAlpha = 1; } }
     if (l.id === S.layerId) { ctx.strokeStyle = CSSV.accent; ctx.lineWidth = 2; ctx.strokeRect(S.frame * CW + 1, y + 1, CW - 2, RH - 2); }
   });
   const px = S.frame * CW + CW / 2;
@@ -4327,6 +4698,17 @@ tlC.addEventListener('pointerdown', (e) => {
   tlC.setPointerCapture(e.pointerId);
   if (S.playing) stopPlay();
   const c = cellAt(e, tlC), ls = layers().slice().reverse(), l = ls[c.row];
+  if (e.shiftKey && l) {
+    const from = S.fsel && S.fsel.lid === l.id && !S.fsel.all ? S.fsel.anchor : S.frame;
+    S.fsel = { lid: l.id, a: Math.min(from, c.f), b: Math.max(from, c.f), anchor: from, all: false };
+    selectLayer(l.id); setFrame(c.f); drawTimeline(); return;
+  }
+  const fi = S.fsel && fselInfo();
+  if (fi && l && c.f >= fi.a && c.f <= fi.b && fi.layers.includes(l) && c.f > 0 && fi.b > fi.a) {
+    selectLayer(l.id); setFrame(c.f);
+    tlDrag = { type: 'range', cur: c.f, moved: false, only: new Set(fi.layers.flatMap((x) => x.kfs.filter((k) => k.f >= fi.a && k.f <= fi.b))) }; return;
+  }
+  S.fsel = null;
   if (l) selectLayer(l.id);
   setFrame(c.f);
   const kf = l && C.kfAt(l, c.f);
@@ -4337,7 +4719,18 @@ tlC.addEventListener('pointermove', (e) => {
   if (!tlDrag) return;
   const c = cellAt(e, tlC);
   if (tlDrag.type === 'scrub') setFrame(c.f);
-  else if (c.f !== tlDrag.cur && c.f > 0 && !C.kfAt(tlDrag.layer, c.f)) {
+  else if (tlDrag.type === 'range') {
+    const fi = fselInfo();
+    if (fi && c.f !== tlDrag.cur) {
+      const dl = c.f - tlDrag.cur;
+      if (!tlDrag.moved) pushUndo();
+      if (C.moveKeyframes(fi.layers, fi.a, fi.b, dl, S.doc, tlDrag.only)) {
+        tlDrag.moved = true; tlDrag.cur = c.f;
+        S.fsel.a += dl; S.fsel.b += dl; if (S.fsel.anchor != null) S.fsel.anchor += dl;
+        S.frame = clamp(S.frame + dl, 0, S.doc.frames - 1); updateTime(); invalidate();
+      } else if (!tlDrag.moved) { H.stack.pop(); updateHistoryButtons(); }
+    }
+  } else if (c.f !== tlDrag.cur && c.f > 0 && !C.kfAt(tlDrag.layer, c.f)) {
     if (!tlDrag.moved) { pushUndo(); tlDrag.moved = true; }
     C.moveKeyframe(tlDrag.layer, tlDrag.cur, c.f);
     tlDrag.cur = c.f; S.frame = c.f; updateTime(); invalidate();
@@ -4345,7 +4738,12 @@ tlC.addEventListener('pointermove', (e) => {
 });
 const endTl = () => { if (tlDrag && tlDrag.moved) commit(); tlDrag = null; };
 tlC.addEventListener('pointerup', endTl); tlC.addEventListener('pointercancel', endTl);
-tlR.addEventListener('pointerdown', (e) => { tlR.setPointerCapture(e.pointerId); if (S.playing) stopPlay(); tlDrag = { type: 'scrub' }; setFrame(cellAt(e, tlR).f); });
+tlR.addEventListener('pointerdown', (e) => {
+  tlR.setPointerCapture(e.pointerId); if (S.playing) stopPlay();
+  const f = cellAt(e, tlR).f;
+  if (e.shiftKey) { const from = S.fsel && S.fsel.all ? S.fsel.anchor : S.frame; S.fsel = { a: Math.min(from, f), b: Math.max(from, f), anchor: from, all: true }; setFrame(f); drawTimeline(); return; }
+  S.fsel = null; tlDrag = { type: 'scrub' }; setFrame(f);
+});
 tlR.addEventListener('pointermove', (e) => { if (tlDrag && tlDrag.type === 'scrub') setFrame(cellAt(e, tlR).f); });
 tlR.addEventListener('pointerup', endTl); tlR.addEventListener('pointercancel', endTl);
 tlC.addEventListener('contextmenu', (e) => {
@@ -4363,7 +4761,9 @@ tlC.addEventListener('contextmenu', (e) => {
     '-',
     { label: 'Create motion tween', fn: () => frameAction('motion') },
     { label: 'Create shape tween', fn: () => frameAction('shape') },
-    { label: 'Remove tween', fn: () => frameAction('notween') }
+    { label: 'Remove tween', fn: () => frameAction('notween') },
+    '-',
+    { label: 'Reverse selected frames', fn: () => frameAction('reverse') }
   ], { x: e.clientX, y: e.clientY });
 });
 
@@ -4455,7 +4855,8 @@ function refreshProps() {
   { const k = curLayer() && C.kfAt(curLayer(), S.frame), nm = one && (one.o.kind === 'clip' || one.o.kind === 'text') ? one.o : null;
     $('#kfScript').disabled = !k; $('#kfLabel').disabled = !k; $('#iname').disabled = !nm;
     { const cl = one && one.o.kind === 'clip' ? one.o : null; $('#iclipRow').style.display = cl ? '' : 'none';
-      if (cl) { setVal($('#itype'), cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc ? 'none' : ''; } }
+      if (cl) { setVal($('#itype'), cl.btn ? 'btn' : cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc || cl.btn ? 'none' : ''; }
+      $('#iscriptRow').style.display = cl && (cl.mc || cl.btn) ? '' : 'none'; setVal($('#iscript'), cl && cl.script || ''); }
     setVal($('#kfScript'), k && k.script || ''); setVal($('#kfLabel'), k && k.label || ''); setVal($('#iname'), nm && nm.name || '');
     refreshSoundSelect();
     $('#kfSound').disabled = !k; $('#kfSync').disabled = !k; $('#kfLoop').disabled = !k; $('#sndPlay').disabled = !k;
@@ -4474,7 +4875,12 @@ function refreshProps() {
   drawEaseCurve();
   $('#tweenInfo').textContent = kf ? 'span ' + fnum(kf.f) + ' to ' + (nx ? fnum(nx.f) : 'end') : '';
   const d = S.doc;
-  setVal($('#dname'), d.name || 'My animation'); setVal($('#dw'), d.w); setVal($('#dh'), d.h); setVal($('#dfps'), d.fps); setVal($('#dframes'), d.frames); setVal($('#dbg'), /^#[0-9a-f]{6}$/i.test(d.bg) ? d.bg : '#ffffff');
+  setVal($('#dlang'), d.lang === 'as1' ? 'as1' : 'js');
+  { const sc = []; for (const l of d.layers) for (const k of l.kfs) if (k.scene) sc.push({ f: k.f, n: k.scene }); sc.sort((a, b) => a.f - b.f);
+    const box = $('#dscenes'), key = sc.map((x) => x.f + ':' + x.n).join('|');
+    $('#dscenesRow').style.display = sc.length > 1 ? '' : 'none';
+    if (box.dataset.key !== key) { box.dataset.key = key; box.innerHTML = ''; for (const x of sc) { const b = document.createElement('button'); b.className = 'mbtn'; b.textContent = x.n; b.title = 'Go to frame ' + fnum(x.f); b.addEventListener('click', () => setFrame(x.f)); box.appendChild(b); } } }
+  setVal($('#dname'), d.name || 'My animation'); setVal($('#dw'), d.w); setVal($('#dh'), d.h); setVal($('#dfps'), d.fps); setVal($('#dframes'), d.frames); setVal($('#dbg'), /^#[0-9a-f]{6}$/i.test(d.bg) ? d.bg : '#ffffff'); setVal($('#pbg'), /^#[0-9a-f]{6}$/i.test(S.editBg || CSSV.pasteboard) ? (S.editBg || CSSV.pasteboard) : '#c9ced8');
   syncStyleUI();
   trackSelTab(sels); refreshAlignUI(sels.length); renderLibrary();
 }
@@ -4644,6 +5050,9 @@ function bindProps() {
     refreshAll(); if (key === 'w' || key === 'h') fitView();
   });
   docNum('dw', 'w', 16, 4096); docNum('dh', 'h', 16, 4096); docNum('dfps', 'fps', 1, 120); docNum('dframes', 'frames', 1, 900);
+  try { const v = localStorage.getItem('os_pbg'); if (/^#[0-9a-f]{6}$/i.test(v || '')) S.editBg = v; } catch (_) {}
+  on('#pbg', 'input', (e) => { S.editBg = e.target.value; try { localStorage.setItem('os_pbg', S.editBg); } catch (_) {} invalidate(); });
+  on('#pbgReset', 'click', () => { S.editBg = ''; try { localStorage.removeItem('os_pbg'); } catch (_) {} refreshProps(); invalidate(); });
   on('#dbg', 'input', (e) => { beginEditOnce(); S.doc.bg = e.target.value; commit(); });
   on('#onionOn', 'change', (e) => { S.onion.on = e.target.checked; syncOnionUI(); invalidate(); });
   on('#pOnion', 'click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); });
@@ -4993,13 +5402,17 @@ async function importFLAFile(buf, fname) {
     if (report.guide) notes.push(plural(report.guide, 'guide layer') + ' skipped; tweens along motion guides run in a straight line.');
     if (report.motionObject) notes.push(plural(report.motionObject, 'new-style motion tween') + ' kept as still frames (only classic and shape tweens import).');
     if (report.missing) notes.push(plural(report.missing, 'symbol instance') + ' referenced a missing library item.');
-    if (report.scenes > 1) notes.push('Only the first of ' + report.scenes + ' scenes was imported.');
+    if (report.scenes > 1) notes.push(report.scenes + ' scenes were joined into one timeline, as Flash does when it publishes. Each scene starts at a marked keyframe (S on the timeline; jump to one from the Doc tab), and gotoAndPlay(\"Scene name\", 1) works.');
+    if (report.instScripts) notes.push(plural(report.instScripts, 'script') + ' on clips and buttons imported (see the Script box in the Object tab).');
+    if (report.lang) notes.push('Scripts look like ' + report.lang.replace(' (detected)', '') + ', so this document is set to run them through the ActionScript 1/2 layer (Doc tab, Scripts). Unsupported commands are reported once in Preview.');
+    if (report.lang && !report.instScripts && report.buttons) notes.push('This file has buttons but no button scripts. If it was re-saved in a recent Animate, Animate drops on (release) handlers when it converts old files to ActionScript 3. Paste the original handlers into each button’s Script box.');
+    if (report.truncated) notes.push('The scenes add up to ' + report.truncated + ' frames; only the first 900 are kept.');
     const body = '<p><b>' + doc.w + ' × ' + doc.h + '</b> at ' + doc.fps + ' fps, ' + plural(doc.layers.length, 'layer') + ', ' + plural(doc.frames, 'frame') + '.</p>' +
       (notes.length ? '<p>Import notes:</p><ul>' + notes.map((n) => '<li>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') + '</ul>' : '<p>Everything in this file imported cleanly.</p>');
     openModal('Imported ' + fname, body, [{ label: 'Done', primary: true }]);
   } catch (err) {
     const m = err && err.message, det = String(err && err.detail || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const msg = m === 'legacy' ? '<p>This is a legacy binary FLA (Flash CS4 or older). In Flash or Animate choose <b>File → Save As</b>, pick the <b>Flash CS5/CS6</b> or current Animate <b>.fla</b> format, then import that copy.</p>'
+    const msg = m === 'legacy' ? '<p>This is a legacy binary FLA (Flash CS4 or older). In Flash or Animate choose <b>File → Save As</b>, pick the <b>Flash CS5/CS6</b> or current Animate <b>.fla</b> format, then import that copy.</p><p class="hint">Heads-up: recent versions of Animate convert old ActionScript 1/2 files to ActionScript 3 when they re-save them, which drops button handlers such as on (release). Keep the original file so you can copy those scripts across.</p>'
       : m === 'nodom' ? '<p>The archive opened, but it has no <code>DOMDocument.xml</code>. What it contains:</p><p><code>' + det + '</code></p>'
       : m === 'notzip' ? '<p>This file is not a readable ZIP archive.</p><p class="hint">' + det + '</p>'
       : m === 'badxml' ? '<p>The document XML could not be parsed.</p><p class="hint">' + det + '</p>'
@@ -5045,7 +5458,7 @@ function buildPlayer(opts) {
 var doc=window.FC_DOC||JSON.parse(document.getElementById('fcDoc').textContent);
 var cv=document.getElementById('cv'),btn=document.getElementById('pp'),bar=document.getElementById('bar'),ctl=document.getElementById('ctl'),err=document.getElementById('err');
 var DEBUG=${opts.debug ? 'true' : 'false'},RESP='${resp}',FILL=${fill},CONTROLS=${controls};
-var rt=FCRuntime.create(doc,cv,{loop:${loop},onError:function(m){if(window.console)console.error(m);if(DEBUG){try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}}});
+var rt=FCRuntime.create(doc,cv,{loop:${loop},onURL:function(u,w){if(DEBUG){var m='getURL: '+u;try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}else{try{window.open(u,w||'_self')}catch(e){}}},onError:function(m){if(window.console)console.error(m);if(DEBUG){try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}}});
 window.__rt=rt;rt.start();
 if(rt.hasScripts||!CONTROLS){ctl.style.display='none';}
 if(!rt.hasScripts){
@@ -6091,7 +6504,9 @@ function init() {
     const o = findEditable(one.lid, one.id); if (!o) return;
     fn(o); markDirty(); invalidate(); clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700);
   };
-  $('#itype').addEventListener('change', (e) => { clipEdit((o) => { o.mc = e.target.value === 'mc'; if (o.mc) { o.mode = 'loop'; o.first = 0; } }); refreshProps(); });
+  $('#itype').addEventListener('change', (e) => { clipEdit((o) => { const v = e.target.value; o.mc = v === 'mc'; if (v === 'btn') { o.btn = true; o.mode = 'single'; o.first = 0; } else delete o.btn; if (o.mc) { o.mode = 'loop'; o.first = 0; } }); refreshProps(); });
+  $('#iscript').addEventListener('input', (e) => { const v = e.target.value; clipEdit((o) => { if (v.trim()) o.script = v; else delete o.script; }); });
+  $('#dlang').addEventListener('change', (e) => { beginEditOnce(); if (e.target.value === 'as1') S.doc.lang = 'as1'; else delete S.doc.lang; commit(); });
   $('#imode').addEventListener('change', (e) => clipEdit((o) => { o.mode = e.target.value; }));
   $('#ifirst').addEventListener('input', (e) => { const v = parseInt(e.target.value, 10); if (v >= 1) clipEdit((o) => { o.first = Math.min(v - 1, Math.max(0, ((S.doc.lib[o.sym] || {}).frames || 1) - 1)); }); });
   $('#iname').addEventListener('input', (e) => {

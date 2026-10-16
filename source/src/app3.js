@@ -103,6 +103,15 @@ function layerOp(op) {
   refreshAll();
 }
 
+/* ---------- frame range selection ---------- */
+function fselInfo() {
+  const r = S.fsel; if (!r) return null;
+  const all = layers();
+  const ls = r.all ? all.filter((l) => !l.locked) : all.filter((l) => l.id === r.lid && !l.locked);
+  if (!ls.length) return null;
+  return { a: Math.min(r.a, r.b), b: Math.min(Math.max(r.a, r.b), S.doc.frames - 1), layers: ls, all: r.all };
+}
+
 /* ---------- frame actions ---------- */
 function frameAction(kind) {
   const l = curLayer(), f = S.frame, d = S.doc;
@@ -126,6 +135,12 @@ function frameAction(kind) {
       break;
     }
     case 'notween': C.setTweenAt(d, l, f, 'none'); break;
+    case 'reverse': {
+      const r = fselInfo();
+      if (!r) { fail = 'Shift+click a frame to select a range first (Shift+click the frame numbers to include every layer).'; break; }
+      if (r.b <= r.a) { fail = 'Select at least two frames to reverse.'; break; }
+      C.reverseFrames(r.layers, r.a, r.b, d); break;
+    }
   }
   if (fail) { H.stack.pop(); updateHistoryButtons(); toast(fail); return; }
   pruneSel(); refreshAll();
@@ -236,10 +251,12 @@ function drawTimeline() {
       ctx.beginPath(); ctx.arc(x0 + CW / 2, cy, 3.6, 0, Math.PI * 2);
       if (has) ctx.fill(); else { ctx.fillStyle = CSSV.cell; ctx.fill(); ctx.stroke(); }
       if (k.sound) { ctx.fillStyle = CSSV.fg; ctx.font = '700 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('♪', x0 + CW / 2, cy + 11); ctx.textAlign = 'start'; }
+      if (k.scene) { ctx.fillStyle = CSSV.accent; ctx.font = '700 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('S', x0 + CW / 2 + 9, cy - 6); ctx.textAlign = 'start'; }
       if (k.script) { ctx.fillStyle = CSSV.fg; ctx.font = '700 9px ' + 'sans-serif'; ctx.textAlign = 'center'; ctx.fillText('a', x0 + CW / 2, cy - 6); ctx.textAlign = 'start'; }
     }
     ctx.restore();
     drawWaves(ctx, l, y, cy, n);
+    { const fi = S.fsel && fselInfo(); if (fi && fi.layers.includes(l)) { ctx.fillStyle = CSSV.accent; ctx.globalAlpha = 0.25; ctx.fillRect(fi.a * CW, y, (fi.b - fi.a + 1) * CW, RH); ctx.globalAlpha = 1; } }
     if (l.id === S.layerId) { ctx.strokeStyle = CSSV.accent; ctx.lineWidth = 2; ctx.strokeRect(S.frame * CW + 1, y + 1, CW - 2, RH - 2); }
   });
   const px = S.frame * CW + CW / 2;
@@ -278,6 +295,17 @@ tlC.addEventListener('pointerdown', (e) => {
   tlC.setPointerCapture(e.pointerId);
   if (S.playing) stopPlay();
   const c = cellAt(e, tlC), ls = layers().slice().reverse(), l = ls[c.row];
+  if (e.shiftKey && l) {
+    const from = S.fsel && S.fsel.lid === l.id && !S.fsel.all ? S.fsel.anchor : S.frame;
+    S.fsel = { lid: l.id, a: Math.min(from, c.f), b: Math.max(from, c.f), anchor: from, all: false };
+    selectLayer(l.id); setFrame(c.f); drawTimeline(); return;
+  }
+  const fi = S.fsel && fselInfo();
+  if (fi && l && c.f >= fi.a && c.f <= fi.b && fi.layers.includes(l) && c.f > 0 && fi.b > fi.a) {
+    selectLayer(l.id); setFrame(c.f);
+    tlDrag = { type: 'range', cur: c.f, moved: false, only: new Set(fi.layers.flatMap((x) => x.kfs.filter((k) => k.f >= fi.a && k.f <= fi.b))) }; return;
+  }
+  S.fsel = null;
   if (l) selectLayer(l.id);
   setFrame(c.f);
   const kf = l && C.kfAt(l, c.f);
@@ -288,7 +316,18 @@ tlC.addEventListener('pointermove', (e) => {
   if (!tlDrag) return;
   const c = cellAt(e, tlC);
   if (tlDrag.type === 'scrub') setFrame(c.f);
-  else if (c.f !== tlDrag.cur && c.f > 0 && !C.kfAt(tlDrag.layer, c.f)) {
+  else if (tlDrag.type === 'range') {
+    const fi = fselInfo();
+    if (fi && c.f !== tlDrag.cur) {
+      const dl = c.f - tlDrag.cur;
+      if (!tlDrag.moved) pushUndo();
+      if (C.moveKeyframes(fi.layers, fi.a, fi.b, dl, S.doc, tlDrag.only)) {
+        tlDrag.moved = true; tlDrag.cur = c.f;
+        S.fsel.a += dl; S.fsel.b += dl; if (S.fsel.anchor != null) S.fsel.anchor += dl;
+        S.frame = clamp(S.frame + dl, 0, S.doc.frames - 1); updateTime(); invalidate();
+      } else if (!tlDrag.moved) { H.stack.pop(); updateHistoryButtons(); }
+    }
+  } else if (c.f !== tlDrag.cur && c.f > 0 && !C.kfAt(tlDrag.layer, c.f)) {
     if (!tlDrag.moved) { pushUndo(); tlDrag.moved = true; }
     C.moveKeyframe(tlDrag.layer, tlDrag.cur, c.f);
     tlDrag.cur = c.f; S.frame = c.f; updateTime(); invalidate();
@@ -296,7 +335,12 @@ tlC.addEventListener('pointermove', (e) => {
 });
 const endTl = () => { if (tlDrag && tlDrag.moved) commit(); tlDrag = null; };
 tlC.addEventListener('pointerup', endTl); tlC.addEventListener('pointercancel', endTl);
-tlR.addEventListener('pointerdown', (e) => { tlR.setPointerCapture(e.pointerId); if (S.playing) stopPlay(); tlDrag = { type: 'scrub' }; setFrame(cellAt(e, tlR).f); });
+tlR.addEventListener('pointerdown', (e) => {
+  tlR.setPointerCapture(e.pointerId); if (S.playing) stopPlay();
+  const f = cellAt(e, tlR).f;
+  if (e.shiftKey) { const from = S.fsel && S.fsel.all ? S.fsel.anchor : S.frame; S.fsel = { a: Math.min(from, f), b: Math.max(from, f), anchor: from, all: true }; setFrame(f); drawTimeline(); return; }
+  S.fsel = null; tlDrag = { type: 'scrub' }; setFrame(f);
+});
 tlR.addEventListener('pointermove', (e) => { if (tlDrag && tlDrag.type === 'scrub') setFrame(cellAt(e, tlR).f); });
 tlR.addEventListener('pointerup', endTl); tlR.addEventListener('pointercancel', endTl);
 tlC.addEventListener('contextmenu', (e) => {
@@ -314,7 +358,9 @@ tlC.addEventListener('contextmenu', (e) => {
     '-',
     { label: 'Create motion tween', fn: () => frameAction('motion') },
     { label: 'Create shape tween', fn: () => frameAction('shape') },
-    { label: 'Remove tween', fn: () => frameAction('notween') }
+    { label: 'Remove tween', fn: () => frameAction('notween') },
+    '-',
+    { label: 'Reverse selected frames', fn: () => frameAction('reverse') }
   ], { x: e.clientX, y: e.clientY });
 });
 
@@ -406,7 +452,8 @@ function refreshProps() {
   { const k = curLayer() && C.kfAt(curLayer(), S.frame), nm = one && (one.o.kind === 'clip' || one.o.kind === 'text') ? one.o : null;
     $('#kfScript').disabled = !k; $('#kfLabel').disabled = !k; $('#iname').disabled = !nm;
     { const cl = one && one.o.kind === 'clip' ? one.o : null; $('#iclipRow').style.display = cl ? '' : 'none';
-      if (cl) { setVal($('#itype'), cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc ? 'none' : ''; } }
+      if (cl) { setVal($('#itype'), cl.btn ? 'btn' : cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc || cl.btn ? 'none' : ''; }
+      $('#iscriptRow').style.display = cl && (cl.mc || cl.btn) ? '' : 'none'; setVal($('#iscript'), cl && cl.script || ''); }
     setVal($('#kfScript'), k && k.script || ''); setVal($('#kfLabel'), k && k.label || ''); setVal($('#iname'), nm && nm.name || '');
     refreshSoundSelect();
     $('#kfSound').disabled = !k; $('#kfSync').disabled = !k; $('#kfLoop').disabled = !k; $('#sndPlay').disabled = !k;
@@ -425,7 +472,12 @@ function refreshProps() {
   drawEaseCurve();
   $('#tweenInfo').textContent = kf ? 'span ' + fnum(kf.f) + ' to ' + (nx ? fnum(nx.f) : 'end') : '';
   const d = S.doc;
-  setVal($('#dname'), d.name || 'My animation'); setVal($('#dw'), d.w); setVal($('#dh'), d.h); setVal($('#dfps'), d.fps); setVal($('#dframes'), d.frames); setVal($('#dbg'), /^#[0-9a-f]{6}$/i.test(d.bg) ? d.bg : '#ffffff');
+  setVal($('#dlang'), d.lang === 'as1' ? 'as1' : 'js');
+  { const sc = []; for (const l of d.layers) for (const k of l.kfs) if (k.scene) sc.push({ f: k.f, n: k.scene }); sc.sort((a, b) => a.f - b.f);
+    const box = $('#dscenes'), key = sc.map((x) => x.f + ':' + x.n).join('|');
+    $('#dscenesRow').style.display = sc.length > 1 ? '' : 'none';
+    if (box.dataset.key !== key) { box.dataset.key = key; box.innerHTML = ''; for (const x of sc) { const b = document.createElement('button'); b.className = 'mbtn'; b.textContent = x.n; b.title = 'Go to frame ' + fnum(x.f); b.addEventListener('click', () => setFrame(x.f)); box.appendChild(b); } } }
+  setVal($('#dname'), d.name || 'My animation'); setVal($('#dw'), d.w); setVal($('#dh'), d.h); setVal($('#dfps'), d.fps); setVal($('#dframes'), d.frames); setVal($('#dbg'), /^#[0-9a-f]{6}$/i.test(d.bg) ? d.bg : '#ffffff'); setVal($('#pbg'), /^#[0-9a-f]{6}$/i.test(S.editBg || CSSV.pasteboard) ? (S.editBg || CSSV.pasteboard) : '#c9ced8');
   syncStyleUI();
   trackSelTab(sels); refreshAlignUI(sels.length); renderLibrary();
 }
@@ -595,6 +647,9 @@ function bindProps() {
     refreshAll(); if (key === 'w' || key === 'h') fitView();
   });
   docNum('dw', 'w', 16, 4096); docNum('dh', 'h', 16, 4096); docNum('dfps', 'fps', 1, 120); docNum('dframes', 'frames', 1, 900);
+  try { const v = localStorage.getItem('os_pbg'); if (/^#[0-9a-f]{6}$/i.test(v || '')) S.editBg = v; } catch (_) {}
+  on('#pbg', 'input', (e) => { S.editBg = e.target.value; try { localStorage.setItem('os_pbg', S.editBg); } catch (_) {} invalidate(); });
+  on('#pbgReset', 'click', () => { S.editBg = ''; try { localStorage.removeItem('os_pbg'); } catch (_) {} refreshProps(); invalidate(); });
   on('#dbg', 'input', (e) => { beginEditOnce(); S.doc.bg = e.target.value; commit(); });
   on('#onionOn', 'change', (e) => { S.onion.on = e.target.checked; syncOnionUI(); invalidate(); });
   on('#pOnion', 'click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); });
@@ -944,13 +999,17 @@ async function importFLAFile(buf, fname) {
     if (report.guide) notes.push(plural(report.guide, 'guide layer') + ' skipped; tweens along motion guides run in a straight line.');
     if (report.motionObject) notes.push(plural(report.motionObject, 'new-style motion tween') + ' kept as still frames (only classic and shape tweens import).');
     if (report.missing) notes.push(plural(report.missing, 'symbol instance') + ' referenced a missing library item.');
-    if (report.scenes > 1) notes.push('Only the first of ' + report.scenes + ' scenes was imported.');
+    if (report.scenes > 1) notes.push(report.scenes + ' scenes were joined into one timeline, as Flash does when it publishes. Each scene starts at a marked keyframe (S on the timeline; jump to one from the Doc tab), and gotoAndPlay(\"Scene name\", 1) works.');
+    if (report.instScripts) notes.push(plural(report.instScripts, 'script') + ' on clips and buttons imported (see the Script box in the Object tab).');
+    if (report.lang) notes.push('Scripts look like ' + report.lang.replace(' (detected)', '') + ', so this document is set to run them through the ActionScript 1/2 layer (Doc tab, Scripts). Unsupported commands are reported once in Preview.');
+    if (report.lang && !report.instScripts && report.buttons) notes.push('This file has buttons but no button scripts. If it was re-saved in a recent Animate, Animate drops on (release) handlers when it converts old files to ActionScript 3. Paste the original handlers into each button’s Script box.');
+    if (report.truncated) notes.push('The scenes add up to ' + report.truncated + ' frames; only the first 900 are kept.');
     const body = '<p><b>' + doc.w + ' × ' + doc.h + '</b> at ' + doc.fps + ' fps, ' + plural(doc.layers.length, 'layer') + ', ' + plural(doc.frames, 'frame') + '.</p>' +
       (notes.length ? '<p>Import notes:</p><ul>' + notes.map((n) => '<li>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') + '</ul>' : '<p>Everything in this file imported cleanly.</p>');
     openModal('Imported ' + fname, body, [{ label: 'Done', primary: true }]);
   } catch (err) {
     const m = err && err.message, det = String(err && err.detail || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const msg = m === 'legacy' ? '<p>This is a legacy binary FLA (Flash CS4 or older). In Flash or Animate choose <b>File → Save As</b>, pick the <b>Flash CS5/CS6</b> or current Animate <b>.fla</b> format, then import that copy.</p>'
+    const msg = m === 'legacy' ? '<p>This is a legacy binary FLA (Flash CS4 or older). In Flash or Animate choose <b>File → Save As</b>, pick the <b>Flash CS5/CS6</b> or current Animate <b>.fla</b> format, then import that copy.</p><p class="hint">Heads-up: recent versions of Animate convert old ActionScript 1/2 files to ActionScript 3 when they re-save them, which drops button handlers such as on (release). Keep the original file so you can copy those scripts across.</p>'
       : m === 'nodom' ? '<p>The archive opened, but it has no <code>DOMDocument.xml</code>. What it contains:</p><p><code>' + det + '</code></p>'
       : m === 'notzip' ? '<p>This file is not a readable ZIP archive.</p><p class="hint">' + det + '</p>'
       : m === 'badxml' ? '<p>The document XML could not be parsed.</p><p class="hint">' + det + '</p>'
@@ -996,7 +1055,7 @@ function buildPlayer(opts) {
 var doc=window.FC_DOC||JSON.parse(document.getElementById('fcDoc').textContent);
 var cv=document.getElementById('cv'),btn=document.getElementById('pp'),bar=document.getElementById('bar'),ctl=document.getElementById('ctl'),err=document.getElementById('err');
 var DEBUG=${opts.debug ? 'true' : 'false'},RESP='${resp}',FILL=${fill},CONTROLS=${controls};
-var rt=FCRuntime.create(doc,cv,{loop:${loop},onError:function(m){if(window.console)console.error(m);if(DEBUG){try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}}});
+var rt=FCRuntime.create(doc,cv,{loop:${loop},onURL:function(u,w){if(DEBUG){var m='getURL: '+u;try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}else{try{window.open(u,w||'_self')}catch(e){}}},onError:function(m){if(window.console)console.error(m);if(DEBUG){try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}}});
 window.__rt=rt;rt.start();
 if(rt.hasScripts||!CONTROLS){ctl.style.display='none';}
 if(!rt.hasScripts){
@@ -2042,7 +2101,9 @@ function init() {
     const o = findEditable(one.lid, one.id); if (!o) return;
     fn(o); markDirty(); invalidate(); clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700);
   };
-  $('#itype').addEventListener('change', (e) => { clipEdit((o) => { o.mc = e.target.value === 'mc'; if (o.mc) { o.mode = 'loop'; o.first = 0; } }); refreshProps(); });
+  $('#itype').addEventListener('change', (e) => { clipEdit((o) => { const v = e.target.value; o.mc = v === 'mc'; if (v === 'btn') { o.btn = true; o.mode = 'single'; o.first = 0; } else delete o.btn; if (o.mc) { o.mode = 'loop'; o.first = 0; } }); refreshProps(); });
+  $('#iscript').addEventListener('input', (e) => { const v = e.target.value; clipEdit((o) => { if (v.trim()) o.script = v; else delete o.script; }); });
+  $('#dlang').addEventListener('change', (e) => { beginEditOnce(); if (e.target.value === 'as1') S.doc.lang = 'as1'; else delete S.doc.lang; commit(); });
   $('#imode').addEventListener('change', (e) => clipEdit((o) => { o.mode = e.target.value; }));
   $('#ifirst').addEventListener('input', (e) => { const v = parseInt(e.target.value, 10); if (v >= 1) clipEdit((o) => { o.first = Math.min(v - 1, Math.max(0, ((S.doc.lib[o.sym] || {}).frames || 1) - 1)); }); });
   $('#iname').addEventListener('input', (e) => {

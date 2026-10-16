@@ -2,6 +2,25 @@
 
 All notable changes to Onionskyn are listed here, newest first.
 
+## 0.12.1-beta
+
+### Added
+- **Frame ranges.** Shift+click in the timeline selects a range of frames on a layer (Shift+click the frame numbers to take every unlocked layer). Drag inside the range to slide its keyframes together.
+- **Reverse frames.** Flips the order of the selected frames, tweens included.
+- **Pasteboard colour.** The area around the stage can be any colour (Doc tab); it is remembered in the browser.
+- The onion-skin boxes are now labelled **Before** and **After**.
+
+## 0.12.0-beta
+
+### Added
+- **Scenes.** Files with several scenes now import completely. The scenes are joined into one timeline, as Flash does when it publishes, with each scene's first keyframe marked **S**. The Doc tab lists the scenes so you can jump to one, and `gotoAndPlay("Scene name", 1)`, `nextScene()` and `prevScene()` work.
+- **Scripts on clips and buttons.** Movie clips and buttons have a Script box in the Object tab, and symbol instances import their scripts from `.fla` files that have them. There is a new **Button** symbol type (Up, Over, Down and Hit frames).
+- **ActionScript 1/2 layer.** A new **Scripts** setting in the Doc tab runs old Flash code directly: `on (release)` and the other button events, `onClipEvent`, assigned handlers (`mc.onRelease = ...`), `_root` / `_parent` / `_x` / `_alpha` and friends, `gotoAndPlay`/`gotoAndStop` with 1-based frames and scene names, `tellTarget`, `with`, `getURL`, `trace`, `random`, `getTimer`, `Key`, `new Sound`, and timeline-level `var` and `function`. AS2 type annotations are ignored. The `.fla` importer turns the setting on when a file's scripts look like ActionScript 1/2. See the new "ActionScript 1/2 and scenes" doc page. Unsupported commands (`attachMovie`, `duplicateMovieClip`, `loadMovie` and similar) are reported once and skipped.
+- The legacy-file message now explains that recent Animate versions drop button handlers when they convert old files to ActionScript 3.
+
+### Tests
+- Added the `as1` suite.
+
 ## 0.11.0-beta
 
 ### Added

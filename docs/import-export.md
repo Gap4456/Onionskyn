@@ -2,7 +2,7 @@
 
 ## Opening Adobe .fla files
 
-Use **File → Open project or .fla…**, or drop a `.fla` or `.xfl` file on the window. Onionskyn brings across layers, keyframes, tweens, symbols, gradients, text, masks, bitmaps, sounds and frame scripts. A report appears afterwards listing what was imported and anything that could not be. Frame scripts that depend on advanced CreateJS features, or that load outside files, may report errors in Preview. Always keep your original `.fla`; the import is a best-effort conversion.
+Use **File → Open project or .fla…**, or drop a `.fla` or `.xfl` file on the window. Onionskyn brings across layers, keyframes, tweens, symbols, gradients, text, masks, bitmaps, sounds and frame scripts. A report appears afterwards listing what was imported and anything that could not be. Frame scripts that depend on advanced CreateJS features, or that load outside files, may report errors in Preview. Files with several scenes are joined into one timeline, and scripts on clips and buttons are imported into each symbol's Script box. Old ActionScript 1/2 documents are switched to the AS1/2 script layer automatically; see [ActionScript 1/2 and scenes](actionscript.md). Always keep your original `.fla`; the import is a best-effort conversion.
 
 ## Exporting
 

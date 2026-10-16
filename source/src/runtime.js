@@ -18,7 +18,7 @@ function create(doc, cv, opt) {
   /* ---- helpers ---- */
   const isInst = (o) => (o.kind === 'clip' && (o.mc || o.btn)) || (o.kind === 'text' && !!o.name);
   function hasScripts() {
-    const chk = (layers) => layers.some((l) => l.kfs.some((k) => k.script && String(k.script).trim()));
+    const chk = (layers) => layers.some((l) => l.kfs.some((k) => (k.script && String(k.script).trim()) || k.objs.some((o) => o.kind === 'clip' && o.script && String(o.script).trim())));
     if (chk(doc.layers)) return true;
     for (const k of Object.keys(lib)) if (chk(lib[k].layers)) return true;
     return false;
@@ -101,6 +101,7 @@ function create(doc, cv, opt) {
       if (!k) {
         k = newInst(o.kind === 'clip' ? (lib[o.sym] || { layers: [], frames: 1 }) : { layers: [], frames: 1 }, inst, key, o);
         k.sym = o.sym; inst.kids.set(key, k); link(inst, k); born.push(k);
+        if (o.kind === 'clip' && o.script && String(o.script).trim()) runInstScript(k, o);
       }
       k.last = o;
     }
@@ -237,6 +238,7 @@ function create(doc, cv, opt) {
     Sound, Tween, Ease, Touch: { enable() { return true; } }
   };
   function exec(inst, kf) {
+    if (AS1) { runAS1(inst, String(kf.script), inst, inst); return; }
     let fn = fnCache.get(kf);
     if (fn === undefined) {
       try { fn = new Function('createjs', 'exportRoot', 'stage', 'lib', 'images', String(kf.script)); }
@@ -262,7 +264,7 @@ function create(doc, cv, opt) {
       const born = sync(inst);
       runSounds(inst);
       runScripts(inst);
-      for (const k of born) if (k.alive) enter(k);
+      for (const k of born) if (k.alive) { enter(k); if (AS1) fireH(k, 'load'); }
     } finally { inst.depth--; }
   }
   function goto(inst, f, play) {
@@ -276,11 +278,199 @@ function create(doc, cv, opt) {
     if (!inst.alive) return;
     if (inst.fresh) inst.fresh = false;
     else if (inst.playing && inst.total > 1) { if (inst === rootInst && opt.loop === false && inst.cur >= inst.total - 1) inst.playing = false; else { inst.cur = (inst.cur + 1) % inst.total; enter(inst); } }
+    if (AS1 && inst.alive) fireH(inst, 'enterFrame');
     for (const k of Array.from(inst.kids.values())) tick(k);
   }
   function tickAll() {
     tick(rootInst);
     for (const fn of tickers.slice()) { try { fn({ type: 'tick', delta: 1000 / doc.fps, paused: false }); } catch (e) { report('Ticker error: ' + (e && e.message || e)); } }
+  }
+
+  /* ---- ActionScript 1/2 layer: gives AS1 code the environment it expects (_root, _x, on(release), gotoAndPlay("scene", 1), ...) ---- */
+  const AS1 = doc.lang === 'as1';
+  const scenes = (() => {
+    const a = [];
+    for (const l of doc.layers) for (const k of l.kfs) if (k.scene) a.push({ name: String(k.scene), start: k.f });
+    a.sort((x, y) => x.start - y.start);
+    const out = [];
+    for (const x of a) if (!out.some((o) => o.start === x.start)) out.push(x);
+    if (!out.length || out[0].start > 0) out.unshift({ name: 'Scene 1', start: 0 });
+    out.forEach((x, i) => { x.end = (i + 1 < out.length ? out[i + 1].start : doc.frames) - 1; });
+    return out;
+  })();
+  const sceneAt = (f) => { let r = scenes[0]; for (const x of scenes) if (x.start <= f) r = x; return r; };
+  const t0 = performance.now(), asWarned = new Set();
+  const warnOnce = (what) => { if (!asWarned.has(what)) { asWarned.add(what); report(what + ' is not supported by the player yet and was ignored.'); } };
+  const isNum = (v) => typeof v === 'number' || (typeof v === 'string' && /^\s*\d+\s*$/.test(v));
+  function as1Goto(inst, a, b, play) {
+    if (b !== undefined && inst === rootInst) {
+      const sc = scenes.find((x) => x.name === String(a));
+      if (sc) {
+        if (isNum(b)) return goto(inst, Math.min(sc.end, sc.start + Math.max(1, Math.floor(+b)) - 1), play);
+        const m = labelsOf(inst); return goto(inst, m.has(String(b)) ? m.get(String(b)) : sc.start, play);
+      }
+      a = b;
+    }
+    if (isNum(a)) {
+      const n = Math.max(1, Math.floor(+a));
+      if (inst === rootInst) { const cs = sceneAt(inst.cur); return goto(inst, Math.min(cs.end, cs.start + n - 1), play); }
+      return goto(inst, n - 1, play);
+    }
+    return goto(inst, a, play);
+  }
+  function as1Scene(delta) {
+    const i = scenes.indexOf(sceneAt(rootInst.cur)), j = i + delta;
+    if (j >= 0 && j < scenes.length) goto(rootInst, scenes[j].start, true);
+  }
+  let mouse = { x: 0, y: 0 };
+  const kidByName = (inst, n) => { for (const k of inst.kids.values()) if (k.alive && k.name === n) return k; return null; };
+  const AS_PROPS = { _x: ['x', 1], _y: ['y', 1], _rotation: ['rotation', 1], _xscale: ['scaleX', 100], _yscale: ['scaleY', 100], _alpha: ['alpha', 100] };
+  const AS_HANDLERS = { onPress: 'press', onRelease: 'release', onReleaseOutside: 'releaseOutside', onRollOver: 'rollOver', onRollOut: 'rollOut', onEnterFrame: 'enterFrame', onLoad: 'load', onMouseDown: 'mouseDown', onMouseUp: 'mouseUp', onMouseMove: 'mouseMove', onKeyDown: 'keyDown', onKeyUp: 'keyUp' };
+  const AS_METHODS = new Set(['gotoAndPlay', 'gotoAndStop', 'play', 'stop', 'nextFrame', 'prevFrame', 'nextScene', 'prevScene']);
+  function as1Wrap(inst) {
+    if (inst.w1) return inst.w1;
+    const vars = inst.vars || (inst.vars = Object.create(null)), P = inst.proxy;
+    const meth = {
+      gotoAndPlay: (a, b) => as1Goto(inst, a, b, true), gotoAndStop: (a, b) => as1Goto(inst, a, b, false),
+      play: () => { inst.playing = true; }, stop: () => { inst.playing = false; },
+      nextFrame: () => goto(inst, Math.min(inst.total - 1, inst.cur + 1), false), prevFrame: () => goto(inst, Math.max(0, inst.cur - 1), false),
+      nextScene: () => as1Scene(1), prevScene: () => as1Scene(-1)
+    };
+    const own = (p) => !!AS_PROPS[p] || AS_METHODS.has(p) || p === '_visible' || p === '_name' || p === '_parent' || p === '_root' || p === '_currentframe' || p === '_totalframes' || p === '_xmouse' || p === '_ymouse' || !!kidByName(inst, p) || p in vars;
+    inst.w1 = new Proxy({}, {
+      has: (_, p) => typeof p === 'string' && own(p),
+      get(_, p) {
+        if (typeof p !== 'string') return undefined;
+        const ap = AS_PROPS[p];
+        if (ap) return P[ap[0]] * ap[1];
+        if (meth[p]) return meth[p];
+        switch (p) {
+          case '_visible': return P.visible;
+          case '_name': return inst.name;
+          case '_parent': return inst.parent ? as1Wrap(inst.parent) : undefined;
+          case '_root': case '_level0': return as1Wrap(rootInst);
+          case '_currentframe': return inst.cur + 1;
+          case '_totalframes': return inst.total;
+          case '_xmouse': return mouse.x; case '_ymouse': return mouse.y;
+        }
+        if (p in vars) return vars[p];
+        const k = kidByName(inst, p);
+        return k ? as1Wrap(k) : undefined;
+      },
+      set(_, p, v) {
+        if (typeof p !== 'string') return true;
+        const ap = AS_PROPS[p];
+        if (ap) { P[ap[0]] = (+v || 0) / ap[1]; return true; }
+        if (p === '_visible') { P.visible = !!v; return true; }
+        if (AS_HANDLERS[p]) { (inst.hset || (inst.hset = {}))[AS_HANDLERS[p]] = v; return true; }
+        vars[p] = v; return true;
+      }
+    });
+    return inst.w1;
+  }
+  function fireH(inst, name, arg) {
+    let n = 0;
+    const run = (fn) => { n++; try { fn.call(as1Wrap(inst), arg); } catch (e) { report('Script error in ' + (inst.name || 'clip') + ' (' + name + '): ' + (e && e.message || e)); } };
+    for (const fn of ((inst.hs && inst.hs[name]) || []).slice()) run(fn);
+    const f = inst.hset && inst.hset[name];
+    if (typeof f === 'function') run(f);
+    return n;
+  }
+  const fireUp = (inst, name) => { for (let k = inst; k; k = k.parent) if (fireH(k, name) > 0) return; };
+  function walk(inst, fn) { if (!inst.alive) return; fn(inst); for (const k of Array.from(inst.kids.values())) walk(k, fn); }
+  const KEYS = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, SPACE: 32, ENTER: 13, ESCAPE: 27, BACKSPACE: 8, TAB: 9, SHIFT: 16, CONTROL: 17, DELETEKEY: 46, INSERT: 45, HOME: 36, END: 35, PGUP: 33, PGDN: 34, CAPSLOCK: 20 };
+  const KEYNAMES = { '<Left>': 37, '<Up>': 38, '<Right>': 39, '<Down>': 40, '<Space>': 32, '<Enter>': 13, '<Escape>': 27, '<Backspace>': 8, '<Tab>': 9, '<Delete>': 46, '<Insert>': 45, '<Home>': 36, '<End>': 35, '<PageUp>': 33, '<PageDown>': 34 };
+  const keyDown = new Set(), keyListeners = []; let lastKey = 0;
+  const KeyObj = Object.assign({ isDown: (c) => keyDown.has(+c), getCode: () => lastKey, getAscii: () => lastKey, addListener: (o) => { if (o && keyListeners.indexOf(o) < 0) keyListeners.push(o); }, removeListener: (o) => { const i = keyListeners.indexOf(o); if (i >= 0) keyListeners.splice(i, 1); }, isToggled: () => false }, KEYS);
+  const onKey = (e, down) => {
+    const t = e.target; if (t && /^(input|textarea|select)$/i.test(t.tagName || '')) return;
+    lastKey = e.keyCode || 0;
+    if (down) keyDown.add(lastKey); else keyDown.delete(lastKey);
+    walk(rootInst, (k) => {
+      fireH(k, down ? 'keyDown' : 'keyUp');
+      if (down && k.hs) for (const nm of Object.keys(k.hs)) if (nm.indexOf('keyPress:') === 0) { const kn = nm.slice(9); if (KEYNAMES[kn] === lastKey || (kn.length === 1 && kn.toUpperCase().charCodeAt(0) === lastKey)) fireH(k, nm); }
+    });
+    for (const o of keyListeners.slice()) { const f = down ? o.onKeyDown : o.onKeyUp; if (typeof f === 'function') { try { f.call(o); } catch (er) { report('Key listener error: ' + (er && er.message || er)); } } }
+  };
+  const keyDn = (e) => onKey(e, true), keyUp = (e) => onKey(e, false);
+  if (AS1) { document.addEventListener('keydown', keyDn); document.addEventListener('keyup', keyUp); }
+  function resolvePath(from, str) {
+    if (str && typeof str === 'object') return str;
+    let cur = from; const p = String(str == null ? '' : str);
+    let parts = p.split(/[\/.]/);
+    if (p[0] === '/') { cur = rootInst; parts = parts.slice(1); }
+    for (const part of parts) {
+      if (!part || part === '.') continue;
+      if (part === '..' || part === '_parent') cur = cur && cur.parent;
+      else if (part === '_root' || part === '_level0') cur = rootInst;
+      else cur = cur && kidByName(cur, part);
+      if (!cur) return null;
+    }
+    return cur;
+  }
+  const toInst = (from, t) => (t && t.__inst ? t.__inst : resolvePath(from, t));
+  function AS1Sound(target) {
+    const o = this; let id = null, h = null; o.onSoundComplete = null;
+    o.attachSound = (name) => { id = sndIds.get(String(name)) || null; if (!id) report('Sound "' + name + '" was not found in the library.'); };
+    o.start = (off, loops) => { if (!id) return; if (h) h.stop(); h = makeSound(id, { loop: Math.max(0, (loops | 0) - 1) }, true); h.on('complete', () => { if (typeof o.onSoundComplete === 'function') { try { o.onSoundComplete(); } catch (e) { report('onSoundComplete error: ' + (e && e.message || e)); } } }); if (o._vol != null) h.volume = o._vol; };
+    o.stop = () => { if (h) h.stop(); };
+    o.setVolume = (v) => { o._vol = Math.max(0, +v || 0) / 100; if (h) h.volume = o._vol; };
+    o.getVolume = () => Math.round((o._vol == null ? 1 : o._vol) * 100);
+    o.setPan = () => {}; o.getPan = () => 0;
+    Object.defineProperty(o, 'position', { get: () => (h ? h.position : 0) });
+    Object.defineProperty(o, 'duration', { get: () => (h ? h.duration : 0) });
+  }
+  const JS_GLOBALS = new Set(['Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean', 'RegExp', 'Error', 'Function', 'JSON', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'NaN', 'Infinity', 'undefined', 'escape', 'unescape', 'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'arguments', 'console']);
+  function as1Scope(owner, target) {
+    const tw = as1Wrap(target);
+    const G = {
+      __on: (evs, fn) => { const h = owner.hs || (owner.hs = {}); for (const e of evs) (h[e] || (h[e] = [])).push(fn); },
+      __clip: (evs, fn) => { const h = owner.hs || (owner.hs = {}); for (const e of evs) (h[e] || (h[e] = [])).push(fn); },
+      __tt: (p) => { const k = resolvePath(target, p); return k ? as1Wrap(k) : {}; },
+      trace: (...a) => { try { console.log.apply(console, a); } catch (e) { /* no console */ } },
+      getURL: (u, w) => { const url = String(u == null ? '' : u); if (/^\s*(javascript|data|vbscript):/i.test(url)) { report('getURL blocked an unsafe address.'); return; } if (opt.onURL) opt.onURL(url, w); else { try { root.open(url, w || '_self'); } catch (e) { /* blocked */ } } },
+      random: (n) => Math.floor(Math.random() * Math.floor(+n || 0)),
+      getTimer: () => Math.round(performance.now() - t0),
+      int: (v) => Math.trunc(+v) || 0,
+      stopAllSounds: () => Sound.stop(),
+      setProperty: (t, p, v) => { const k = toInst(target, t); if (k) as1Wrap(k)[p] = v; },
+      getProperty: (t, p) => { const k = toInst(target, t); return k ? as1Wrap(k)[p] : undefined; },
+      Key: KeyObj, Mouse: { addListener() {}, removeListener() {}, hide() {}, show() {} },
+      Sound: AS1Sound,
+      attachMovie: () => warnOnce('attachMovie()'), duplicateMovieClip: () => warnOnce('duplicateMovieClip()'), removeMovieClip: () => warnOnce('removeMovieClip()'),
+      loadMovie: () => warnOnce('loadMovie()'), loadMovieNum: () => warnOnce('loadMovieNum()'), loadVariables: () => warnOnce('loadVariables()'), unloadMovie: () => warnOnce('unloadMovie()'),
+      fscommand: () => {}, updateAfterEvent: () => {}, startDrag: () => warnOnce('startDrag()'), stopDrag: () => {}
+    };
+    return new Proxy({}, {
+      has: (_, p) => typeof p === 'string' && !JS_GLOBALS.has(p),
+      get: (_, p) => { if (typeof p !== 'string') return undefined; return Object.prototype.hasOwnProperty.call(G, p) ? G[p] : tw[p]; },
+      set: (_, p, v) => { if (typeof p === 'string') tw[p] = v; return true; }
+    });
+  }
+  const asCache = new Map();
+  function runAS1(owner, src, target, self) {
+    let fn = asCache.get(src);
+    if (fn === undefined) {
+      try { fn = new Function('__s', 'with (__s) {\n' + Core.as1Prepare(src) + '\n}'); }
+      catch (e) { report('Script syntax error: ' + e.message); fn = null; }
+      asCache.set(src, fn);
+    }
+    if (!fn) return;
+    try { fn.call(as1Wrap(self), as1Scope(owner, target)); }
+    catch (e) { report('Script error' + (owner.name ? ' in ' + owner.name : '') + ': ' + (e && e.message || e)); }
+  }
+  function runInstScript(k, o) {
+    const src = String(o.script);
+    if (AS1) { runAS1(k, src, k.btn ? k.parent : k, k); return; }
+    let fn = fnCache.get(src);
+    if (fn === undefined) {
+      try { fn = new Function('createjs', 'exportRoot', 'stage', 'lib', 'images', src); }
+      catch (e) { report('Script syntax error: ' + e.message); fn = null; }
+      fnCache.set(src, fn);
+    }
+    if (!fn) return;
+    try { fn.call(k.proxy, createjs, rootInst.proxy, stageShim(), {}, {}); }
+    catch (e) { report('Script error' + (k.name ? ' in ' + k.name : '') + ': ' + (e && e.message || e)); }
   }
 
   /* ---- drawing ---- */
@@ -346,7 +536,9 @@ function create(doc, cv, opt) {
     return null;
   }
   const chainOf = (inst) => { const s = new Set(); for (let k = inst; k; k = k.parent) s.add(k); return s; };
+  const AS_MOUSE = { mousedown: 'press', click: 'release', mouseover: 'rollOver', mouseout: 'rollOut' };
   function dispatch(target, evt, from, bubble) {
+    if (AS1 && AS_MOUSE[evt.type] && from === undefined) fireUp(target, AS_MOUSE[evt.type]);
     evt.target = target.proxy;
     for (let k = from || target; k; k = bubble === false ? null : k.parent) {
       evt.currentTarget = k.proxy;
@@ -354,7 +546,7 @@ function create(doc, cv, opt) {
     }
   }
   const mk = (type, p) => ({ type, stageX: p.x / dpr, stageY: p.y / dpr, rawX: p.x / dpr, rawY: p.y / dpr });
-  function wantsPointer(chain) { for (const k of chain) if (k.btn || k.ls.click || k.ls.mousedown || k.ls.pressup) return true; return false; }
+  function wantsPointer(chain) { for (const k of chain) if (k.btn || k.ls.click || k.ls.mousedown || k.ls.pressup || (k.hs && (k.hs.press || k.hs.release || k.hs.releaseOutside)) || (k.hset && (k.hset.press || k.hset.release))) return true; return false; }
   function setHover(t, p) {
     if (t !== hoverTop) {
       if (hoverTop && hoverTop.alive) dispatch(hoverTop, mk('mouseout', p));
@@ -363,19 +555,22 @@ function create(doc, cv, opt) {
     }
     cv.style.cursor = t && wantsPointer(hoverChain) ? 'pointer' : '';
   }
-  cv.addEventListener('pointermove', (e) => { const p = evtPt(e); setHover(pick(p.x, p.y), p); if (paused) render(); });
+  cv.addEventListener('pointermove', (e) => { const p = evtPt(e); mouse = { x: p.x / dpr, y: p.y / dpr }; setHover(pick(p.x, p.y), p); if (AS1) walk(rootInst, (k) => fireH(k, 'mouseMove')); if (paused) render(); });
   cv.addEventListener('pointerleave', (e) => { setHover(null, evtPt(e)); });
   cv.addEventListener('pointerdown', (e) => {
     const p = evtPt(e), t = pick(p.x, p.y);
     down = t; downChain = t ? chainOf(t) : new Set();
     dispatch(rootInst, mk('stagemousedown', p), rootInst, false);
+    if (AS1) walk(rootInst, (k) => fireH(k, 'mouseDown'));
     if (t) dispatch(t, mk('mousedown', p));
   });
   cv.addEventListener('pointerup', (e) => {
     const p = evtPt(e), t = pick(p.x, p.y), d = down;
     down = null; downChain = new Set();
     dispatch(rootInst, mk('stagemouseup', p), rootInst, false);
+    if (AS1) walk(rootInst, (k) => fireH(k, 'mouseUp'));
     if (d && d.alive) dispatch(d, mk('pressup', p));
+    if (AS1 && d && d.alive && t !== d) fireUp(d, 'releaseOutside');
     if (t && d && t === d) dispatch(t, mk('click', p));
     if (paused) render();
   });
@@ -408,7 +603,7 @@ function create(doc, cv, opt) {
     root: rootInst.proxy, errors, start, render, hasScripts: hasScripts(),
     setPaused: (v) => { paused = !!v; }, isPaused: () => paused, tick: tickAll,
     scrub: (f) => { goto(rootInst, f, false); render(); },
-    stop: () => cancelAnimationFrame(raf)
+    stop: () => { cancelAnimationFrame(raf); document.removeEventListener('keydown', keyDn); document.removeEventListener('keyup', keyUp); }
   };
 }
 root.FCRuntime = { create };

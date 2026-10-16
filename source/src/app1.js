@@ -5,7 +5,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.11.0-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.12.1-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -212,7 +212,7 @@ function renderStage() {
   if (!S.doc) return;
   const ctx = sctx, z = S.view.z, d = S.doc;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = CSSV.pasteboard; ctx.fillRect(0, 0, stage.width, stage.height);
+  ctx.fillStyle = S.editBg || CSSV.pasteboard; ctx.fillRect(0, 0, stage.width, stage.height);
   ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * S.view.px, dpr * S.view.py);
   ctx.save();
   const inSym = S.edit.length > 0;

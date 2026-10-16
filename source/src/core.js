@@ -370,11 +370,12 @@ function normalizeDoc(d) {
     if (!Array.isArray(l.kfs) || !l.kfs.length) l.kfs = [mkKf(0)];
     l.kfs.sort((a, b) => a.f - b.f);
     if (l.kfs[0].f !== 0) l.kfs.unshift(mkKf(0));
-    for (const k of l.kfs) { k.objs = k.objs || []; k.tween = k.tween || 'none'; k.ease = k.ease || { type: 'linear', amt: 50 }; }
+    for (const k of l.kfs) { k.objs = k.objs || []; k.tween = k.tween || 'none'; k.ease = k.ease || { type: 'linear', amt: 50 }; if (k.scene != null) k.scene = String(k.scene).slice(0, 80); }
     const mx = l.kfs[l.kfs.length - 1].f + 1;
     if (mx > d.frames) d.frames = mx;
   }
   d.frames = Math.min(d.frames, 900);
+  if (d.lang !== 'as1') delete d.lang;
   return d;
 }
 
@@ -605,6 +606,39 @@ function moveKeyframe(layer, from, to) {
   const k = kfAt(layer, from);
   if (!k || from === 0 || to <= 0 || kfAt(layer, to)) return false;
   k.f = to; sortKfs(layer);
+  return true;
+}
+/* frame ranges: reverse the order of the keyframes inside frames a..b, or slide a block of keyframes together */
+function reverseFrames(layers, a, b, doc) {
+  b = Math.min(b, doc.frames - 1);
+  if (!(b > a)) return 0;
+  let n = 0;
+  for (const layer of layers) {
+    if (a > 0) insertKeyframe(layer, a, false);
+    if (b + 1 < doc.frames) insertKeyframe(layer, b + 1, false);
+    const ps = layer.kfs.filter((k) => k.f >= a && k.f <= b);
+    if (ps.length < 1) continue;
+    const old = ps.map((k) => ({ t: k.tween || 'none', e: k.ease }));
+    ps.forEach((k, i) => { const nx = ps[i + 1]; k.nf = a + b + 1 - (nx ? nx.f : b + 1); });
+    ps.forEach((k, i) => { k.f = k.nf; delete k.nf; k.tween = i ? old[i - 1].t : 'none'; if (i && old[i - 1].e) k.ease = old[i - 1].e; });
+    sortKfs(layer); n++;
+  }
+  return n;
+}
+function moveKeyframes(layers, a, b, delta, doc, only) {
+  if (!delta) return true;
+  const plan = [];
+  let top = 0;
+  for (const layer of layers) {
+    const mv = layer.kfs.filter((k) => k.f > 0 && (only ? only.has(k) : k.f >= a && k.f <= b));
+    if (!mv.length) continue;
+    const stay = new Set(layer.kfs.filter((k) => !mv.includes(k)).map((k) => k.f));
+    for (const k of mv) { const t = k.f + delta; if (t < 1 || stay.has(t)) return false; top = Math.max(top, t); }
+    plan.push([layer, mv]);
+  }
+  if (!plan.length || top + 1 > 900) return false;
+  for (const [layer, mv] of plan) { for (const k of mv) k.f += delta; sortKfs(layer); }
+  if (top + 1 > doc.frames) doc.frames = top + 1;
   return true;
 }
 /* returns {ok, msg} ; creates an end keyframe at the last doc frame when none follows */
@@ -1230,6 +1264,7 @@ function importInstance(el, ctx, depth, id) {
     ctx.inProg.delete(name);
   }
   const g = { id, kind: 'clip', sym: name, name: attr(el, 'name', ''), mc: type === 'movie clip', mode: 'loop', first: 0, pv: [0, 0], op: 1, t: newT() };
+  { const ae = xmlKid(el, 'Actionscript'), tx = ae ? (xmlKid(ae, 'script') || ae).textContent.trim() : ''; if (tx) { g.script = tx; ctx.rep.instScripts++; ctx.scripts.push(tx); } }
   if (type === 'button') { g.mode = 'single'; g.btn = true; ctx.rep.buttons++; }
   else if (type === 'graphic') {
     const lm = attr(el, 'loop', 'loop');
@@ -1277,7 +1312,7 @@ function importTimeline(tl, ctx, depth) {
       const kf = mkKf(f, objs);
       const scEl = xmlKid(fe, 'Framescript') || xmlKid(fe, 'Actionscript');
       const scTxt = scEl ? (xmlKid(scEl, 'script') || scEl).textContent.trim() : '';
-      if (scTxt) { kf.script = scTxt; ctx.rep.scripts++; }
+      if (scTxt) { kf.script = scTxt; ctx.rep.scripts++; ctx.scripts.push(scTxt); }
       const sn = attr(fe, 'soundName', '');
       if (sn) {
         const lm = attr(fe, 'soundLoopMode', ''), cnt = parseInt(attr(fe, 'soundLoop', 0), 10) || 0;
@@ -1424,7 +1459,7 @@ async function importFLA(buf) {
   let root;
   try { root = parseXML((await zip.file(domName).async('string')).replace(/^\uFEFF/, '')); }
   catch (e) { const er = new Error('badxml'); er.detail = String(e && e.message || e); throw er; }
-  const rep = { soundFrames: 0, soundMissing: 0, sounds: 0, gradient: 0, bitmap: 0, images: 0, bitmapMissing: 0, tlf: 0, textCount: 0, mask: 0, masked: 0, guide: 0, missing: 0, other: 0, motionObject: 0, scripts: 0, buttons: 0, animatedSyms: new Set() };
+  const rep = { soundFrames: 0, soundMissing: 0, sounds: 0, gradient: 0, bitmap: 0, images: 0, bitmapMissing: 0, tlf: 0, textCount: 0, mask: 0, masked: 0, guide: 0, missing: 0, other: 0, motionObject: 0, scripts: 0, instScripts: 0, buttons: 0, animatedSyms: new Set() };
   const lib = new Map();
   for (const name of Object.keys(zip.files)) {
     if (!name.startsWith(base) || !/^LIBRARY\/.*\.xml$/i.test(name.slice(base.length)) || zip.files[name].dir) continue;
@@ -1434,22 +1469,139 @@ async function importFLA(buf) {
     } catch (e) { /* skip unreadable library item */ }
   }
   const bms = await importBitmaps(root, zip, base, names, rep);
-  const ctx = { rep, lib, libOut: {}, inProg: new Set(), bitmaps: bms.map };
+  const ctx = { rep, lib, libOut: {}, inProg: new Set(), bitmaps: bms.map, scripts: [] };
   const timelines = xmlKid(root, 'timelines');
   const tls = xmlKids(timelines, 'DOMTimeline');
   if (!tls.length) throw new Error('nodom');
-  const tl = importTimeline(tls[0], ctx, 0);
+  /* scenes are joined into one timeline, as Flash does when it publishes: each scene's layers only have content inside that scene's frame range, and the first keyframe of each scene carries a scene marker */
+  const multi = tls.length > 1, parts = [];
+  let total = 0;
+  tls.forEach((te, i) => {
+    const t = importTimeline(te, ctx, 0), nm = attr(te, 'name', 'Scene ' + (i + 1));
+    if (!t.layers.length) { const l = mkLayer('Layer 1'); l.kfs = [mkKf(0)]; t.layers.push(l); }
+    parts.push({ t, nm, start: total }); total += t.frames;
+  });
+  const layers = [];
+  for (const { t, nm, start } of parts) {
+    const end = start + t.frames;
+    t.layers.forEach((l, li) => {
+      if (start > 0) { for (const k of l.kfs) k.f += start; l.kfs.unshift(mkKf(0)); }
+      if (end < total && !l.kfs.some((k) => k.f === end)) l.kfs.push(mkKf(end));
+      if (multi) l.name = nm + ': ' + l.name;
+      if (li === 0) { const k0 = l.kfs.find((k) => k.f === start); if (k0) k0.scene = nm; }
+      layers.push(l);
+    });
+  }
   const doc = {
     w: Math.round(+attr(root, 'width', 550)), h: Math.round(+attr(root, 'height', 400)), fps: +attr(root, 'frameRate', 24),
-    bg: attr(root, 'backgroundColor', '#FFFFFF'), frames: tl.frames, layers: tl.layers, lib: ctx.libOut
+    bg: attr(root, 'backgroundColor', '#FFFFFF'), frames: total, layers, lib: ctx.libOut
   };
+  /* scripts written for ActionScript 1/2 (the document says so, or the code gives it away) run through the player's AS1 layer */
+  { let asv = '';
+    try { const pf = zip.file(base + 'PublishSettings.xml'); if (pf) { const m = /<ActionScriptVersion>\s*(\d)/.exec(await pf.async('string')); if (m) asv = m[1]; } } catch (e) { /* no publish settings */ }
+    if (asv === '1' || asv === '2') { doc.lang = 'as1'; rep.lang = 'ActionScript ' + asv; }
+    else if (ctx.scripts.some(as1Looks)) { doc.lang = 'as1'; rep.lang = 'ActionScript 1/2 (detected)'; } }
   normalizeDoc(doc);
   doc.images = bms.images;
   doc.sounds = await importSounds(root, zip, base, names, rep);
   rep.sounds = Object.keys(doc.sounds).length;
   rep.scenes = tls.length;
+  if (total > 900) rep.truncated = total;
   rep.animatedSyms = Array.from(rep.animatedSyms);
   return { doc, report: rep };
+}
+
+
+/* ---------- ActionScript 1 / 2 support (parsing helpers; the runtime provides the AS1 environment) ---------- */
+const AS1_MARK = /\b(getURL|_root|_parent|_level0|onClipEvent|tellTarget|loadMovie|loadVariables|duplicateMovieClip|attachMovie|removeMovieClip|setProperty|getProperty|stopAllSounds|prevScene|nextScene)\b|\bon\s*\(\s*(press|release|releaseOutside|rollOver|rollOut|dragOver|dragOut|keyPress)\b|\b_(x|y|alpha|rotation|xscale|yscale|visible|currentframe|totalframes|xmouse|ymouse)\b|\.on(Press|Release|RollOver|RollOut|EnterFrame|Load)\s*=/;
+function as1Looks(src) { return AS1_MARK.test(String(src || '')); }
+function as1EndStr(s, i) { const q = s[i]; let j = i + 1; while (j < s.length && s[j] !== q) { if (s[j] === '\\') j++; j++; } return Math.min(s.length, j + 1); }
+function as1MatchBrace(s, i) { /* s[i] is '{' (or '('); returns the index after its partner */
+  const open = s[i], close = open === '{' ? '}' : ')'; let d = 0, j = i;
+  while (j < s.length) {
+    const c = s[j];
+    if (c === '"' || c === "'") { j = as1EndStr(s, j); continue; }
+    if (c === '/' && s[j + 1] === '/') { while (j < s.length && s[j] !== '\n') j++; continue; }
+    if (c === '/' && s[j + 1] === '*') { const e = s.indexOf('*/', j + 2); j = e < 0 ? s.length : e + 2; continue; }
+    if (c === open) d++; else if (c === close) { d--; if (d === 0) return j + 1; }
+    j++;
+  }
+  return -1;
+}
+/* drop AS2 type annotations: var x:Type, function f(a:Type):Type */
+function as1StripTypes(src) {
+  const T = '[A-Za-z_$][\\w$.]*';
+  const fix = (code) => code
+    .replace(new RegExp('\\bvar\\s+([\\w$]+)\\s*:\\s*' + T, 'g'), 'var $1')
+    .replace(new RegExp('\\bfunction\\s*([\\w$]*)\\s*\\(([^()]*)\\)\\s*(?::\\s*' + T + ')?', 'g'), (m, n, ps) => 'function ' + n + '(' + ps.replace(new RegExp('\\s*:\\s*' + T, 'g'), '') + ')');
+  let out = '', i = 0, seg = 0; const s = String(src);
+  while (i < s.length) {
+    const c = s[i];
+    let e = -1;
+    if (c === '"' || c === "'") e = as1EndStr(s, i);
+    else if (c === '/' && s[i + 1] === '/') { e = s.indexOf('\n', i); if (e < 0) e = s.length; }
+    else if (c === '/' && s[i + 1] === '*') { e = s.indexOf('*/', i + 2); e = e < 0 ? s.length : e + 2; }
+    if (e < 0) { i++; continue; }
+    out += fix(s.slice(seg, i)) + s.slice(i, e); i = seg = e;
+  }
+  return out + fix(s.slice(seg));
+}
+/* rewrite one AS1 script into JavaScript for the player's AS1 scope:
+   on(...) / onClipEvent(...) blocks -> __on / __clip registrations; top-level function and var become timeline variables;
+   tellTarget(x) { } -> with (__tt(x)) { } */
+function as1Prepare(src, inner) {
+  const s = inner ? String(src) : as1StripTypes(src), n = s.length;
+  let out = '', i = 0, depth = 0, stmt = true; const fns = [];
+  const ws = (j) => { while (j < n && /\s/.test(s[j])) j++; return j; };
+  const wordAt = (j) => { let k = j; while (k < n && /[\w$]/.test(s[k])) k++; return k; };
+  while (i < n) {
+    const c = s[i];
+    if (c === '"' || c === "'") { const e = as1EndStr(s, i); out += s.slice(i, e); i = e; stmt = false; continue; }
+    if (c === '/' && s[i + 1] === '/') { let e = s.indexOf('\n', i); if (e < 0) e = n; out += s.slice(i, e); i = e; continue; }
+    if (c === '/' && s[i + 1] === '*') { let e = s.indexOf('*/', i + 2); e = e < 0 ? n : e + 2; out += s.slice(i, e); i = e; continue; }
+    if (/[A-Za-z_$]/.test(c)) {
+      const j = wordAt(i), w = s.slice(i, j), prev = out.replace(/\s+$/, '').slice(-1);
+      const top = !inner && depth === 0 && prev !== '.';
+      if (top && (w === 'on' || w === 'onClipEvent')) {
+        const k = ws(j);
+        if (s[k] === '(') {
+          const pe = as1MatchBrace(s, k);
+          const b = pe < 0 ? -1 : ws(pe);
+          if (pe > 0 && s[b] === '{') {
+            const be = as1MatchBrace(s, b);
+            if (be > 0) {
+              const raw = s.slice(k + 1, pe - 1), evs = [];
+              raw.replace(/(\w+)(?:\s*"([^"]*)")?/g, (m, e, key) => { evs.push(key != null ? e + ':' + key : e); return m; });
+              out += (w === 'on' ? '__on(' : '__clip(') + JSON.stringify(evs) + ', function () {' + as1Prepare(s.slice(b + 1, be - 1), true) + '});';
+              i = be; stmt = true; continue;
+            }
+          }
+        }
+      }
+      if (top && w === 'function') {
+        const k = ws(j), e2 = wordAt(k);
+        if (e2 > k && s[ws(e2)] === '(') {
+          const name = s.slice(k, e2), pk = ws(e2), pe = as1MatchBrace(s, pk), b = pe < 0 ? -1 : ws(pe);
+          if (pe > 0 && s[b] === '{') {
+            const be = as1MatchBrace(s, b);
+            if (be > 0) { fns.push(name + ' = function ' + s.slice(pk, pe) + ' {' + as1Prepare(s.slice(b + 1, be - 1), true) + '};'); i = be; stmt = true; continue; }
+          }
+        }
+      }
+      if (top && w === 'var' && stmt) { i = ws(j); continue; }
+      if (w === 'tellTarget' && prev !== '.') {
+        const k = ws(j);
+        if (s[k] === '(') { const pe = as1MatchBrace(s, k); if (pe > 0) { out += 'with (__tt(' + s.slice(k + 1, pe - 1) + '))'; i = pe; stmt = false; continue; } }
+      }
+      out += w; i = j; stmt = false; continue;
+    }
+    if (c === '{') { depth++; stmt = true; }
+    else if (c === '}') { depth--; stmt = true; }
+    else if (c === ';') stmt = true;
+    else if (!/\s/.test(c)) stmt = false;
+    out += c; i++;
+  }
+  return fns.join('\n') + (fns.length ? '\n' : '') + out;
 }
 
 root.FCCore = {
@@ -1457,7 +1609,7 @@ root.FCCore = {
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,
   groupEntries, drawUnits, maskedDraw, groupAlpha, tweenPairs, shapeTweenIssues, ease, bezierEase, morphContours, evalLayerObjs, evalDoc, kfIndexAt, kfAt, kfFor, sortKfs, ensureEditable, insertKeyframe, insertFrames, removeFrames,
-  clearKeyframe, moveKeyframe, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
-  importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
+  clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
+  as1Looks, as1StripTypes, as1Prepare, importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
 };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -46,15 +46,16 @@ Press **F** to pick the Fluid brush; the **Brush** tab opens with its settings. 
 - **Align:** align or distribute the selection, or align to the stage.
 - **Frame:** tween type and easing, frame label, sound, and frame script.
 - **Library:** symbols, images and sounds in the document.
-- **Doc:** name, stage size, frames per second, number of frames, stage colour and onion-skin settings.
+- **Doc:** name, stage size, frames per second, number of frames, stage colour, **Pasteboard** colour (the area around the stage, also used while editing a symbol; remembered in this browser) and onion-skin settings.
 
 ## Timeline, frames and layers
 
 - **F5** adds a frame (holds the previous content longer). **F6** adds a keyframe copying the previous one. **F7** adds a blank keyframe. **Shift+F5** removes a frame and **Shift+F6** clears a keyframe. The same actions are in the **+ Frame, + Key, + Blank** buttons and the right-click menu.
 - **,** and **.** step back and forward one frame. **Shift+,** and **Shift+.** jump to the first and last frame.
+- **Select a range of frames:** Shift+click a frame in a layer's row, or Shift+click the frame numbers to include every unlocked layer. Drag inside the highlighted range to slide all its keyframes together. **Reverse** (button or right-click menu) flips the order of the selected frames; tweens inside the range are reversed too.
 - Drag a keyframe sideways in the timeline to move it. Frames cannot be shortened below the last keyframe.
 - The layers toolbar adds, duplicates, reorders, deletes and masks layers. Each layer can be hidden or locked.
-- **Onion** shows faint copies of the neighbouring frames so you can judge motion; the Doc tab sets how many. **Loop** makes playback repeat.
+- **Onion** shows faint copies of the neighbouring frames so you can judge motion; the Doc tab sets how many frames **Before** and **After** (0–5 each, set independently, so 3 before and 0 after works). **Loop** makes playback repeat.
 - Group objects with **Ctrl+G** and ungroup with **Ctrl+Shift+G**.
 
 ## Tweens and easing
@@ -80,6 +81,8 @@ Press **F** to pick the Fluid brush; the **Brush** tab opens with its settings. 
 - Scripts run only in **▶ Preview** and in exported HTML, never in the editor itself. Preview runs in a sandbox, and errors appear next to the Preview title.
 - Scripts use a CreateJS-style API: `this.stop()`, `this.play()`, `this.gotoAndStop(frame)`, `this.gotoAndPlay(frame)`, named instances such as `this.btn_next`, mouse events, `createjs.Sound.play("id")` and `createjs.Ticker`.
 - A keyframe with a script shows a small **a** on the timeline; one with a sound shows ♪.
+- Movie clips and buttons have their own **Script** box in the Object tab. Set the symbol type to **Button** for a clip with Up, Over, Down and Hit frames.
+- For old Flash code (`on (release)`, `_root`, `gotoAndPlay("Scene", 1)`, `getURL`) set **Scripts** to **ActionScript 1/2** in the Doc tab. See [ActionScript 1/2 and scenes](actionscript.md).
 
 
 ## Gradients

@@ -11,12 +11,14 @@ Onionskyn is an independent project and is not affiliated with Adobe.
 - [Tutorial 2: symbols and masks](docs/tutorial-2-symbols-and-masks.md)
 - [Reference](docs/reference.md): tools, panels, timeline, tweens, text, images, sound, scripting
 - [Importing and exporting](docs/import-export.md)
+- [ActionScript 1/2 and scenes](docs/actionscript.md): running old Flash code, and how scenes import
 - [Keyboard shortcuts](docs/shortcuts.md)
 - [Troubleshooting and known limits](docs/troubleshooting.md)
+- [Building from source](docs/building.md): the source layout, building and testing
 
 ## Building from source
 
-The app is a single HTML file built from the files in `source/src/`. From the `source/` folder, run `bash build.sh` to produce `dist/onionskyn.html`, and `npm test` to run the regression suites. See [Building from source](source/building.md) for the layout and the tests.
+The app is a single HTML file built from the files in `src/`. Run `./build.sh` to produce `dist/onionskyn.html`, and `npm test` to run the regression suites. See [Building from source](docs/building.md) for the layout and the tests.
 
 ## Reporting a problem
 
