@@ -37,7 +37,7 @@ function create(doc, cv, opt) {
     if (f == null) f = inst.cur;
     if (f === inst.cur && inst.cache && inst.cache.f === f) return inst.cache.list;
     const list = [];
-    for (const l of inst.layers) list.push({ layer: l, objs: l.visible === false ? [] : Core.evalLayerObjs(l, f) }); /* hidden layers stay in the list (empty) so a hidden mask still disables its masking, exactly as in the editor */
+    for (const l of inst.layers) list.push({ layer: l, objs: l.visible === false ? [] : Core.evalLayerObjs(l, f).filter(Core.notGhost) }); /* hidden layers stay in the list (empty) so a hidden mask still disables its masking, exactly as in the editor */
     if (f === inst.cur) inst.cache = { f, list };
     return list;
   }
@@ -528,7 +528,7 @@ function create(doc, cv, opt) {
       const en = entries[i], inst = en.inst;
       if (inst.kind === 'text' || inst.ov.mouse === false) continue;
       const hf = inst.btn && inst.total > 3 ? 3 : inst.cur;
-      const objs = hf === inst.cur ? evalInst(inst).find((x) => x.layer === en.layer) : { objs: Core.evalLayerObjs(en.layer, hf) };
+      const objs = hf === inst.cur ? evalInst(inst).find((x) => x.layer === en.layer) : { objs: Core.evalLayerObjs(en.layer, hf).filter(Core.notGhost) };
       if (!objs) continue;
       const p = en.M.inverse().transformPoint(new DOMPoint(px, py));
       for (const o of objs.objs) { if (isInst(o)) continue; if (Core.hitObj(o, p.x, p.y, 0, hc, true)) return inst; }

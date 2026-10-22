@@ -8,6 +8,7 @@ const TOOLS = [
   { id: 'brush', k: 'B', n: 'Brush (paints a filled shape; [ and ] change size)', svg: '<path d="M16.5 3.5c-3 .6-6.5 4-8 7l1.5 1.5c3-1.5 6.4-5 7-8.5z"/><path d="M8.3 11.3c-2 0-3.3 1.2-3.3 3.2 0 1-.5 1.6-1.2 2 2.6.6 6-.2 6-3.4"/>', cur: 'crosshair' },
   { id: 'fluid', k: 'F', n: 'Fluid brush (smooth, tapered strokes; [ and ] change size)', svg: '<path d="M16.8 3.2c-4 .2-8.4 3.6-9.6 8.2l1.4 1.4c4.6-1.2 8-5.6 8.2-9.6z"/><path d="M7 12.6c-1.6 0-2.6 1.2-2.6 2.8 0 .8-.4 1.3-1 1.6 2.2.4 4.6-.6 4.6-2.8"/><path d="M10.5 16.5c1.6.4 3.2-.2 5-1.8" stroke-dasharray="1.6 2"/>', cur: 'crosshair' },
   { id: 'eraser', k: 'E', n: 'Eraser (cuts fills and lines on the active layer; [ and ] change size)', svg: '<path d="M7.5 16.5h8"/><path d="M4.2 11.8L11 5l4.2 4.2-6.8 6.8H6z"/><path d="M8 8.2l4.2 4.2"/>', cur: 'crosshair' },
+  { id: 'bone', k: 'J', n: 'Bone arm (click shoulder, elbow, then hand; drag the hand to pose it)', svg: '<circle cx="4.5" cy="15" r="2"/><circle cx="10" cy="7" r="2"/><circle cx="16" cy="13" r="2"/><path d="M5.8 13.4l3-4.8M11.6 8l3 3.6"/>', cur: 'crosshair' },
   { id: 'line', k: 'L', n: 'Line (Shift = 45°)', svg: '<path d="M4 16L16 4"/>', cur: 'crosshair' },
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
@@ -36,6 +37,7 @@ function buildTools() {
 function setTool(id) {
   if (S.pen && id !== 'pen') finishPen(false);
   endTextEdit(true);
+  S.bone = null;
   S.tool = id; S.draw = null; S.nodeSel = id === 'node' ? S.nodeSel : null;
   $$('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
   const t = TOOLS.find((x) => x.id === id);
@@ -53,13 +55,16 @@ function setTool(id) {
 }
 
 /* ---------- hit testing & creation ---------- */
-function hitAt(x, y, tolPx) {
+function hitAt(x, y, tolPx, rigFirst) {
   const tol = tolPx / S.view.z, ls = layers();
-  for (let i = ls.length - 1; i >= 0; i--) {
-    const l = ls[i];
-    if (!l.visible || l.locked) continue;
-    const objs = C.evalLayerObjs(l, S.frame);
-    for (let j = objs.length - 1; j >= 0; j--) if (hitObj(objs[j], x, y, tol, hctx)) return { lid: l.id, id: objs[j].id, o: objs[j] };
+  /* a bone arm is a guide laid over artwork, so it is picked last unless asked for first (Alt+click) */
+  for (const pass of rigFirst ? [true, false] : [false, true]) {
+    for (let i = ls.length - 1; i >= 0; i--) {
+      const l = ls[i];
+      if (!l.visible || l.locked) continue;
+      const objs = C.evalLayerObjs(l, S.frame);
+      for (let j = objs.length - 1; j >= 0; j--) if (!!objs[j].rig === pass && hitObj(objs[j], x, y, tol, hctx)) return { lid: l.id, id: objs[j].id, o: objs[j] };
+    }
   }
   return null;
 }
@@ -179,6 +184,7 @@ function onDown(e) {
     case 'fluid': if (canDraw()) S.draw = { type: 'fluid', pts: [brushPt(p.w, e)] }; break;
     case 'eraser': if (canDraw()) { S.draw = { type: 'erase', last: p.w, changed: false, undone: false }; eraseSweep(S.draw, p.w, p.w); S.brushHover = p.w; } break;
     case 'line': case 'rect': case 'ellipse': if (canDraw()) S.draw = { type: S.tool, start: p.w, cur: p.w, shift: e.shiftKey, alt: e.altKey }; break;
+    case 'bone': boneDown(e, p); break;
     case 'text': textDown(e, p); break;
     case 'bucket': bucketDown(e, p); break;
     case 'dropper': dropperDown(e, p); break;
@@ -199,6 +205,7 @@ function onMove(e) {
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
     else if (d.type === 'grad') gradDrag(p.w);
+    else if (d.type === 'rig') rigDrag(p.w);
     return;
   }
   if (S.draw) {
@@ -207,11 +214,13 @@ function onMove(e) {
     if (dr.type === 'pencil') dr.pts.push(p.w); else if (dr.type === 'brush' || dr.type === 'fluid') dr.pts.push(brushPt(p.w, e)); else { dr.cur = p.w; dr.shift = e.shiftKey; dr.alt = e.altKey; }
     invalidate(); return;
   }
+  if (S.bone) invalidate();
   if (S.pen) { penMove(p.w); return; }
   if (S.tool === 'select' && !S.space) {
     const one = singleSel();
     let cur = 'default';
-    if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
+    if (one && !getLayer(one.lid).locked && rigEditing(one.o) && rigHit(one.o, p.sx, p.sy)) cur = 'pointer';
+    else if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
       cur = gradHit(one.o, p.sx, p.sy) ? 'pointer' : hitAt(p.w.x, p.w.y, 5) ? 'move' : 'default';
     } else if (one && !getLayer(one.lid).locked) {
       const h = hitHandle(getHandles(one.o), p.sx, p.sy);
@@ -225,9 +234,10 @@ function onUp(e) {
   const p = stagePt(e);
   const d = S.drag;
   if (d) {
+    C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
-    if ((d.type === 'node' || d.type === 'grad') && d.started) { commit(); }
+    if ((d.type === 'node' || d.type === 'grad' || d.type === 'rig') && d.started) { commit(); }
     if ((d.type === 'move' || d.type === 'scale' || d.type === 'rotate') && d.started) commit();
     S.drag = null; invalidate();
     return;
@@ -315,12 +325,13 @@ function endTextEdit(ok) {
 /* ---------- selection tool ---------- */
 function selDown(e, p) {
   const w = p.w, one = singleSel();
+  if (one && !getLayer(one.lid).locked && rigEditing(one.o)) { const part = rigHit(one.o, p.sx, p.sy); if (part) { S.drag = { type: 'rig', part, lid: one.lid, id: one.id, start: p.w, started: false }; return; } }
   if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
   if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
     const h = hitHandle(getHandles(one.o), p.sx, p.sy);
     if (h) { S.drag = { type: h.id === 'rot' ? 'rotate' : 'scale', h, start: w, started: false, lid: one.lid, id: one.id }; return; }
   }
-  const hit = hitAt(w.x, w.y, 5);
+  const hit = hitAt(w.x, w.y, 5, e.altKey);
   if (hit) {
     const inSel = S.sel.some((s) => s.lid === hit.lid && s.id === hit.id);
     if (e.shiftKey) S.sel = inSel ? S.sel.filter((s) => !(s.lid === hit.lid && s.id === hit.id)) : S.sel.concat([{ lid: hit.lid, id: hit.id }]);
@@ -345,6 +356,7 @@ function moveDrag(w, e) {
     if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 3) return;
     d.started = true; beginEdit();
     d.orig = S.sel.map((s) => { const o = findEditable(s.lid, s.id); return o ? { o, x: o.t.x, y: o.t.y } : null; }).filter(Boolean);
+    for (const q of d.orig) if (q.o.bind) C.freeBind.add(q.o.id);
   }
   let dx = w.x - d.start.x, dy = w.y - d.start.y;
   if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
@@ -358,6 +370,7 @@ function xformDrag(w, e) {
     pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
     const o = findEditable(d.lid, d.id);
     if (!o) { S.drag = null; return; }
+    if (o.bind) C.freeBind.add(o.id);
     d.o = o; d.t0 = Object.assign({}, o.t); d.b = localBounds(o); d.M0 = matOf(o.t); d.inv = minv(d.M0); d.started = true;
     const cx = (d.b.x0 + d.b.x1) / 2, cy = (d.b.y0 + d.b.y1) / 2;
     d.C = mapply(d.M0, cx, cy); d.cx = cx; d.cy = cy;
@@ -759,6 +772,7 @@ function drawPenPreview(ctx) {
 /* ---------- node edit tool ---------- */
 function nodeDown(e, p) {
   const one = singleSel();
+  if (one && one.o.rig) { toast('A bone arm is posed with the Selection tool: drag its hand, elbow or shoulder.'); return; }
   if (one && one.o.kind === 'path' && !getLayer(one.lid).locked) {
     const hit = hitNodePart(one.o, p.sx, p.sy);
     if (hit) {
@@ -1315,7 +1329,7 @@ function eraseSweep(dr, a, b) {
   const r = eraserR(), P = [a.x, a.y], Q = [b.x, b.y];
   const bx0 = Math.min(P[0], Q[0]) - r, bx1 = Math.max(P[0], Q[0]) + r, by0 = Math.min(P[1], Q[1]) - r, by1 = Math.max(P[1], Q[1]) + r;
   const cand = C.evalLayerObjs(l, S.frame).filter((o) => {
-    if (o.kind !== 'path') return false;
+    if (o.kind !== 'path' || o.rig) return false;
     const wb = C.worldBounds(o); if (!wb) return false;
     const pad = (o.stroke ? o.sw : 0) / 2 + 1;
     return !(wb.x0 - pad > bx1 || wb.x1 + pad < bx0 || wb.y0 - pad > by1 || wb.y1 + pad < by0);
@@ -1342,4 +1356,75 @@ function drawEraserCursor(ctx) {
   const c = w2s(w.x, w.y), rr = eraserR() * S.view.z;
   ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(c[0], c[1], rr, 0, Math.PI * 2); ctx.stroke();
   ctx.strokeStyle = 'rgba(20,24,40,.85)'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.restore();
+}
+
+/* ---------- bone arm ---------- */
+const rigEditing = (o) => !!(o && o.kind === 'path' && o.rig && C.rigValid(o.rig));
+function boneDown(e, p) {
+  if (!canDraw()) return;
+  const B = S.bone || (S.bone = { pts: [] });
+  const last = B.pts[B.pts.length - 1];
+  if (last && Math.hypot(p.w.x - last.x, p.w.y - last.y) * S.view.z < 8) return;
+  B.pts.push(p.w);
+  if (B.pts.length === 3) finishBone();
+  invalidate();
+}
+function finishBone() {
+  const [a, b, c] = S.bone.pts; S.bone = null;
+  const l1 = Math.hypot(b.x - a.x, b.y - a.y), l2 = Math.hypot(c.x - b.x, c.y - b.y), L = l1 + l2;
+  const ux = (c.x - a.x), uy = (c.y - a.y), du = Math.hypot(ux, uy) || 1;
+  const side = (-uy / du) * (b.x - a.x) + (ux / du) * (b.y - a.y);
+  const pa = currentPaint(false);
+  const o = C.mkPath([], { fill: pa.fill || S.style.fill, fa: pa.fa, stroke: null }, { x: 0, y: 0 });
+  o.rig = { s: [a.x, a.y], h: [c.x, c.y], l1, l2, flip: side < 0 ? -1 : 1, w: [Math.max(3, L * 0.07), Math.max(2.5, L * 0.055), Math.max(2, L * 0.04)] };
+  C.rigBuild(o);
+  if (addObject(o)) { setTool('select'); refreshProps(); }
+}
+function rigPts(o) {
+  const M = matOf(o.t), k = C.rigSolve(o.rig), W = (q) => { const r = mapply(M, q[0], q[1]); return { x: r[0], y: r[1] }; };
+  return { s: W(k.s), e: W(k.e), h: W(o.rig.h), hh: W(k.h) };
+}
+function rigHit(o, sx, sy) {
+  const P = rigPts(o), near = (q) => { const p = w2s(q.x, q.y); return Math.hypot(p[0] - sx, p[1] - sy) <= 10; };
+  return near(P.h) ? 'h' : near(P.e) ? 'e' : near(P.s) ? 's' : null;
+}
+function drawRigHandles(ctx, o) {
+  const P = rigPts(o), acc = CSSV.accent, sc = (q) => w2s(q.x, q.y);
+  ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = acc;
+  const S0 = sc(P.s), E0 = sc(P.e), H0 = sc(P.hh), T0 = sc(P.h);
+  ctx.beginPath(); ctx.moveTo(S0[0], S0[1]); ctx.lineTo(E0[0], E0[1]); ctx.lineTo(H0[0], H0[1]); ctx.stroke();
+  if (Math.hypot(T0[0] - H0[0], T0[1] - H0[1]) > 2) { ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(H0[0], H0[1]); ctx.lineTo(T0[0], T0[1]); ctx.stroke(); ctx.setLineDash([]); }
+  const dot = (p, r, fill) => { ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.lineWidth = 1; ctx.strokeStyle = acc; ctx.stroke(); };
+  dot(S0, 6, CSSV.accentFg); dot(E0, 5, CSSV.accentFg); dot(T0, 7, acc);
+  ctx.restore();
+}
+function drawBonePreview(ctx) {
+  const B = S.bone; if (!B || !B.pts.length) return;
+  const pts = B.pts.concat(S.cursorW ? [S.cursorW] : []);
+  ctx.save(); ctx.strokeStyle = CSSV.accent; ctx.fillStyle = CSSV.accent; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); pts.forEach((q, i) => { const s = w2s(q.x, q.y); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }); ctx.stroke(); ctx.setLineDash([]);
+  B.pts.forEach((q) => { const s = w2s(q.x, q.y); ctx.beginPath(); ctx.arc(s[0], s[1], 5, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+function rigDrag(w) {
+  const d = S.drag;
+  if (!d.started) {
+    if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 2) return;
+    pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
+    const o = findEditable(d.lid, d.id);
+    if (!o || !o.rig) { S.drag = null; return; }
+    d.o = o; d.inv = minv(matOf(o.t)); d.s0 = o.rig.s.slice(); d.h0 = o.rig.h.slice(); d.l0 = mapply(d.inv, d.start.x, d.start.y); d.started = true;
+  }
+  const g = d.o.rig, l = mapply(d.inv, w.x, w.y);
+  if (d.part === 'h') g.h = [l[0], l[1]];
+  else if (d.part === 's') { const dx = l[0] - d.l0[0], dy = l[1] - d.l0[1]; g.s = [d.s0[0] + dx, d.s0[1] + dy]; g.h = [d.h0[0] + dx, d.h0[1] + dy]; }
+  else if (d.part === 'e') { const cr = (g.h[0] - g.s[0]) * (l[1] - g.s[1]) - (g.h[1] - g.s[1]) * (l[0] - g.s[0]); if (Math.abs(cr) > 1e-6) g.flip = cr < 0 ? -1 : 1; }
+  C.rigBuild(d.o); syncBinds(d.lid); invalidate();
+}
+function syncBinds(lid) { const k = C.kfFor(getLayer(lid), S.frame); if (k) C.settleBinds(k.objs, null); }
+function rigEdit(fn) {
+  const one = singleSel(); if (!one || !one.o.rig || getLayer(one.lid).locked) return;
+  beginEditOnce(); C.ensureEditable(getLayer(one.lid), S.frame);
+  const o = findEditable(one.lid, one.id); if (!o || !o.rig) return;
+  fn(o.rig); C.rigBuild(o); syncBinds(one.lid); commit();
 }

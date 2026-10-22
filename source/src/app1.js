@@ -5,7 +5,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.12.1-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.14.2-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -131,7 +131,13 @@ function invalidate() {
   requestAnimationFrame(() => { dirty = false; renderStage(); drawTimeline(); });
 }
 let saveTimer = 0;
+/* keep attached symbols in step with their bones; one the user just moved is re-attached from its new spot */
+function settleAll() {
+  const ed = new Set(S.sel.map((q) => q.id));
+  for (const l of layers()) { const k = C.kfFor(l, S.frame); if (k && k.objs.some((o) => o.bind)) C.settleBinds(k.objs, ed); }
+}
 function commit() {
+  settleAll();
   markDirty();
   invalidate(); refreshProps(); updateTime();
   clearTimeout(saveTimer);
@@ -206,7 +212,7 @@ const s2w = (x, y) => ({ x: (x - S.view.px) / S.view.z, y: (y - S.view.py) / S.v
 
 /* ---------- stage rendering ---------- */
 function drawFrameObjs(ctx, f, opt) {
-  C.drawUnits(ctx, C.evalDoc(S.doc, f), opt);
+  C.drawUnits(ctx, C.evalDoc(S.doc, f, !!(opt && opt.ghosts)), opt);
 }
 function renderStage() {
   if (!S.doc) return;
@@ -224,7 +230,7 @@ function renderStage() {
     for (let k = S.onion.b; k >= 1; k--) if (S.frame - k >= 0) drawFrameObjs(ctx, S.frame - k, { tint: { c: '#FF4D5E', a: 0.34 / k } });
     for (let k = S.onion.a; k >= 1; k--) if (S.frame + k < d.frames) drawFrameObjs(ctx, S.frame + k, { tint: { c: '#2FB36B', a: 0.34 / k } });
   }
-  drawFrameObjs(ctx, S.frame);
+  drawFrameObjs(ctx, S.frame, { ghosts: !S.playing });
   if (!S.playing && !(S.drawGhostOff)) {
     for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) if (layer.mask && layer.visible !== false) for (const o of objs) drawObj(ctx, o, { tint: { c: CSSV.accent, a: layer.id === S.layerId ? 0.4 : 0.22 } });
   }
@@ -275,6 +281,7 @@ function drawOverlay(ctx) {
     ctx.closePath(); ctx.stroke();
   }
   const one = sels.length === 1 ? sels[0] : null;
+  if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
   if (one && S.tool === 'select' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
@@ -315,5 +322,6 @@ function drawOverlay(ctx) {
   if (S.draw) drawPreview(ctx);
   drawBrushCursor(ctx);
   drawEraserCursor(ctx);
+  drawBonePreview(ctx);
   if (S.pen) drawPenPreview(ctx);
 }

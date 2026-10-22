@@ -282,7 +282,7 @@ function worldBounds(o) {
 }
 /* shift a path's nodes so its bounds centre becomes the local origin */
 function recenter(o) {
-  if (o.kind !== 'path') return o;
+  if (o.kind !== 'path' || o.rig) return o;
   const b = contoursBounds(o.contours);
   if (!b) return o;
   const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -305,6 +305,7 @@ function setObjMatrix(o, m) {
   const d = decompose(m);
   if (d.skew < 1e-3 || o.kind === 'clip' || o.kind === 'text' || o.kind === 'image') { o.t = { x: d.x, y: d.y, sx: d.sx, sy: d.sy, r: d.r }; return o; }
   if (o.kind === 'path') {
+    delete o.rig;
     applyMatrixToNodes(o.contours, m);
     if (o.grad) o.grad.m = mmul(m, o.grad.m);
     o.t = newT();
@@ -375,6 +376,7 @@ function normalizeDoc(d) {
     if (mx > d.frames) d.frames = mx;
   }
   d.frames = Math.min(d.frames, 900);
+  normRigs(d.layers); for (const k of Object.keys(d.lib)) if (d.lib[k]) normRigs(d.lib[k].layers);
   if (d.lang !== 'as1') delete d.lang;
   return d;
 }
@@ -485,10 +487,115 @@ function lerpPaint(o, a, b, p) {
   }
   o.sw = lerp(a.sw || 0, b.sw || 0, p);
 }
+/* ---------- bone arm: shoulder -> elbow -> hand with two-bone IK ----------
+   A rig is an ordinary path object that also carries o.rig = { s:[x,y], h:[x,y], l1, l2, flip, w:[r0,r1,r2] } in the object's own space.
+   The outline (o.contours) is derived from the rig, so every renderer and exporter draws it like any other shape; tweens interpolate the rig and rebuild it. */
+function rigSolve(g) {
+  const sx = g.s[0], sy = g.s[1], dx = g.h[0] - sx, dy = g.h[1] - sy, d = Math.hypot(dx, dy);
+  const l1 = g.l1, l2 = g.l2, lo = Math.abs(l1 - l2) + 1e-6, hi = l1 + l2 - 1e-6;
+  const ux = d > 1e-9 ? dx / d : 1, uy = d > 1e-9 ? dy / d : 0;
+  const dc = Math.min(Math.max(d, lo), hi);
+  const a = (l1 * l1 - l2 * l2 + dc * dc) / (2 * dc), h = Math.sqrt(Math.max(0, l1 * l1 - a * a)), fl = g.flip < 0 ? -1 : 1;
+  return { s: [sx, sy], e: [sx + ux * a - uy * h * fl, sy + uy * a + ux * h * fl], h: [sx + ux * dc, sy + uy * dc], reach: d > hi || d < lo };
+}
+function rigContours(g) {
+  const k = rigSolve(g), P = [k.s, k.e, k.h], r = g.w, out = [];
+  const circ = (p, rad) => { const c = ellipseContour(rad, rad); for (const n of c.nodes) { n.x += p[0]; n.y += p[1]; } return c; };
+  const seg = (A, B, ra, rb) => {
+    const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    let q = [[A[0] + nx * ra, A[1] + ny * ra], [B[0] + nx * rb, B[1] + ny * rb], [B[0] - nx * rb, B[1] - ny * rb], [A[0] - nx * ra, A[1] - ny * ra]];
+    let area = 0; for (let i = 0; i < 4; i++) { const u = q[i], v = q[(i + 1) % 4]; area += u[0] * v[1] - v[0] * u[1]; }
+    if (area < 0) q = q.reverse();
+    return { closed: true, nodes: q.map((u) => ({ x: u[0], y: u[1], ix: 0, iy: 0, ox: 0, oy: 0 })) };
+  };
+  out.push(seg(P[0], P[1], r[0], r[1]), seg(P[1], P[2], r[1], r[2]));
+  for (let i = 0; i < 3; i++) out.push(circ(P[i], r[i]));
+  return out;
+}
+function rigBuild(o) { o.contours = rigContours(o.rig); o.nz = true; return o; }
+function rigValid(g) {
+  const num = (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi;
+  const pt = (p) => Array.isArray(p) && p.length === 2 && num(p[0], -1e6, 1e6) && num(p[1], -1e6, 1e6);
+  return !!g && pt(g.s) && pt(g.h) && num(g.l1, 1, 1e5) && num(g.l2, 1, 1e5) && Array.isArray(g.w) && g.w.length === 3 && g.w.every((v) => num(v, 0.5, 1e4));
+}
+function lerpRig(a, b, p) {
+  const L = (x, y) => x + (y - x) * p;
+  return { s: [L(a.s[0], b.s[0]), L(a.s[1], b.s[1])], h: [L(a.h[0], b.h[0]), L(a.h[1], b.h[1])], l1: L(a.l1, b.l1), l2: L(a.l2, b.l2), flip: a.flip < 0 ? -1 : 1, w: a.w.map((v, i) => L(v, b.w[i])) };
+}
+function normRigs(layers) {
+  for (const l of layers || []) for (const k of l.kfs || []) for (const o of k.objs || []) {
+    if (o.bind && !(o.kind === 'clip' && bindValid(o.bind))) delete o.bind;
+    if (!o.rig) continue;
+    o.rig.ghost = !!o.rig.ghost;
+    if (o.kind === 'path' && rigValid(o.rig)) { o.rig.flip = o.rig.flip < 0 ? -1 : 1; rigBuild(o); } else delete o.rig;
+  }
+}
+/* ---------- attaching symbols to bones ----------
+   A symbol instance with o.bind = { to: <rig object id>, bone: 0|1, lx, ly, lr } is held rigidly in the bone's frame (bone 0 = shoulder->elbow, 1 = elbow->hand).
+   The rig must be on the same layer. Evaluation overrides the instance's x, y and rotation from the rig's evaluated pose, so tweens and every renderer follow along. */
+const freeBind = new Set(); /* ids being dragged in the editor: shown where the pointer puts them until the drag is committed */
+function boneFrame(rigObj, bone) {
+  const k = rigSolve(rigObj.rig), M = matOf(rigObj.t), A = bone ? k.e : k.s, B = bone ? k.h : k.e;
+  const a = mapply(M, A[0], A[1]), b = mapply(M, B[0], B[1]);
+  return { x: a[0], y: a[1], r: Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / PI };
+}
+function bindPose(o, rigObj) {
+  const f = boneFrame(rigObj, o.bind.bone), th = f.r * PI / 180, c = Math.cos(th), s = Math.sin(th), b = o.bind;
+  return { x: f.x + c * b.lx - s * b.ly, y: f.y + s * b.lx + c * b.ly, r: f.r + b.lr };
+}
+function resolveBinds(objs) {
+  let any = false;
+  for (const o of objs) if (o.bind) { any = true; break; }
+  if (!any) return objs;
+  for (const o of objs) {
+    if (!o.bind || o.kind !== 'clip' || freeBind.has(o.id)) continue;
+    const r = objs.find((x) => x.id === o.bind.to && x.rig && x.kind === 'path');
+    if (!r) continue;
+    const q = bindPose(o, r);
+    o.t = Object.assign({}, o.t, { x: q.x, y: q.y, r: q.r });
+  }
+  return objs;
+}
+function bindOffsets(o, rigObj, bone) {
+  const f = boneFrame(rigObj, bone), th = f.r * PI / 180, c = Math.cos(th), s = Math.sin(th), dx = o.t.x - f.x, dy = o.t.y - f.y;
+  return { to: rigObj.id, bone, lx: c * dx + s * dy, ly: -s * dx + c * dy, lr: o.t.r - f.r };
+}
+/* attach (or move to another bone) on every keyframe of the layer that has both objects */
+function bindBone(layer, clipId, rigId, bone) {
+  let n = 0;
+  for (const k of layer.kfs) {
+    const o = k.objs.find((x) => x.id === clipId && x.kind === 'clip'), r = k.objs.find((x) => x.id === rigId && x.rig && x.kind === 'path');
+    if (!o || !r) continue;
+    o.bind = bindOffsets(o, r, bone === 1 ? 1 : 0); n++;
+  }
+  return n;
+}
+function unbindBone(layer, clipId) {
+  for (const k of layer.kfs) for (const o of k.objs) if (o.id === clipId && o.bind) delete o.bind;
+}
+function setRigGhost(layer, rigId, v) {
+  for (const k of layer.kfs) for (const o of k.objs) if (o.id === rigId && o.rig) o.rig.ghost = !!v;
+}
+/* keep stored x/y/rotation of bound instances in step with the pose; an instance in `edited` that the user moved is re-attached from where it now is */
+function settleBinds(objs, edited) {
+  for (const o of objs) {
+    if (!o.bind || o.kind !== 'clip') continue;
+    const r = objs.find((x) => x.id === o.bind.to && x.rig && x.kind === 'path');
+    if (!r) continue;
+    const q = bindPose(o, r);
+    if (edited && edited.has(o.id) && (Math.abs(q.x - o.t.x) > 0.01 || Math.abs(q.y - o.t.y) > 0.01 || Math.abs(q.r - o.t.r) > 0.01)) o.bind = bindOffsets(o, r, o.bind.bone);
+    else { o.t.x = q.x; o.t.y = q.y; o.t.r = q.r; }
+  }
+}
+function bindValid(b) {
+  const num = (v) => typeof v === 'number' && isFinite(v) && Math.abs(v) < 1e7;
+  return !!b && typeof b.to === 'string' && b.to.length < 80 && (b.bone === 0 || b.bone === 1) && num(b.lx) && num(b.ly) && num(b.lr);
+}
 function lerpObj(a, b, p, mode) {
   const o = Object.assign({}, a);
   o.t = lerpT(a.t, b.t, p);
   o.op = lerp(nz(a.op, 1), nz(b.op, 1), p);
+  if (a.bind && b.bind && a.bind.to === b.bind.to && a.bind.bone === b.bind.bone) o.bind = { to: a.bind.to, bone: a.bind.bone, lx: lerp(a.bind.lx, b.bind.lx, p), ly: lerp(a.bind.ly, b.bind.ly, p), lr: lerp(a.bind.lr, b.bind.lr, p) };
   if (a.kind === 'text' && b.kind === 'text') { lerpPaint(o, a, b, p); return o; }
   if (a.kind === 'path' && b.kind === 'path') {
     lerpPaint(o, a, b, p);
@@ -496,6 +603,7 @@ function lerpObj(a, b, p, mode) {
       o.grad = { type: a.grad.type, stops: a.grad.stops.map((s, i) => ({ o: lerp(s.o, b.grad.stops[i].o, p), c: lerpHex(s.c, b.grad.stops[i].c, p), a: lerp(nz(s.a, 1), nz(b.grad.stops[i].a, 1), p) })), m: a.grad.m && b.grad.m ? a.grad.m.map((v, i) => lerp(v, b.grad.m[i], p)) : (a.grad.m || b.grad.m) };
     }
     if (mode === 'shape') { const m = morphContours(a.contours, b.contours, p); if (m) o.contours = m; }
+    if (a.rig && b.rig) { o.rig = lerpRig(a.rig, b.rig, p); rigBuild(o); }
   }
   return o;
 }
@@ -544,7 +652,8 @@ function shapeTweenIssues(layer, f) {
   for (const [a, b] of tweenPairs(kf, next)) if (a.kind === 'path' && b.kind === 'path' && !morphContours(a.contours, b.contours, 0.5)) n++;
   return n;
 }
-function evalLayerObjs(layer, t) {
+function evalLayerObjs(layer, t) { return resolveBinds(evalLayerRaw(layer, t)); }
+function evalLayerRaw(layer, t) {
   const i = kfIndexAt(layer, t);
   if (i < 0) return [];
   const kf = layer.kfs[i], next = layer.kfs[i + 1];
@@ -556,9 +665,12 @@ function evalLayerObjs(layer, t) {
   }
   return withClips(layer, i, t, kf.objs);
 }
-function evalDoc(doc, t) {
+const notGhost = (o) => !(o.rig && o.rig.ghost);
+/* in the editor a bone arm is always drawn semi-transparent so the artwork under it stays visible; exports draw it as it really is */
+const fadeGhost = (o) => (o.rig ? Object.assign({}, o, { op: nz(o.op, 1) * 0.35 }) : o);
+function evalDoc(doc, t, ghosts) {
   _lib = doc.lib || {};
-  return doc.layers.map((layer) => ({ layer, objs: layer.visible === false ? [] : evalLayerObjs(layer, t) }));
+  return doc.layers.map((layer) => ({ layer, objs: layer.visible === false ? [] : ghosts ? evalLayerObjs(layer, t).map(fadeGhost) : evalLayerObjs(layer, t).filter(notGhost) }));
 }
 function sortKfs(layer) { layer.kfs.sort((a, b) => a.f - b.f); }
 
@@ -1609,7 +1721,7 @@ root.FCCore = {
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,
   groupEntries, drawUnits, maskedDraw, groupAlpha, tweenPairs, shapeTweenIssues, ease, bezierEase, morphContours, evalLayerObjs, evalDoc, kfIndexAt, kfAt, kfFor, sortKfs, ensureEditable, insertKeyframe, insertFrames, removeFrames,
-  clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
+  rigSolve, rigBuild, rigValid, boneFrame, bindBone, unbindBone, setRigGhost, settleBinds, freeBind, notGhost, resolveBinds, clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
   as1Looks, as1StripTypes, as1Prepare, importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
 };
 })(typeof window !== 'undefined' ? window : globalThis);

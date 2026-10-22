@@ -2,6 +2,37 @@
 
 All notable changes to Onionskyn are listed here, newest first.
 
+## 0.14.2-beta
+
+### Fixed
+- A bone arm drawn over a symbol no longer blocks clicks on it. The arm is now picked last, so a click on overlapping artwork selects the artwork. Alt+click selects the arm.
+
+## 0.14.1-beta
+
+### Changed
+- **Follows bone** is always shown when a symbol is selected. With no bone arm on the layer it is greyed out and says "Draw a bone arm (J) on this layer first".
+- Bone arms are always drawn semi-transparent in the editor so the artwork under them stays visible. Previews and exports are unchanged: an arm that is set to be drawn appears at full strength there.
+
+## 0.14.0-beta
+
+### Added
+- **Attach artwork to a bone arm.** Select a symbol on the same layer as an arm and pick **Follows bone** (upper arm or forearm) in the Object tab. The symbol then moves and rotates rigidly with that bone, including through motion tweens, in the editor, the preview and every export. Dragging an attached symbol re-attaches it where you drop it; **None** detaches it. Attaching turns the arm into a faint guide that is not drawn in the preview or exports; **Draw this arm** brings it back.
+
+## 0.13.0-beta
+
+### Added
+- **Bone arm (J).** A simple two-bone IK arm: click shoulder, elbow and hand, then drag the hand with the Selection tool and the elbow follows. Segment lengths stay fixed, the hand stops at full reach, and dragging the elbow across the arm (or **Flip bend**) bends it the other way. Pose two keyframes and add a motion tween and the arm moves between them with the elbow solved on every frame. The arm is an ordinary filled shape underneath, so colour, opacity, onion skin and every export (HTML, SVG, GIF, the standalone player) draw it with no extra support. Attaching your own artwork to the bones is planned as a follow-up.
+
+## 0.12.3-beta
+
+### Added
+- A dedicated **onion skin options** button (▲) beside Onion in the timeline bar. It opens the pop-over at any time, whether onion skin is on or off.
+
+## 0.12.2-beta
+
+### Changed
+- **Onion skin is easier to find and set.** Turning it on opens a pop-over right above the button that explains the red and green tints and holds the **Frames before** and **Frames after** counts (now up to 10 each). Right-click the Onion button to reopen it; a checkbox in the pop-over turns the automatic opening off.
+
 ## 0.12.1-beta
 
 ### Added

@@ -141,6 +141,15 @@ input[type=checkbox] { accent-color: var(--accent); }
 #prev iframe { flex: 1; border: 0; border-radius: 8px; background: #1b1f2a; width: 100%; }
 #kfScript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
 #iscript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
+#onionPop { width: 260px; padding: 12px; z-index: 60; }
+#onionPop .row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0; }
+#onionPop .row span { white-space: nowrap; }
+#onionPop .row input { width: 72px; }
+#onionPop .op-h { font-weight: 700; margin-bottom: 4px; }
+#onionPop .op-t { margin: 0 0 8px; color: var(--mut); font-size: 12px; line-height: 1.45; }
+#onionPop .op-r { color: #FF4D5E; } #onionPop .op-g { color: #2FB36B; }
+#onionPop .op-c { display: flex; gap: 6px; align-items: center; margin: 8px 0; font-size: 12px; color: var(--mut); }
+#onionPop .op-f { display: flex; justify-content: space-between; gap: 8px; }
 small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
 #kfScript:disabled, #iname:disabled, #kfLabel:disabled { opacity: .5; }
 #iname, #kfLabel { width: 100%; box-sizing: border-box; }
@@ -317,6 +326,12 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
       </div>
       <div class="row" id="iclipRow"><span>Symbol</span><div class="ctl"><select id="itype" aria-label="Symbol type"><option value="mc">Movie clip</option><option value="btn">Button</option><option value="gr">Graphic</option></select><select id="imode" aria-label="Playback"><option value="loop">Loop</option><option value="once">Play once</option><option value="single">Single frame</option></select><input type="number" id="ifirst" min="1" step="1" style="width:56px" aria-label="First frame" title="First frame to show (1 = start)"></div></div>
       <div class="row"><span>Instance</span><div class="ctl"><input type="text" id="iname" placeholder="name (e.g. btn_next)" spellcheck="false" aria-label="Instance name"></div></div>
+      <div class="row" id="bindRow" style="display:none"><span>Follows bone</span><div class="ctl"><select id="bindSel" aria-label="Follows bone"></select></div></div>
+      <div id="rigBox" style="display:none">
+        <div class="row"><span>Bone arm</span><div class="ctl"><button class="btn" id="rigFlip" title="Bend the elbow the other way">Flip bend</button></div></div>
+        <div class="row"><span>Output</span><div class="ctl"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rigVis"> Draw this arm</label></div></div>
+        <div class="row"><span>Thickness</span><div class="ctl"><input type="number" id="rigW0" min="1" max="400" step="1" style="min-width:0;width:100%" title="Shoulder radius" aria-label="Shoulder radius"><input type="number" id="rigW1" min="1" max="400" step="1" style="min-width:0;width:100%" title="Elbow radius" aria-label="Elbow radius"><input type="number" id="rigW2" min="1" max="400" step="1" style="min-width:0;width:100%" title="Hand radius" aria-label="Hand radius"></div></div>
+      </div>
       <div class="row" id="iscriptRow" style="align-items:flex-start"><span>Script</span><div class="ctl"><textarea id="iscript" rows="4" spellcheck="false" placeholder="Runs when this clip appears, e.g. on (release) { gotoAndPlay(&quot;menu&quot;); }" aria-label="Instance script"></textarea></div></div>
       <div class="mini" style="margin-top:8px"><button data-act="edit" title="Edit symbol timeline (double-click)">Edit symbol</button><button data-act="dup" title="Duplicate (Ctrl+D)">Duplicate</button><button data-act="del" title="Delete">Delete</button></div>
     </div>
@@ -413,7 +428,7 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
       <div id="dscenesRow" style="display:none"><div class="row"><span>Scenes</span><div class="ctl" id="dscenes" style="flex-wrap:wrap;gap:4px"></div></div></div>
       <div class="row"><span>Pasteboard</span><div class="ctl"><input type="color" id="pbg" aria-label="Pasteboard colour"><button class="tbtn" id="pbgReset" title="Back to the theme colour">Reset</button></div></div>
       <div class="row" style="margin-top:8px"><span>Stage</span><div class="ctl"><input type="color" id="dbg" aria-label="Stage colour"></div></div>
-      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><small class="mut">Before</small><input type="number" id="onionB" min="0" max="5" title="Frames before"><small class="mut">After</small><input type="number" id="onionA" min="0" max="5" title="Frames after"></div></div>
+      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><small class="mut">Before</small><input type="number" id="onionB" min="0" max="10" title="Frames before"><small class="mut">After</small><input type="number" id="onionA" min="0" max="10" title="Frames after"></div></div>
     </div>
     </div>
   </aside>
@@ -426,7 +441,7 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
       <button class="tbtn" id="pNext" title="Next frame (.)" aria-label="Next frame"><svg viewBox="0 0 16 16"><path d="M4 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLast" title="Last frame (Shift+.)" aria-label="Last frame"><svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLoop" title="Loop playback" aria-pressed="true">Loop</button>
-      <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button>
+      <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button><button class="tbtn" id="pOnionOpt" title="Onion skin options" aria-label="Onion skin options" aria-haspopup="dialog" style="padding:0 6px;margin-left:-4px"><svg viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M3.5 10.5 8 5.5l4.5 5z"/></svg></button>
       <span class="timecode" id="tcode"></span>
       <span class="sep"></span>
       <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>

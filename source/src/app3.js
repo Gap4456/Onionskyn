@@ -453,6 +453,16 @@ function refreshProps() {
     $('#kfScript').disabled = !k; $('#kfLabel').disabled = !k; $('#iname').disabled = !nm;
     { const cl = one && one.o.kind === 'clip' ? one.o : null; $('#iclipRow').style.display = cl ? '' : 'none';
       if (cl) { setVal($('#itype'), cl.btn ? 'btn' : cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc || cl.btn ? 'none' : ''; }
+      { const rg = one && one.o.rig && C.rigValid(one.o.rig) ? one.o.rig : null; $('#rigBox').style.display = rg ? '' : 'none'; if (rg) { $('#rigVis').checked = !rg.ghost; setVal($('#rigW0'), Math.round(rg.w[0])); setVal($('#rigW1'), Math.round(rg.w[1])); setVal($('#rigW2'), Math.round(rg.w[2])); } }
+      { const cl2 = one && one.o.kind === 'clip' ? one.o : null, sel = $('#bindSel'); let rigs = [];
+        if (cl2) { const ly = getLayer(one.lid); rigs = C.evalLayerObjs(ly, S.frame).filter((x) => x.rig && x.kind === 'path'); }
+        $('#bindRow').style.display = cl2 ? '' : 'none'; sel.disabled = !rigs.length;
+        if (cl2 && !rigs.length) sel.innerHTML = '<option value="">Draw a bone arm (J) on this layer first</option>';
+        if (cl2 && rigs.length) {
+          let h = '<option value="">None</option>';
+          rigs.forEach((r, i) => { const nm = rigs.length > 1 ? 'Arm ' + (i + 1) + ' · ' : ''; h += '<option value="' + r.id + ':0">' + nm + 'upper arm</option><option value="' + r.id + ':1">' + nm + 'forearm</option>'; });
+          sel.innerHTML = h; sel.value = cl2.bind ? cl2.bind.to + ':' + cl2.bind.bone : ''; if (sel.value !== (cl2.bind ? cl2.bind.to + ':' + cl2.bind.bone : '')) sel.value = '';
+        } }
       $('#iscriptRow').style.display = cl && (cl.mc || cl.btn) ? '' : 'none'; setVal($('#iscript'), cl && cl.script || ''); }
     setVal($('#kfScript'), k && k.script || ''); setVal($('#kfLabel'), k && k.label || ''); setVal($('#iname'), nm && nm.name || '');
     refreshSoundSelect();
@@ -489,6 +499,39 @@ function syncStyleUI() {
 function syncOnionUI() {
   $('#onionOn').checked = S.onion.on; $('#pOnion').setAttribute('aria-pressed', String(S.onion.on));
   setVal($('#onionB'), S.onion.b); setVal($('#onionA'), S.onion.a);
+  const pb = $('#opB'); if (pb) { setVal(pb, S.onion.b); setVal($('#opA'), S.onion.a); }
+}
+/* the onion-skin pop-over: opens when onion skin is switched on, with the before/after counts right there */
+function onionPopHide() { const p = $('#onionPop'); if (p) p.remove(); document.removeEventListener('pointerdown', onionPopAway, true); document.removeEventListener('keydown', onionPopKey, true); }
+function onionPopAway(e) { const p = $('#onionPop'); if (p && !p.contains(e.target) && e.target !== $('#pOnion') && !e.target.closest('#pOnionOpt')) onionPopHide(); }
+function onionPopKey(e) { if (e.key === 'Escape') onionPopHide(); }
+function onionPopShow() {
+  onionPopHide();
+  let auto = true; try { auto = localStorage.getItem('os_onionpop') !== '0'; } catch (_) {}
+  const p = document.createElement('div');
+  p.id = 'onionPop'; p.className = 'menu-pop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Onion skin');
+  p.innerHTML = '<div class="op-h">Onion skin</div><p class="op-t">Faint copies of the frames around this one, so you can draw the next pose against the last. Earlier frames are tinted <b class="op-r">red</b>, later ones <b class="op-g">green</b>.</p>'
+    + '<div class="row"><span>Frames before</span><div class="ctl"><input type="number" id="opB" min="0" max="10"></div></div>'
+    + '<div class="row"><span>Frames after</span><div class="ctl"><input type="number" id="opA" min="0" max="10"></div></div>'
+    + '<label class="op-c"><input type="checkbox" id="opAuto"> Show this when I turn onion skin on</label>'
+    + '<div class="op-f"><button class="btn" id="opOff">' + (S.onion.on ? 'Turn off' : 'Turn on') + '</button><button class="btn primary" id="opDone">Done</button></div>';
+  document.body.appendChild(p);
+  const r = $('#pOnion').getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - 270)) + 'px';
+  p.style.bottom = (innerHeight - r.top + 8) + 'px';
+  setVal($('#opB'), S.onion.b); setVal($('#opA'), S.onion.a); $('#opAuto').checked = auto;
+  $('#opB').addEventListener('input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  $('#opA').addEventListener('input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  $('#opAuto').addEventListener('change', (e) => { try { localStorage.setItem('os_onionpop', e.target.checked ? '1' : '0'); } catch (_) {} });
+  $('#opDone').addEventListener('click', onionPopHide);
+  $('#opOff').addEventListener('click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); onionPopHide(); });
+  document.addEventListener('pointerdown', onionPopAway, true); document.addEventListener('keydown', onionPopKey, true);
+}
+function setOnion(v, fromBtn) {
+  S.onion.on = v; syncOnionUI(); invalidate();
+  if (!v) { onionPopHide(); return; }
+  let auto = true; try { auto = localStorage.getItem('os_onionpop') !== '0'; } catch (_) {}
+  if (fromBtn && auto) onionPopShow();
 }
 function styleEdit(patch, fn) {
   Object.assign(S.style, patch);
@@ -650,11 +693,28 @@ function bindProps() {
   try { const v = localStorage.getItem('os_pbg'); if (/^#[0-9a-f]{6}$/i.test(v || '')) S.editBg = v; } catch (_) {}
   on('#pbg', 'input', (e) => { S.editBg = e.target.value; try { localStorage.setItem('os_pbg', S.editBg); } catch (_) {} invalidate(); });
   on('#pbgReset', 'click', () => { S.editBg = ''; try { localStorage.removeItem('os_pbg'); } catch (_) {} refreshProps(); invalidate(); });
+  on('#bindSel', 'change', (e) => {
+    const one = singleSel(); if (!one || one.o.kind !== 'clip' || getLayer(one.lid).locked) return;
+    const v = e.target.value, l = getLayer(one.lid);
+    pushUndo(); C.ensureEditable(l, S.frame);
+    if (!v) C.unbindBone(l, one.id);
+    else {
+      const [rid, b] = v.split(':'), r = C.kfFor(l, S.frame).objs.find((x) => x.id === rid);
+      C.bindBone(l, one.id, rid, +b);
+      if (r && r.rig && !r.rig.ghost) { C.setRigGhost(l, rid, true); toast('Attached. The arm is now a faint guide and is not drawn in the preview or exports (untick "Draw this arm" to change that).'); }
+    }
+    commit(); refreshProps();
+  });
+  on('#rigVis', 'change', (e) => { const one = singleSel(); if (!one || !one.o.rig || getLayer(one.lid).locked) return; pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame); C.setRigGhost(getLayer(one.lid), one.id, !e.target.checked); commit(); });
+  on('#rigFlip', 'click', () => rigEdit((g) => { g.flip = g.flip < 0 ? 1 : -1; }));
+  ['#rigW0', '#rigW1', '#rigW2'].forEach((id, i) => on(id, 'input', (e) => { const v = clamp(parseFloat(e.target.value) || 1, 1, 400); rigEdit((g) => { g.w[i] = v; }); }));
   on('#dbg', 'input', (e) => { beginEditOnce(); S.doc.bg = e.target.value; commit(); });
-  on('#onionOn', 'change', (e) => { S.onion.on = e.target.checked; syncOnionUI(); invalidate(); });
-  on('#pOnion', 'click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); });
-  on('#onionB', 'input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 5); invalidate(); });
-  on('#onionA', 'input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 5); invalidate(); });
+  on('#onionOn', 'change', (e) => setOnion(e.target.checked, false));
+  on('#pOnion', 'click', () => setOnion(!S.onion.on, true));
+  on('#pOnionOpt', 'click', () => { if ($('#onionPop')) onionPopHide(); else onionPopShow(); });
+  on('#pOnion', 'contextmenu', (e) => { e.preventDefault(); onionPopShow(); });
+  on('#onionB', 'input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  on('#onionA', 'input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
 }
 
 /* ---------- easing curve editor ---------- */
@@ -1964,7 +2024,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -1973,7 +2033,7 @@ window.addEventListener('keydown', (e) => {
     if (modalBg.classList.contains('on')) { closeModal(); return; }
     if (menuEl) { closeMenu(); return; }
     if (typing) { t.blur(); return; }
-    if (S.pen) cancelPen(); else if (S.sel.length) { S.sel = []; S.nodeSel = null; refreshProps(); invalidate(); } else if (S.edit.length) exitSym();
+    if (S.bone) { S.bone = null; invalidate(); } else if (S.pen) cancelPen(); else if (S.sel.length) { S.sel = []; S.nodeSel = null; refreshProps(); invalidate(); } else if (S.edit.length) exitSym();
     return;
   }
   if (k === 'F9') { e.preventDefault(); if ($('#ced').classList.contains('on')) closeCed(); else openCed(); return; }

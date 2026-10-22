@@ -143,6 +143,15 @@ input[type=checkbox] { accent-color: var(--accent); }
 #prev iframe { flex: 1; border: 0; border-radius: 8px; background: #1b1f2a; width: 100%; }
 #kfScript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
 #iscript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
+#onionPop { width: 260px; padding: 12px; z-index: 60; }
+#onionPop .row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0; }
+#onionPop .row span { white-space: nowrap; }
+#onionPop .row input { width: 72px; }
+#onionPop .op-h { font-weight: 700; margin-bottom: 4px; }
+#onionPop .op-t { margin: 0 0 8px; color: var(--mut); font-size: 12px; line-height: 1.45; }
+#onionPop .op-r { color: #FF4D5E; } #onionPop .op-g { color: #2FB36B; }
+#onionPop .op-c { display: flex; gap: 6px; align-items: center; margin: 8px 0; font-size: 12px; color: var(--mut); }
+#onionPop .op-f { display: flex; justify-content: space-between; gap: 8px; }
 small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
 #kfScript:disabled, #iname:disabled, #kfLabel:disabled { opacity: .5; }
 #iname, #kfLabel { width: 100%; box-sizing: border-box; }
@@ -359,6 +368,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       </div>
       <div class="row" id="iclipRow"><span>Symbol</span><div class="ctl"><select id="itype" aria-label="Symbol type"><option value="mc">Movie clip</option><option value="btn">Button</option><option value="gr">Graphic</option></select><select id="imode" aria-label="Playback"><option value="loop">Loop</option><option value="once">Play once</option><option value="single">Single frame</option></select><input type="number" id="ifirst" min="1" step="1" style="width:56px" aria-label="First frame" title="First frame to show (1 = start)"></div></div>
       <div class="row"><span>Instance</span><div class="ctl"><input type="text" id="iname" placeholder="name (e.g. btn_next)" spellcheck="false" aria-label="Instance name"></div></div>
+      <div class="row" id="bindRow" style="display:none"><span>Follows bone</span><div class="ctl"><select id="bindSel" aria-label="Follows bone"></select></div></div>
+      <div id="rigBox" style="display:none">
+        <div class="row"><span>Bone arm</span><div class="ctl"><button class="btn" id="rigFlip" title="Bend the elbow the other way">Flip bend</button></div></div>
+        <div class="row"><span>Output</span><div class="ctl"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rigVis"> Draw this arm</label></div></div>
+        <div class="row"><span>Thickness</span><div class="ctl"><input type="number" id="rigW0" min="1" max="400" step="1" style="min-width:0;width:100%" title="Shoulder radius" aria-label="Shoulder radius"><input type="number" id="rigW1" min="1" max="400" step="1" style="min-width:0;width:100%" title="Elbow radius" aria-label="Elbow radius"><input type="number" id="rigW2" min="1" max="400" step="1" style="min-width:0;width:100%" title="Hand radius" aria-label="Hand radius"></div></div>
+      </div>
       <div class="row" id="iscriptRow" style="align-items:flex-start"><span>Script</span><div class="ctl"><textarea id="iscript" rows="4" spellcheck="false" placeholder="Runs when this clip appears, e.g. on (release) { gotoAndPlay(&quot;menu&quot;); }" aria-label="Instance script"></textarea></div></div>
       <div class="mini" style="margin-top:8px"><button data-act="edit" title="Edit symbol timeline (double-click)">Edit symbol</button><button data-act="dup" title="Duplicate (Ctrl+D)">Duplicate</button><button data-act="del" title="Delete">Delete</button></div>
     </div>
@@ -455,7 +470,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <div id="dscenesRow" style="display:none"><div class="row"><span>Scenes</span><div class="ctl" id="dscenes" style="flex-wrap:wrap;gap:4px"></div></div></div>
       <div class="row"><span>Pasteboard</span><div class="ctl"><input type="color" id="pbg" aria-label="Pasteboard colour"><button class="tbtn" id="pbgReset" title="Back to the theme colour">Reset</button></div></div>
       <div class="row" style="margin-top:8px"><span>Stage</span><div class="ctl"><input type="color" id="dbg" aria-label="Stage colour"></div></div>
-      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><small class="mut">Before</small><input type="number" id="onionB" min="0" max="5" title="Frames before"><small class="mut">After</small><input type="number" id="onionA" min="0" max="5" title="Frames after"></div></div>
+      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><small class="mut">Before</small><input type="number" id="onionB" min="0" max="10" title="Frames before"><small class="mut">After</small><input type="number" id="onionA" min="0" max="10" title="Frames after"></div></div>
     </div>
     </div>
   </aside>
@@ -468,7 +483,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button class="tbtn" id="pNext" title="Next frame (.)" aria-label="Next frame"><svg viewBox="0 0 16 16"><path d="M4 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLast" title="Last frame (Shift+.)" aria-label="Last frame"><svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLoop" title="Loop playback" aria-pressed="true">Loop</button>
-      <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button>
+      <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button><button class="tbtn" id="pOnionOpt" title="Onion skin options" aria-label="Onion skin options" aria-haspopup="dialog" style="padding:0 6px;margin-left:-4px"><svg viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M3.5 10.5 8 5.5l4.5 5z"/></svg></button>
       <span class="timecode" id="tcode"></span>
       <span class="sep"></span>
       <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>
@@ -791,7 +806,7 @@ function worldBounds(o) {
 }
 /* shift a path's nodes so its bounds centre becomes the local origin */
 function recenter(o) {
-  if (o.kind !== 'path') return o;
+  if (o.kind !== 'path' || o.rig) return o;
   const b = contoursBounds(o.contours);
   if (!b) return o;
   const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -814,6 +829,7 @@ function setObjMatrix(o, m) {
   const d = decompose(m);
   if (d.skew < 1e-3 || o.kind === 'clip' || o.kind === 'text' || o.kind === 'image') { o.t = { x: d.x, y: d.y, sx: d.sx, sy: d.sy, r: d.r }; return o; }
   if (o.kind === 'path') {
+    delete o.rig;
     applyMatrixToNodes(o.contours, m);
     if (o.grad) o.grad.m = mmul(m, o.grad.m);
     o.t = newT();
@@ -884,6 +900,7 @@ function normalizeDoc(d) {
     if (mx > d.frames) d.frames = mx;
   }
   d.frames = Math.min(d.frames, 900);
+  normRigs(d.layers); for (const k of Object.keys(d.lib)) if (d.lib[k]) normRigs(d.lib[k].layers);
   if (d.lang !== 'as1') delete d.lang;
   return d;
 }
@@ -994,10 +1011,115 @@ function lerpPaint(o, a, b, p) {
   }
   o.sw = lerp(a.sw || 0, b.sw || 0, p);
 }
+/* ---------- bone arm: shoulder -> elbow -> hand with two-bone IK ----------
+   A rig is an ordinary path object that also carries o.rig = { s:[x,y], h:[x,y], l1, l2, flip, w:[r0,r1,r2] } in the object's own space.
+   The outline (o.contours) is derived from the rig, so every renderer and exporter draws it like any other shape; tweens interpolate the rig and rebuild it. */
+function rigSolve(g) {
+  const sx = g.s[0], sy = g.s[1], dx = g.h[0] - sx, dy = g.h[1] - sy, d = Math.hypot(dx, dy);
+  const l1 = g.l1, l2 = g.l2, lo = Math.abs(l1 - l2) + 1e-6, hi = l1 + l2 - 1e-6;
+  const ux = d > 1e-9 ? dx / d : 1, uy = d > 1e-9 ? dy / d : 0;
+  const dc = Math.min(Math.max(d, lo), hi);
+  const a = (l1 * l1 - l2 * l2 + dc * dc) / (2 * dc), h = Math.sqrt(Math.max(0, l1 * l1 - a * a)), fl = g.flip < 0 ? -1 : 1;
+  return { s: [sx, sy], e: [sx + ux * a - uy * h * fl, sy + uy * a + ux * h * fl], h: [sx + ux * dc, sy + uy * dc], reach: d > hi || d < lo };
+}
+function rigContours(g) {
+  const k = rigSolve(g), P = [k.s, k.e, k.h], r = g.w, out = [];
+  const circ = (p, rad) => { const c = ellipseContour(rad, rad); for (const n of c.nodes) { n.x += p[0]; n.y += p[1]; } return c; };
+  const seg = (A, B, ra, rb) => {
+    const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    let q = [[A[0] + nx * ra, A[1] + ny * ra], [B[0] + nx * rb, B[1] + ny * rb], [B[0] - nx * rb, B[1] - ny * rb], [A[0] - nx * ra, A[1] - ny * ra]];
+    let area = 0; for (let i = 0; i < 4; i++) { const u = q[i], v = q[(i + 1) % 4]; area += u[0] * v[1] - v[0] * u[1]; }
+    if (area < 0) q = q.reverse();
+    return { closed: true, nodes: q.map((u) => ({ x: u[0], y: u[1], ix: 0, iy: 0, ox: 0, oy: 0 })) };
+  };
+  out.push(seg(P[0], P[1], r[0], r[1]), seg(P[1], P[2], r[1], r[2]));
+  for (let i = 0; i < 3; i++) out.push(circ(P[i], r[i]));
+  return out;
+}
+function rigBuild(o) { o.contours = rigContours(o.rig); o.nz = true; return o; }
+function rigValid(g) {
+  const num = (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi;
+  const pt = (p) => Array.isArray(p) && p.length === 2 && num(p[0], -1e6, 1e6) && num(p[1], -1e6, 1e6);
+  return !!g && pt(g.s) && pt(g.h) && num(g.l1, 1, 1e5) && num(g.l2, 1, 1e5) && Array.isArray(g.w) && g.w.length === 3 && g.w.every((v) => num(v, 0.5, 1e4));
+}
+function lerpRig(a, b, p) {
+  const L = (x, y) => x + (y - x) * p;
+  return { s: [L(a.s[0], b.s[0]), L(a.s[1], b.s[1])], h: [L(a.h[0], b.h[0]), L(a.h[1], b.h[1])], l1: L(a.l1, b.l1), l2: L(a.l2, b.l2), flip: a.flip < 0 ? -1 : 1, w: a.w.map((v, i) => L(v, b.w[i])) };
+}
+function normRigs(layers) {
+  for (const l of layers || []) for (const k of l.kfs || []) for (const o of k.objs || []) {
+    if (o.bind && !(o.kind === 'clip' && bindValid(o.bind))) delete o.bind;
+    if (!o.rig) continue;
+    o.rig.ghost = !!o.rig.ghost;
+    if (o.kind === 'path' && rigValid(o.rig)) { o.rig.flip = o.rig.flip < 0 ? -1 : 1; rigBuild(o); } else delete o.rig;
+  }
+}
+/* ---------- attaching symbols to bones ----------
+   A symbol instance with o.bind = { to: <rig object id>, bone: 0|1, lx, ly, lr } is held rigidly in the bone's frame (bone 0 = shoulder->elbow, 1 = elbow->hand).
+   The rig must be on the same layer. Evaluation overrides the instance's x, y and rotation from the rig's evaluated pose, so tweens and every renderer follow along. */
+const freeBind = new Set(); /* ids being dragged in the editor: shown where the pointer puts them until the drag is committed */
+function boneFrame(rigObj, bone) {
+  const k = rigSolve(rigObj.rig), M = matOf(rigObj.t), A = bone ? k.e : k.s, B = bone ? k.h : k.e;
+  const a = mapply(M, A[0], A[1]), b = mapply(M, B[0], B[1]);
+  return { x: a[0], y: a[1], r: Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / PI };
+}
+function bindPose(o, rigObj) {
+  const f = boneFrame(rigObj, o.bind.bone), th = f.r * PI / 180, c = Math.cos(th), s = Math.sin(th), b = o.bind;
+  return { x: f.x + c * b.lx - s * b.ly, y: f.y + s * b.lx + c * b.ly, r: f.r + b.lr };
+}
+function resolveBinds(objs) {
+  let any = false;
+  for (const o of objs) if (o.bind) { any = true; break; }
+  if (!any) return objs;
+  for (const o of objs) {
+    if (!o.bind || o.kind !== 'clip' || freeBind.has(o.id)) continue;
+    const r = objs.find((x) => x.id === o.bind.to && x.rig && x.kind === 'path');
+    if (!r) continue;
+    const q = bindPose(o, r);
+    o.t = Object.assign({}, o.t, { x: q.x, y: q.y, r: q.r });
+  }
+  return objs;
+}
+function bindOffsets(o, rigObj, bone) {
+  const f = boneFrame(rigObj, bone), th = f.r * PI / 180, c = Math.cos(th), s = Math.sin(th), dx = o.t.x - f.x, dy = o.t.y - f.y;
+  return { to: rigObj.id, bone, lx: c * dx + s * dy, ly: -s * dx + c * dy, lr: o.t.r - f.r };
+}
+/* attach (or move to another bone) on every keyframe of the layer that has both objects */
+function bindBone(layer, clipId, rigId, bone) {
+  let n = 0;
+  for (const k of layer.kfs) {
+    const o = k.objs.find((x) => x.id === clipId && x.kind === 'clip'), r = k.objs.find((x) => x.id === rigId && x.rig && x.kind === 'path');
+    if (!o || !r) continue;
+    o.bind = bindOffsets(o, r, bone === 1 ? 1 : 0); n++;
+  }
+  return n;
+}
+function unbindBone(layer, clipId) {
+  for (const k of layer.kfs) for (const o of k.objs) if (o.id === clipId && o.bind) delete o.bind;
+}
+function setRigGhost(layer, rigId, v) {
+  for (const k of layer.kfs) for (const o of k.objs) if (o.id === rigId && o.rig) o.rig.ghost = !!v;
+}
+/* keep stored x/y/rotation of bound instances in step with the pose; an instance in `edited` that the user moved is re-attached from where it now is */
+function settleBinds(objs, edited) {
+  for (const o of objs) {
+    if (!o.bind || o.kind !== 'clip') continue;
+    const r = objs.find((x) => x.id === o.bind.to && x.rig && x.kind === 'path');
+    if (!r) continue;
+    const q = bindPose(o, r);
+    if (edited && edited.has(o.id) && (Math.abs(q.x - o.t.x) > 0.01 || Math.abs(q.y - o.t.y) > 0.01 || Math.abs(q.r - o.t.r) > 0.01)) o.bind = bindOffsets(o, r, o.bind.bone);
+    else { o.t.x = q.x; o.t.y = q.y; o.t.r = q.r; }
+  }
+}
+function bindValid(b) {
+  const num = (v) => typeof v === 'number' && isFinite(v) && Math.abs(v) < 1e7;
+  return !!b && typeof b.to === 'string' && b.to.length < 80 && (b.bone === 0 || b.bone === 1) && num(b.lx) && num(b.ly) && num(b.lr);
+}
 function lerpObj(a, b, p, mode) {
   const o = Object.assign({}, a);
   o.t = lerpT(a.t, b.t, p);
   o.op = lerp(nz(a.op, 1), nz(b.op, 1), p);
+  if (a.bind && b.bind && a.bind.to === b.bind.to && a.bind.bone === b.bind.bone) o.bind = { to: a.bind.to, bone: a.bind.bone, lx: lerp(a.bind.lx, b.bind.lx, p), ly: lerp(a.bind.ly, b.bind.ly, p), lr: lerp(a.bind.lr, b.bind.lr, p) };
   if (a.kind === 'text' && b.kind === 'text') { lerpPaint(o, a, b, p); return o; }
   if (a.kind === 'path' && b.kind === 'path') {
     lerpPaint(o, a, b, p);
@@ -1005,6 +1127,7 @@ function lerpObj(a, b, p, mode) {
       o.grad = { type: a.grad.type, stops: a.grad.stops.map((s, i) => ({ o: lerp(s.o, b.grad.stops[i].o, p), c: lerpHex(s.c, b.grad.stops[i].c, p), a: lerp(nz(s.a, 1), nz(b.grad.stops[i].a, 1), p) })), m: a.grad.m && b.grad.m ? a.grad.m.map((v, i) => lerp(v, b.grad.m[i], p)) : (a.grad.m || b.grad.m) };
     }
     if (mode === 'shape') { const m = morphContours(a.contours, b.contours, p); if (m) o.contours = m; }
+    if (a.rig && b.rig) { o.rig = lerpRig(a.rig, b.rig, p); rigBuild(o); }
   }
   return o;
 }
@@ -1053,7 +1176,8 @@ function shapeTweenIssues(layer, f) {
   for (const [a, b] of tweenPairs(kf, next)) if (a.kind === 'path' && b.kind === 'path' && !morphContours(a.contours, b.contours, 0.5)) n++;
   return n;
 }
-function evalLayerObjs(layer, t) {
+function evalLayerObjs(layer, t) { return resolveBinds(evalLayerRaw(layer, t)); }
+function evalLayerRaw(layer, t) {
   const i = kfIndexAt(layer, t);
   if (i < 0) return [];
   const kf = layer.kfs[i], next = layer.kfs[i + 1];
@@ -1065,9 +1189,12 @@ function evalLayerObjs(layer, t) {
   }
   return withClips(layer, i, t, kf.objs);
 }
-function evalDoc(doc, t) {
+const notGhost = (o) => !(o.rig && o.rig.ghost);
+/* in the editor a bone arm is always drawn semi-transparent so the artwork under it stays visible; exports draw it as it really is */
+const fadeGhost = (o) => (o.rig ? Object.assign({}, o, { op: nz(o.op, 1) * 0.35 }) : o);
+function evalDoc(doc, t, ghosts) {
   _lib = doc.lib || {};
-  return doc.layers.map((layer) => ({ layer, objs: layer.visible === false ? [] : evalLayerObjs(layer, t) }));
+  return doc.layers.map((layer) => ({ layer, objs: layer.visible === false ? [] : ghosts ? evalLayerObjs(layer, t).map(fadeGhost) : evalLayerObjs(layer, t).filter(notGhost) }));
 }
 function sortKfs(layer) { layer.kfs.sort((a, b) => a.f - b.f); }
 
@@ -2118,7 +2245,7 @@ root.FCCore = {
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,
   groupEntries, drawUnits, maskedDraw, groupAlpha, tweenPairs, shapeTweenIssues, ease, bezierEase, morphContours, evalLayerObjs, evalDoc, kfIndexAt, kfAt, kfFor, sortKfs, ensureEditable, insertKeyframe, insertFrames, removeFrames,
-  clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
+  rigSolve, rigBuild, rigValid, boneFrame, bindBone, unbindBone, setRigGhost, settleBinds, freeBind, notGhost, resolveBinds, clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
   as1Looks, as1StripTypes, as1Prepare, importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
 };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -2163,7 +2290,7 @@ function create(doc, cv, opt) {
     if (f == null) f = inst.cur;
     if (f === inst.cur && inst.cache && inst.cache.f === f) return inst.cache.list;
     const list = [];
-    for (const l of inst.layers) list.push({ layer: l, objs: l.visible === false ? [] : Core.evalLayerObjs(l, f) }); /* hidden layers stay in the list (empty) so a hidden mask still disables its masking, exactly as in the editor */
+    for (const l of inst.layers) list.push({ layer: l, objs: l.visible === false ? [] : Core.evalLayerObjs(l, f).filter(Core.notGhost) }); /* hidden layers stay in the list (empty) so a hidden mask still disables its masking, exactly as in the editor */
     if (f === inst.cur) inst.cache = { f, list };
     return list;
   }
@@ -2654,7 +2781,7 @@ function create(doc, cv, opt) {
       const en = entries[i], inst = en.inst;
       if (inst.kind === 'text' || inst.ov.mouse === false) continue;
       const hf = inst.btn && inst.total > 3 ? 3 : inst.cur;
-      const objs = hf === inst.cur ? evalInst(inst).find((x) => x.layer === en.layer) : { objs: Core.evalLayerObjs(en.layer, hf) };
+      const objs = hf === inst.cur ? evalInst(inst).find((x) => x.layer === en.layer) : { objs: Core.evalLayerObjs(en.layer, hf).filter(Core.notGhost) };
       if (!objs) continue;
       const p = en.M.inverse().transformPoint(new DOMPoint(px, py));
       for (const o of objs.objs) { if (isInst(o)) continue; if (Core.hitObj(o, p.x, p.y, 0, hc, true)) return inst; }
@@ -2744,7 +2871,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.12.1-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.14.2-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -2870,7 +2997,13 @@ function invalidate() {
   requestAnimationFrame(() => { dirty = false; renderStage(); drawTimeline(); });
 }
 let saveTimer = 0;
+/* keep attached symbols in step with their bones; one the user just moved is re-attached from its new spot */
+function settleAll() {
+  const ed = new Set(S.sel.map((q) => q.id));
+  for (const l of layers()) { const k = C.kfFor(l, S.frame); if (k && k.objs.some((o) => o.bind)) C.settleBinds(k.objs, ed); }
+}
 function commit() {
+  settleAll();
   markDirty();
   invalidate(); refreshProps(); updateTime();
   clearTimeout(saveTimer);
@@ -2945,7 +3078,7 @@ const s2w = (x, y) => ({ x: (x - S.view.px) / S.view.z, y: (y - S.view.py) / S.v
 
 /* ---------- stage rendering ---------- */
 function drawFrameObjs(ctx, f, opt) {
-  C.drawUnits(ctx, C.evalDoc(S.doc, f), opt);
+  C.drawUnits(ctx, C.evalDoc(S.doc, f, !!(opt && opt.ghosts)), opt);
 }
 function renderStage() {
   if (!S.doc) return;
@@ -2963,7 +3096,7 @@ function renderStage() {
     for (let k = S.onion.b; k >= 1; k--) if (S.frame - k >= 0) drawFrameObjs(ctx, S.frame - k, { tint: { c: '#FF4D5E', a: 0.34 / k } });
     for (let k = S.onion.a; k >= 1; k--) if (S.frame + k < d.frames) drawFrameObjs(ctx, S.frame + k, { tint: { c: '#2FB36B', a: 0.34 / k } });
   }
-  drawFrameObjs(ctx, S.frame);
+  drawFrameObjs(ctx, S.frame, { ghosts: !S.playing });
   if (!S.playing && !(S.drawGhostOff)) {
     for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) if (layer.mask && layer.visible !== false) for (const o of objs) drawObj(ctx, o, { tint: { c: CSSV.accent, a: layer.id === S.layerId ? 0.4 : 0.22 } });
   }
@@ -3014,6 +3147,7 @@ function drawOverlay(ctx) {
     ctx.closePath(); ctx.stroke();
   }
   const one = sels.length === 1 ? sels[0] : null;
+  if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
   if (one && S.tool === 'select' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
@@ -3054,6 +3188,7 @@ function drawOverlay(ctx) {
   if (S.draw) drawPreview(ctx);
   drawBrushCursor(ctx);
   drawEraserCursor(ctx);
+  drawBonePreview(ctx);
   if (S.pen) drawPenPreview(ctx);
 }
 /* ===== Onionskyn app, part 2: tools and pointer input ===== */
@@ -3066,6 +3201,7 @@ const TOOLS = [
   { id: 'brush', k: 'B', n: 'Brush (paints a filled shape; [ and ] change size)', svg: '<path d="M16.5 3.5c-3 .6-6.5 4-8 7l1.5 1.5c3-1.5 6.4-5 7-8.5z"/><path d="M8.3 11.3c-2 0-3.3 1.2-3.3 3.2 0 1-.5 1.6-1.2 2 2.6.6 6-.2 6-3.4"/>', cur: 'crosshair' },
   { id: 'fluid', k: 'F', n: 'Fluid brush (smooth, tapered strokes; [ and ] change size)', svg: '<path d="M16.8 3.2c-4 .2-8.4 3.6-9.6 8.2l1.4 1.4c4.6-1.2 8-5.6 8.2-9.6z"/><path d="M7 12.6c-1.6 0-2.6 1.2-2.6 2.8 0 .8-.4 1.3-1 1.6 2.2.4 4.6-.6 4.6-2.8"/><path d="M10.5 16.5c1.6.4 3.2-.2 5-1.8" stroke-dasharray="1.6 2"/>', cur: 'crosshair' },
   { id: 'eraser', k: 'E', n: 'Eraser (cuts fills and lines on the active layer; [ and ] change size)', svg: '<path d="M7.5 16.5h8"/><path d="M4.2 11.8L11 5l4.2 4.2-6.8 6.8H6z"/><path d="M8 8.2l4.2 4.2"/>', cur: 'crosshair' },
+  { id: 'bone', k: 'J', n: 'Bone arm (click shoulder, elbow, then hand; drag the hand to pose it)', svg: '<circle cx="4.5" cy="15" r="2"/><circle cx="10" cy="7" r="2"/><circle cx="16" cy="13" r="2"/><path d="M5.8 13.4l3-4.8M11.6 8l3 3.6"/>', cur: 'crosshair' },
   { id: 'line', k: 'L', n: 'Line (Shift = 45°)', svg: '<path d="M4 16L16 4"/>', cur: 'crosshair' },
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
@@ -3094,6 +3230,7 @@ function buildTools() {
 function setTool(id) {
   if (S.pen && id !== 'pen') finishPen(false);
   endTextEdit(true);
+  S.bone = null;
   S.tool = id; S.draw = null; S.nodeSel = id === 'node' ? S.nodeSel : null;
   $$('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
   const t = TOOLS.find((x) => x.id === id);
@@ -3111,13 +3248,16 @@ function setTool(id) {
 }
 
 /* ---------- hit testing & creation ---------- */
-function hitAt(x, y, tolPx) {
+function hitAt(x, y, tolPx, rigFirst) {
   const tol = tolPx / S.view.z, ls = layers();
-  for (let i = ls.length - 1; i >= 0; i--) {
-    const l = ls[i];
-    if (!l.visible || l.locked) continue;
-    const objs = C.evalLayerObjs(l, S.frame);
-    for (let j = objs.length - 1; j >= 0; j--) if (hitObj(objs[j], x, y, tol, hctx)) return { lid: l.id, id: objs[j].id, o: objs[j] };
+  /* a bone arm is a guide laid over artwork, so it is picked last unless asked for first (Alt+click) */
+  for (const pass of rigFirst ? [true, false] : [false, true]) {
+    for (let i = ls.length - 1; i >= 0; i--) {
+      const l = ls[i];
+      if (!l.visible || l.locked) continue;
+      const objs = C.evalLayerObjs(l, S.frame);
+      for (let j = objs.length - 1; j >= 0; j--) if (!!objs[j].rig === pass && hitObj(objs[j], x, y, tol, hctx)) return { lid: l.id, id: objs[j].id, o: objs[j] };
+    }
   }
   return null;
 }
@@ -3237,6 +3377,7 @@ function onDown(e) {
     case 'fluid': if (canDraw()) S.draw = { type: 'fluid', pts: [brushPt(p.w, e)] }; break;
     case 'eraser': if (canDraw()) { S.draw = { type: 'erase', last: p.w, changed: false, undone: false }; eraseSweep(S.draw, p.w, p.w); S.brushHover = p.w; } break;
     case 'line': case 'rect': case 'ellipse': if (canDraw()) S.draw = { type: S.tool, start: p.w, cur: p.w, shift: e.shiftKey, alt: e.altKey }; break;
+    case 'bone': boneDown(e, p); break;
     case 'text': textDown(e, p); break;
     case 'bucket': bucketDown(e, p); break;
     case 'dropper': dropperDown(e, p); break;
@@ -3257,6 +3398,7 @@ function onMove(e) {
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
     else if (d.type === 'grad') gradDrag(p.w);
+    else if (d.type === 'rig') rigDrag(p.w);
     return;
   }
   if (S.draw) {
@@ -3265,11 +3407,13 @@ function onMove(e) {
     if (dr.type === 'pencil') dr.pts.push(p.w); else if (dr.type === 'brush' || dr.type === 'fluid') dr.pts.push(brushPt(p.w, e)); else { dr.cur = p.w; dr.shift = e.shiftKey; dr.alt = e.altKey; }
     invalidate(); return;
   }
+  if (S.bone) invalidate();
   if (S.pen) { penMove(p.w); return; }
   if (S.tool === 'select' && !S.space) {
     const one = singleSel();
     let cur = 'default';
-    if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
+    if (one && !getLayer(one.lid).locked && rigEditing(one.o) && rigHit(one.o, p.sx, p.sy)) cur = 'pointer';
+    else if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
       cur = gradHit(one.o, p.sx, p.sy) ? 'pointer' : hitAt(p.w.x, p.w.y, 5) ? 'move' : 'default';
     } else if (one && !getLayer(one.lid).locked) {
       const h = hitHandle(getHandles(one.o), p.sx, p.sy);
@@ -3283,9 +3427,10 @@ function onUp(e) {
   const p = stagePt(e);
   const d = S.drag;
   if (d) {
+    C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
-    if ((d.type === 'node' || d.type === 'grad') && d.started) { commit(); }
+    if ((d.type === 'node' || d.type === 'grad' || d.type === 'rig') && d.started) { commit(); }
     if ((d.type === 'move' || d.type === 'scale' || d.type === 'rotate') && d.started) commit();
     S.drag = null; invalidate();
     return;
@@ -3373,12 +3518,13 @@ function endTextEdit(ok) {
 /* ---------- selection tool ---------- */
 function selDown(e, p) {
   const w = p.w, one = singleSel();
+  if (one && !getLayer(one.lid).locked && rigEditing(one.o)) { const part = rigHit(one.o, p.sx, p.sy); if (part) { S.drag = { type: 'rig', part, lid: one.lid, id: one.id, start: p.w, started: false }; return; } }
   if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
   if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
     const h = hitHandle(getHandles(one.o), p.sx, p.sy);
     if (h) { S.drag = { type: h.id === 'rot' ? 'rotate' : 'scale', h, start: w, started: false, lid: one.lid, id: one.id }; return; }
   }
-  const hit = hitAt(w.x, w.y, 5);
+  const hit = hitAt(w.x, w.y, 5, e.altKey);
   if (hit) {
     const inSel = S.sel.some((s) => s.lid === hit.lid && s.id === hit.id);
     if (e.shiftKey) S.sel = inSel ? S.sel.filter((s) => !(s.lid === hit.lid && s.id === hit.id)) : S.sel.concat([{ lid: hit.lid, id: hit.id }]);
@@ -3403,6 +3549,7 @@ function moveDrag(w, e) {
     if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 3) return;
     d.started = true; beginEdit();
     d.orig = S.sel.map((s) => { const o = findEditable(s.lid, s.id); return o ? { o, x: o.t.x, y: o.t.y } : null; }).filter(Boolean);
+    for (const q of d.orig) if (q.o.bind) C.freeBind.add(q.o.id);
   }
   let dx = w.x - d.start.x, dy = w.y - d.start.y;
   if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
@@ -3416,6 +3563,7 @@ function xformDrag(w, e) {
     pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
     const o = findEditable(d.lid, d.id);
     if (!o) { S.drag = null; return; }
+    if (o.bind) C.freeBind.add(o.id);
     d.o = o; d.t0 = Object.assign({}, o.t); d.b = localBounds(o); d.M0 = matOf(o.t); d.inv = minv(d.M0); d.started = true;
     const cx = (d.b.x0 + d.b.x1) / 2, cy = (d.b.y0 + d.b.y1) / 2;
     d.C = mapply(d.M0, cx, cy); d.cx = cx; d.cy = cy;
@@ -3817,6 +3965,7 @@ function drawPenPreview(ctx) {
 /* ---------- node edit tool ---------- */
 function nodeDown(e, p) {
   const one = singleSel();
+  if (one && one.o.rig) { toast('A bone arm is posed with the Selection tool: drag its hand, elbow or shoulder.'); return; }
   if (one && one.o.kind === 'path' && !getLayer(one.lid).locked) {
     const hit = hitNodePart(one.o, p.sx, p.sy);
     if (hit) {
@@ -4373,7 +4522,7 @@ function eraseSweep(dr, a, b) {
   const r = eraserR(), P = [a.x, a.y], Q = [b.x, b.y];
   const bx0 = Math.min(P[0], Q[0]) - r, bx1 = Math.max(P[0], Q[0]) + r, by0 = Math.min(P[1], Q[1]) - r, by1 = Math.max(P[1], Q[1]) + r;
   const cand = C.evalLayerObjs(l, S.frame).filter((o) => {
-    if (o.kind !== 'path') return false;
+    if (o.kind !== 'path' || o.rig) return false;
     const wb = C.worldBounds(o); if (!wb) return false;
     const pad = (o.stroke ? o.sw : 0) / 2 + 1;
     return !(wb.x0 - pad > bx1 || wb.x1 + pad < bx0 || wb.y0 - pad > by1 || wb.y1 + pad < by0);
@@ -4400,6 +4549,77 @@ function drawEraserCursor(ctx) {
   const c = w2s(w.x, w.y), rr = eraserR() * S.view.z;
   ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(c[0], c[1], rr, 0, Math.PI * 2); ctx.stroke();
   ctx.strokeStyle = 'rgba(20,24,40,.85)'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.restore();
+}
+
+/* ---------- bone arm ---------- */
+const rigEditing = (o) => !!(o && o.kind === 'path' && o.rig && C.rigValid(o.rig));
+function boneDown(e, p) {
+  if (!canDraw()) return;
+  const B = S.bone || (S.bone = { pts: [] });
+  const last = B.pts[B.pts.length - 1];
+  if (last && Math.hypot(p.w.x - last.x, p.w.y - last.y) * S.view.z < 8) return;
+  B.pts.push(p.w);
+  if (B.pts.length === 3) finishBone();
+  invalidate();
+}
+function finishBone() {
+  const [a, b, c] = S.bone.pts; S.bone = null;
+  const l1 = Math.hypot(b.x - a.x, b.y - a.y), l2 = Math.hypot(c.x - b.x, c.y - b.y), L = l1 + l2;
+  const ux = (c.x - a.x), uy = (c.y - a.y), du = Math.hypot(ux, uy) || 1;
+  const side = (-uy / du) * (b.x - a.x) + (ux / du) * (b.y - a.y);
+  const pa = currentPaint(false);
+  const o = C.mkPath([], { fill: pa.fill || S.style.fill, fa: pa.fa, stroke: null }, { x: 0, y: 0 });
+  o.rig = { s: [a.x, a.y], h: [c.x, c.y], l1, l2, flip: side < 0 ? -1 : 1, w: [Math.max(3, L * 0.07), Math.max(2.5, L * 0.055), Math.max(2, L * 0.04)] };
+  C.rigBuild(o);
+  if (addObject(o)) { setTool('select'); refreshProps(); }
+}
+function rigPts(o) {
+  const M = matOf(o.t), k = C.rigSolve(o.rig), W = (q) => { const r = mapply(M, q[0], q[1]); return { x: r[0], y: r[1] }; };
+  return { s: W(k.s), e: W(k.e), h: W(o.rig.h), hh: W(k.h) };
+}
+function rigHit(o, sx, sy) {
+  const P = rigPts(o), near = (q) => { const p = w2s(q.x, q.y); return Math.hypot(p[0] - sx, p[1] - sy) <= 10; };
+  return near(P.h) ? 'h' : near(P.e) ? 'e' : near(P.s) ? 's' : null;
+}
+function drawRigHandles(ctx, o) {
+  const P = rigPts(o), acc = CSSV.accent, sc = (q) => w2s(q.x, q.y);
+  ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = acc;
+  const S0 = sc(P.s), E0 = sc(P.e), H0 = sc(P.hh), T0 = sc(P.h);
+  ctx.beginPath(); ctx.moveTo(S0[0], S0[1]); ctx.lineTo(E0[0], E0[1]); ctx.lineTo(H0[0], H0[1]); ctx.stroke();
+  if (Math.hypot(T0[0] - H0[0], T0[1] - H0[1]) > 2) { ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(H0[0], H0[1]); ctx.lineTo(T0[0], T0[1]); ctx.stroke(); ctx.setLineDash([]); }
+  const dot = (p, r, fill) => { ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.lineWidth = 1; ctx.strokeStyle = acc; ctx.stroke(); };
+  dot(S0, 6, CSSV.accentFg); dot(E0, 5, CSSV.accentFg); dot(T0, 7, acc);
+  ctx.restore();
+}
+function drawBonePreview(ctx) {
+  const B = S.bone; if (!B || !B.pts.length) return;
+  const pts = B.pts.concat(S.cursorW ? [S.cursorW] : []);
+  ctx.save(); ctx.strokeStyle = CSSV.accent; ctx.fillStyle = CSSV.accent; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); pts.forEach((q, i) => { const s = w2s(q.x, q.y); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }); ctx.stroke(); ctx.setLineDash([]);
+  B.pts.forEach((q) => { const s = w2s(q.x, q.y); ctx.beginPath(); ctx.arc(s[0], s[1], 5, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+function rigDrag(w) {
+  const d = S.drag;
+  if (!d.started) {
+    if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 2) return;
+    pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
+    const o = findEditable(d.lid, d.id);
+    if (!o || !o.rig) { S.drag = null; return; }
+    d.o = o; d.inv = minv(matOf(o.t)); d.s0 = o.rig.s.slice(); d.h0 = o.rig.h.slice(); d.l0 = mapply(d.inv, d.start.x, d.start.y); d.started = true;
+  }
+  const g = d.o.rig, l = mapply(d.inv, w.x, w.y);
+  if (d.part === 'h') g.h = [l[0], l[1]];
+  else if (d.part === 's') { const dx = l[0] - d.l0[0], dy = l[1] - d.l0[1]; g.s = [d.s0[0] + dx, d.s0[1] + dy]; g.h = [d.h0[0] + dx, d.h0[1] + dy]; }
+  else if (d.part === 'e') { const cr = (g.h[0] - g.s[0]) * (l[1] - g.s[1]) - (g.h[1] - g.s[1]) * (l[0] - g.s[0]); if (Math.abs(cr) > 1e-6) g.flip = cr < 0 ? -1 : 1; }
+  C.rigBuild(d.o); syncBinds(d.lid); invalidate();
+}
+function syncBinds(lid) { const k = C.kfFor(getLayer(lid), S.frame); if (k) C.settleBinds(k.objs, null); }
+function rigEdit(fn) {
+  const one = singleSel(); if (!one || !one.o.rig || getLayer(one.lid).locked) return;
+  beginEditOnce(); C.ensureEditable(getLayer(one.lid), S.frame);
+  const o = findEditable(one.lid, one.id); if (!o || !o.rig) return;
+  fn(o.rig); C.rigBuild(o); syncBinds(one.lid); commit();
 }
 /* ===== Onionskyn app, part 3: timeline, layers, properties, menus, export, import, init ===== */
 const tlC = $('#tlCells'), tlR = $('#tlRuler'), tctx = tlC.getContext('2d'), rctx = tlR.getContext('2d');
@@ -4856,6 +5076,16 @@ function refreshProps() {
     $('#kfScript').disabled = !k; $('#kfLabel').disabled = !k; $('#iname').disabled = !nm;
     { const cl = one && one.o.kind === 'clip' ? one.o : null; $('#iclipRow').style.display = cl ? '' : 'none';
       if (cl) { setVal($('#itype'), cl.btn ? 'btn' : cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc || cl.btn ? 'none' : ''; }
+      { const rg = one && one.o.rig && C.rigValid(one.o.rig) ? one.o.rig : null; $('#rigBox').style.display = rg ? '' : 'none'; if (rg) { $('#rigVis').checked = !rg.ghost; setVal($('#rigW0'), Math.round(rg.w[0])); setVal($('#rigW1'), Math.round(rg.w[1])); setVal($('#rigW2'), Math.round(rg.w[2])); } }
+      { const cl2 = one && one.o.kind === 'clip' ? one.o : null, sel = $('#bindSel'); let rigs = [];
+        if (cl2) { const ly = getLayer(one.lid); rigs = C.evalLayerObjs(ly, S.frame).filter((x) => x.rig && x.kind === 'path'); }
+        $('#bindRow').style.display = cl2 ? '' : 'none'; sel.disabled = !rigs.length;
+        if (cl2 && !rigs.length) sel.innerHTML = '<option value="">Draw a bone arm (J) on this layer first</option>';
+        if (cl2 && rigs.length) {
+          let h = '<option value="">None</option>';
+          rigs.forEach((r, i) => { const nm = rigs.length > 1 ? 'Arm ' + (i + 1) + ' · ' : ''; h += '<option value="' + r.id + ':0">' + nm + 'upper arm</option><option value="' + r.id + ':1">' + nm + 'forearm</option>'; });
+          sel.innerHTML = h; sel.value = cl2.bind ? cl2.bind.to + ':' + cl2.bind.bone : ''; if (sel.value !== (cl2.bind ? cl2.bind.to + ':' + cl2.bind.bone : '')) sel.value = '';
+        } }
       $('#iscriptRow').style.display = cl && (cl.mc || cl.btn) ? '' : 'none'; setVal($('#iscript'), cl && cl.script || ''); }
     setVal($('#kfScript'), k && k.script || ''); setVal($('#kfLabel'), k && k.label || ''); setVal($('#iname'), nm && nm.name || '');
     refreshSoundSelect();
@@ -4892,6 +5122,39 @@ function syncStyleUI() {
 function syncOnionUI() {
   $('#onionOn').checked = S.onion.on; $('#pOnion').setAttribute('aria-pressed', String(S.onion.on));
   setVal($('#onionB'), S.onion.b); setVal($('#onionA'), S.onion.a);
+  const pb = $('#opB'); if (pb) { setVal(pb, S.onion.b); setVal($('#opA'), S.onion.a); }
+}
+/* the onion-skin pop-over: opens when onion skin is switched on, with the before/after counts right there */
+function onionPopHide() { const p = $('#onionPop'); if (p) p.remove(); document.removeEventListener('pointerdown', onionPopAway, true); document.removeEventListener('keydown', onionPopKey, true); }
+function onionPopAway(e) { const p = $('#onionPop'); if (p && !p.contains(e.target) && e.target !== $('#pOnion') && !e.target.closest('#pOnionOpt')) onionPopHide(); }
+function onionPopKey(e) { if (e.key === 'Escape') onionPopHide(); }
+function onionPopShow() {
+  onionPopHide();
+  let auto = true; try { auto = localStorage.getItem('os_onionpop') !== '0'; } catch (_) {}
+  const p = document.createElement('div');
+  p.id = 'onionPop'; p.className = 'menu-pop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Onion skin');
+  p.innerHTML = '<div class="op-h">Onion skin</div><p class="op-t">Faint copies of the frames around this one, so you can draw the next pose against the last. Earlier frames are tinted <b class="op-r">red</b>, later ones <b class="op-g">green</b>.</p>'
+    + '<div class="row"><span>Frames before</span><div class="ctl"><input type="number" id="opB" min="0" max="10"></div></div>'
+    + '<div class="row"><span>Frames after</span><div class="ctl"><input type="number" id="opA" min="0" max="10"></div></div>'
+    + '<label class="op-c"><input type="checkbox" id="opAuto"> Show this when I turn onion skin on</label>'
+    + '<div class="op-f"><button class="btn" id="opOff">' + (S.onion.on ? 'Turn off' : 'Turn on') + '</button><button class="btn primary" id="opDone">Done</button></div>';
+  document.body.appendChild(p);
+  const r = $('#pOnion').getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - 270)) + 'px';
+  p.style.bottom = (innerHeight - r.top + 8) + 'px';
+  setVal($('#opB'), S.onion.b); setVal($('#opA'), S.onion.a); $('#opAuto').checked = auto;
+  $('#opB').addEventListener('input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  $('#opA').addEventListener('input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  $('#opAuto').addEventListener('change', (e) => { try { localStorage.setItem('os_onionpop', e.target.checked ? '1' : '0'); } catch (_) {} });
+  $('#opDone').addEventListener('click', onionPopHide);
+  $('#opOff').addEventListener('click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); onionPopHide(); });
+  document.addEventListener('pointerdown', onionPopAway, true); document.addEventListener('keydown', onionPopKey, true);
+}
+function setOnion(v, fromBtn) {
+  S.onion.on = v; syncOnionUI(); invalidate();
+  if (!v) { onionPopHide(); return; }
+  let auto = true; try { auto = localStorage.getItem('os_onionpop') !== '0'; } catch (_) {}
+  if (fromBtn && auto) onionPopShow();
 }
 function styleEdit(patch, fn) {
   Object.assign(S.style, patch);
@@ -5053,11 +5316,28 @@ function bindProps() {
   try { const v = localStorage.getItem('os_pbg'); if (/^#[0-9a-f]{6}$/i.test(v || '')) S.editBg = v; } catch (_) {}
   on('#pbg', 'input', (e) => { S.editBg = e.target.value; try { localStorage.setItem('os_pbg', S.editBg); } catch (_) {} invalidate(); });
   on('#pbgReset', 'click', () => { S.editBg = ''; try { localStorage.removeItem('os_pbg'); } catch (_) {} refreshProps(); invalidate(); });
+  on('#bindSel', 'change', (e) => {
+    const one = singleSel(); if (!one || one.o.kind !== 'clip' || getLayer(one.lid).locked) return;
+    const v = e.target.value, l = getLayer(one.lid);
+    pushUndo(); C.ensureEditable(l, S.frame);
+    if (!v) C.unbindBone(l, one.id);
+    else {
+      const [rid, b] = v.split(':'), r = C.kfFor(l, S.frame).objs.find((x) => x.id === rid);
+      C.bindBone(l, one.id, rid, +b);
+      if (r && r.rig && !r.rig.ghost) { C.setRigGhost(l, rid, true); toast('Attached. The arm is now a faint guide and is not drawn in the preview or exports (untick "Draw this arm" to change that).'); }
+    }
+    commit(); refreshProps();
+  });
+  on('#rigVis', 'change', (e) => { const one = singleSel(); if (!one || !one.o.rig || getLayer(one.lid).locked) return; pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame); C.setRigGhost(getLayer(one.lid), one.id, !e.target.checked); commit(); });
+  on('#rigFlip', 'click', () => rigEdit((g) => { g.flip = g.flip < 0 ? 1 : -1; }));
+  ['#rigW0', '#rigW1', '#rigW2'].forEach((id, i) => on(id, 'input', (e) => { const v = clamp(parseFloat(e.target.value) || 1, 1, 400); rigEdit((g) => { g.w[i] = v; }); }));
   on('#dbg', 'input', (e) => { beginEditOnce(); S.doc.bg = e.target.value; commit(); });
-  on('#onionOn', 'change', (e) => { S.onion.on = e.target.checked; syncOnionUI(); invalidate(); });
-  on('#pOnion', 'click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); });
-  on('#onionB', 'input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 5); invalidate(); });
-  on('#onionA', 'input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 5); invalidate(); });
+  on('#onionOn', 'change', (e) => setOnion(e.target.checked, false));
+  on('#pOnion', 'click', () => setOnion(!S.onion.on, true));
+  on('#pOnionOpt', 'click', () => { if ($('#onionPop')) onionPopHide(); else onionPopShow(); });
+  on('#pOnion', 'contextmenu', (e) => { e.preventDefault(); onionPopShow(); });
+  on('#onionB', 'input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  on('#onionA', 'input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
 }
 
 /* ---------- easing curve editor ---------- */
@@ -6367,7 +6647,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -6376,7 +6656,7 @@ window.addEventListener('keydown', (e) => {
     if (modalBg.classList.contains('on')) { closeModal(); return; }
     if (menuEl) { closeMenu(); return; }
     if (typing) { t.blur(); return; }
-    if (S.pen) cancelPen(); else if (S.sel.length) { S.sel = []; S.nodeSel = null; refreshProps(); invalidate(); } else if (S.edit.length) exitSym();
+    if (S.bone) { S.bone = null; invalidate(); } else if (S.pen) cancelPen(); else if (S.sel.length) { S.sel = []; S.nodeSel = null; refreshProps(); invalidate(); } else if (S.edit.length) exitSym();
     return;
   }
   if (k === 'F9') { e.preventDefault(); if ($('#ced').classList.contains('on')) closeCed(); else openCed(); return; }

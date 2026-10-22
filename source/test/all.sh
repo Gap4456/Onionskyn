@@ -6,7 +6,7 @@ run(){ name=$1; shift; out=$(timeout 280 "$@" 2>&1); code=$?; bad=$(echo "$out" 
 run core node test/core.test.js
 run flaimg node test/flaimg.js $SP/t.png
 run flaedge node test/flaedge.js
-for t in smoke2 beta brush fluid merge bucket gradient eraser as1 frames undotext ease mask img clip sym symdel xss explimit audit1 audit2 audit3; do run $t node test/$t.js; done
+for t in smoke2 beta brush fluid merge bucket gradient eraser as1 frames onionpop bone bind undotext ease mask img clip sym symdel xss explimit audit1 audit2 audit3; do run $t node test/$t.js; done
 for t in rttest symedit edtest; do run $t node test/$t.js $SP/noun.fla; done
 for sd in 1 2 3; do run diff$sd node test/diff.js $sd 10; done
 run fuzz1 node test/fuzz.js 21 80

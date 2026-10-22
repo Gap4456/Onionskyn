@@ -1,0 +1,25 @@
+const {chromium}=require('/opt/npm-tools/node_modules/playwright');const path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch();const page=await b.newPage({viewport:{width:1300,height:850}});const errs=[];page.on('pageerror',e=>errs.push(e.message));
+await page.addInitScript(()=>{window.__FC_TEST=true;});
+await page.goto('file://'+path.resolve(__dirname,'../dist/onionskyn.html'));await page.waitForTimeout(500);
+await page.click('#mFile');await page.click('text=New animation');await page.waitForTimeout(150);
+const dlg=await page.$('#modal .primary');if(dlg){await dlg.click();await page.waitForTimeout(150);}
+const on=()=>page.evaluate(()=>window.__FC.S.onion);
+ok(!(await page.$('#onionPop')),'no pop-over at start');
+await page.click('#pOnion');await page.waitForTimeout(100);
+ok(!!(await page.$('#onionPop'))&&(await on()).on,'turning onion on opens the pop-over');
+await page.screenshot({path:'/tmp/onionpop.png'});
+await page.fill('#opB','3');await page.fill('#opA','0');await page.waitForTimeout(80);
+let o=await on();ok(o.b===3&&o.a===0,'pop-over sets before/after independently');
+ok((await page.inputValue('#onionB'))==='3','Doc tab input follows');
+await page.fill('#opB','99');o=await on();ok(o.b===10,'clamped to 10');
+await page.keyboard.press('Escape');await page.waitForTimeout(80);ok(!(await page.$('#onionPop')),'Escape closes');
+await page.click('#pOnion');await page.waitForTimeout(80);ok(!(await on()).on&&!(await page.$('#onionPop')),'turning off closes it');
+await page.click('#pOnion');await page.waitForTimeout(80);await page.uncheck('#opAuto');await page.click('#opDone');
+await page.click('#pOnion');await page.click('#pOnion');await page.waitForTimeout(80);ok(!(await page.$('#onionPop')),'opt-out stops auto-open');
+await page.click('#pOnion',{button:'right'});await page.waitForTimeout(80);ok(!!(await page.$('#onionPop')),'right-click still opens it');
+await page.keyboard.press('Escape');await page.click('#pOnionOpt');await page.waitForTimeout(80);ok(!!(await page.$('#onionPop')),'options button opens it');
+await page.click('#pOnionOpt');await page.waitForTimeout(80);ok(!(await page.$('#onionPop')),'options button toggles it closed');
+ok(errs.length===0,'no page errors '+errs.join('|'));
+console.log(fails?'FAILED':'ALL PASS');await b.close();process.exit(fails?1:0);})();
