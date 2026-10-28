@@ -1,5 +1,11 @@
 # Onionskyn
 
+### Gap4456's Fork — Custom Improvements
+
+This fork includes additional animation workflow improvements, including a movable rotation pivot, pivot-aware tweening, improved frame and keyframe controls, and timeline Copy/Paste Frames.
+
+See [GAPS_CHANGELOG.md](GAPS_CHANGELOG.md) for the full list of modifications.
+
 A free, single-file animation editor that runs in your browser. Draw vectors, lay them out on a timeline, tween between keyframes, and export video, GIF, SVG or a standalone HTML player. Nothing is uploaded anywhere; your work stays in your browser until you save it.
 
 Onionskyn is an independent project and is not affiliated with Adobe.
