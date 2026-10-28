@@ -1,0 +1,22 @@
+{
+  "name": "onionskyn-portable",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop wrapper for Onionskyn",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win zip --x64"
+  },
+  "devDependencies": {
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "local.onionskyn.desktop",
+    "productName": "Onionskyn",
+    "files": ["main.js", "onionskyn.html", "package.json"],
+    "directories": { "output": "release" },
+    "win": { "target": [{"target":"zip", "arch":["x64"]}] }
+  }
+}
