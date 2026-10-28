@@ -142,6 +142,17 @@ input[type=checkbox] { accent-color: var(--accent); }
 #prev .ph button { height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid #4a5370; background: #2a3040; color: inherit; }
 #prev iframe { flex: 1; border: 0; border-radius: 8px; background: #1b1f2a; width: 100%; }
 #kfScript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
+#iscript { width: 100%; box-sizing: border-box; font: 12px/1.4 var(--f-mono); background: var(--cell); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; resize: vertical; white-space: pre; overflow: auto; }
+#onionPop { width: 260px; padding: 12px; z-index: 60; }
+#onionPop .row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0; }
+#onionPop .row span { white-space: nowrap; }
+#onionPop .row input { width: 72px; }
+#onionPop .op-h { font-weight: 700; margin-bottom: 4px; }
+#onionPop .op-t { margin: 0 0 8px; color: var(--mut); font-size: 12px; line-height: 1.45; }
+#onionPop .op-r { color: #FF4D5E; } #onionPop .op-g { color: #2FB36B; }
+#onionPop .op-c { display: flex; gap: 6px; align-items: center; margin: 8px 0; font-size: 12px; color: var(--mut); }
+#onionPop .op-f { display: flex; justify-content: space-between; gap: 8px; }
+small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
 #kfScript:disabled, #iname:disabled, #kfLabel:disabled { opacity: .5; }
 #iname, #kfLabel { width: 100%; box-sizing: border-box; }
 .mini1 { height: 26px; width: 30px; border-radius: 6px; border: 1px solid var(--line); background: var(--cell); flex: none; }
@@ -355,8 +366,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <label>W<input type="number" id="tw" step="1"></label><label>H<input type="number" id="th" step="1"></label>
         <label>R<input type="number" id="tr" step="1"></label>
       </div>
-      <div class="row" id="iclipRow"><span>Symbol</span><div class="ctl"><select id="itype" aria-label="Symbol type"><option value="mc">Movie clip</option><option value="gr">Graphic</option></select><select id="imode" aria-label="Playback"><option value="loop">Loop</option><option value="once">Play once</option><option value="single">Single frame</option></select><input type="number" id="ifirst" min="1" step="1" style="width:56px" aria-label="First frame" title="First frame to show (1 = start)"></div></div>
+      <div class="row" id="iclipRow"><span>Symbol</span><div class="ctl"><select id="itype" aria-label="Symbol type"><option value="mc">Movie clip</option><option value="btn">Button</option><option value="gr">Graphic</option></select><select id="imode" aria-label="Playback"><option value="loop">Loop</option><option value="once">Play once</option><option value="single">Single frame</option></select><input type="number" id="ifirst" min="1" step="1" style="width:56px" aria-label="First frame" title="First frame to show (1 = start)"></div></div>
       <div class="row"><span>Instance</span><div class="ctl"><input type="text" id="iname" placeholder="name (e.g. btn_next)" spellcheck="false" aria-label="Instance name"></div></div>
+      <div class="row" id="bindRow" style="display:none"><span>Follows bone</span><div class="ctl"><select id="bindSel" aria-label="Follows bone"></select></div></div>
+      <div id="rigBox" style="display:none">
+        <div class="row"><span>Bone arm</span><div class="ctl"><button class="btn" id="rigFlip" title="Bend the elbow the other way">Flip bend</button></div></div>
+        <div class="row"><span>Output</span><div class="ctl"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rigVis"> Draw this arm</label></div></div>
+        <div class="row"><span>Thickness</span><div class="ctl"><input type="number" id="rigW0" min="1" max="400" step="1" style="min-width:0;width:100%" title="Shoulder radius" aria-label="Shoulder radius"><input type="number" id="rigW1" min="1" max="400" step="1" style="min-width:0;width:100%" title="Elbow radius" aria-label="Elbow radius"><input type="number" id="rigW2" min="1" max="400" step="1" style="min-width:0;width:100%" title="Hand radius" aria-label="Hand radius"></div></div>
+      </div>
+      <div class="row" id="iscriptRow" style="align-items:flex-start"><span>Script</span><div class="ctl"><textarea id="iscript" rows="4" spellcheck="false" placeholder="Runs when this clip appears, e.g. on (release) { gotoAndPlay(&quot;menu&quot;); }" aria-label="Instance script"></textarea></div></div>
       <div class="mini" style="margin-top:8px"><button data-act="edit" title="Edit symbol timeline (double-click)">Edit symbol</button><button data-act="dup" title="Duplicate (Ctrl+D)">Duplicate</button><button data-act="del" title="Delete">Delete</button></div>
     </div>
     </div>
@@ -448,8 +466,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <label>W<input type="number" id="dw" min="16" max="4096"></label><label>H<input type="number" id="dh" min="16" max="4096"></label>
         <label>fps<input type="number" id="dfps" min="1" max="120"></label><label>Fr<input type="number" id="dframes" min="1" max="2000"></label>
       </div>
+      <div class="row" style="margin-top:8px"><span>Scripts</span><div class="ctl"><select id="dlang" aria-label="Script language"><option value="js">JavaScript</option><option value="as1">ActionScript 1/2</option></select></div></div>
+      <div id="dscenesRow" style="display:none"><div class="row"><span>Scenes</span><div class="ctl" id="dscenes" style="flex-wrap:wrap;gap:4px"></div></div></div>
+      <div class="row"><span>Pasteboard</span><div class="ctl"><input type="color" id="pbg" aria-label="Pasteboard colour"><button class="tbtn" id="pbgReset" title="Back to the theme colour">Reset</button></div></div>
       <div class="row" style="margin-top:8px"><span>Stage</span><div class="ctl"><input type="color" id="dbg" aria-label="Stage colour"></div></div>
-      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><input type="number" id="onionB" min="0" max="5" title="Frames before"><input type="number" id="onionA" min="0" max="5" title="Frames after"></div></div>
+      <div class="row"><span>Onion skin</span><div class="ctl"><input type="checkbox" id="onionOn" aria-label="Onion skin"><small class="mut">Before</small><input type="number" id="onionB" min="0" max="10" title="Frames before"><small class="mut">After</small><input type="number" id="onionA" min="0" max="10" title="Frames after"></div></div>
     </div>
     </div>
   </aside>
@@ -462,14 +483,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button class="tbtn" id="pNext" title="Next frame (.)" aria-label="Next frame"><svg viewBox="0 0 16 16"><path d="M4 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLast" title="Last frame (Shift+.)" aria-label="Last frame"><svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLoop" title="Loop playback" aria-pressed="true">Loop</button>
-      <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button>
+      <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button><button class="tbtn" id="pOnionOpt" title="Onion skin options" aria-label="Onion skin options" aria-haspopup="dialog" style="padding:0 6px;margin-left:-4px"><svg viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M3.5 10.5 8 5.5l4.5 5z"/></svg></button>
       <span class="timecode" id="tcode"></span>
       <span class="sep"></span>
       <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>
       <button class="tbtn" data-fr="key" title="Insert keyframe (F6)">+ Key</button>
       <button class="tbtn" data-fr="blank" title="Insert blank keyframe (F7)">+ Blank</button>
-      <button class="tbtn" data-fr="motion" title="Create motion tween">Motion</button>
+      <button class="tbtn" data-fr="motion" title="Create motion tween">Tween</button>
       <button class="tbtn" data-fr="shape" title="Create shape tween">Shape</button>
+      <button class="tbtn" data-fr="reverse" title="Reverse the selected frames (Shift+click to select a range; Shift+click the numbers to select all layers)">Reverse</button>
     </div>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl-inner">
@@ -784,7 +806,7 @@ function worldBounds(o) {
 }
 /* shift a path's nodes so its bounds centre becomes the local origin */
 function recenter(o) {
-  if (o.kind !== 'path') return o;
+  if (o.kind !== 'path' || o.rig) return o;
   const b = contoursBounds(o.contours);
   if (!b) return o;
   const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
@@ -807,6 +829,7 @@ function setObjMatrix(o, m) {
   const d = decompose(m);
   if (d.skew < 1e-3 || o.kind === 'clip' || o.kind === 'text' || o.kind === 'image') { o.t = { x: d.x, y: d.y, sx: d.sx, sy: d.sy, r: d.r }; return o; }
   if (o.kind === 'path') {
+    delete o.rig;
     applyMatrixToNodes(o.contours, m);
     if (o.grad) o.grad.m = mmul(m, o.grad.m);
     o.t = newT();
@@ -872,11 +895,13 @@ function normalizeDoc(d) {
     if (!Array.isArray(l.kfs) || !l.kfs.length) l.kfs = [mkKf(0)];
     l.kfs.sort((a, b) => a.f - b.f);
     if (l.kfs[0].f !== 0) l.kfs.unshift(mkKf(0));
-    for (const k of l.kfs) { k.objs = k.objs || []; k.tween = k.tween || 'none'; k.ease = k.ease || { type: 'linear', amt: 50 }; }
+    for (const k of l.kfs) { k.objs = k.objs || []; k.tween = k.tween || 'none'; k.ease = k.ease || { type: 'linear', amt: 50 }; if (k.scene != null) k.scene = String(k.scene).slice(0, 80); }
     const mx = l.kfs[l.kfs.length - 1].f + 1;
     if (mx > d.frames) d.frames = mx;
   }
   d.frames = Math.min(d.frames, 900);
+  normRigs(d.layers); for (const k of Object.keys(d.lib)) if (d.lib[k]) normRigs(d.lib[k].layers);
+  if (d.lang !== 'as1') delete d.lang;
   return d;
 }
 
@@ -986,10 +1011,142 @@ function lerpPaint(o, a, b, p) {
   }
   o.sw = lerp(a.sw || 0, b.sw || 0, p);
 }
+/* ---------- bone arm: shoulder -> elbow -> hand with two-bone IK ----------
+   A rig is an ordinary path object that also carries o.rig = { s:[x,y], h:[x,y], l1, l2, flip, w:[r0,r1,r2] } in the object's own space.
+   The outline (o.contours) is derived from the rig, so every renderer and exporter draws it like any other shape; tweens interpolate the rig and rebuild it. */
+function rigSolve(g) {
+  const sx = g.s[0], sy = g.s[1], dx = g.h[0] - sx, dy = g.h[1] - sy, d = Math.hypot(dx, dy);
+  const l1 = g.l1, l2 = g.l2, lo = Math.abs(l1 - l2) + 1e-6, hi = l1 + l2 - 1e-6;
+  const ux = d > 1e-9 ? dx / d : 1, uy = d > 1e-9 ? dy / d : 0;
+  const dc = Math.min(Math.max(d, lo), hi);
+  const a = (l1 * l1 - l2 * l2 + dc * dc) / (2 * dc), h = Math.sqrt(Math.max(0, l1 * l1 - a * a)), fl = g.flip < 0 ? -1 : 1;
+  return { s: [sx, sy], e: [sx + ux * a - uy * h * fl, sy + uy * a + ux * h * fl], h: [sx + ux * dc, sy + uy * dc], reach: d > hi || d < lo };
+}
+function rigContours(g) {
+  const k = rigSolve(g), P = [k.s, k.e, k.h], r = g.w, out = [];
+  const circ = (p, rad) => { const c = ellipseContour(rad, rad); for (const n of c.nodes) { n.x += p[0]; n.y += p[1]; } return c; };
+  const seg = (A, B, ra, rb) => {
+    const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    let q = [[A[0] + nx * ra, A[1] + ny * ra], [B[0] + nx * rb, B[1] + ny * rb], [B[0] - nx * rb, B[1] - ny * rb], [A[0] - nx * ra, A[1] - ny * ra]];
+    let area = 0; for (let i = 0; i < 4; i++) { const u = q[i], v = q[(i + 1) % 4]; area += u[0] * v[1] - v[0] * u[1]; }
+    if (area < 0) q = q.reverse();
+    return { closed: true, nodes: q.map((u) => ({ x: u[0], y: u[1], ix: 0, iy: 0, ox: 0, oy: 0 })) };
+  };
+  out.push(seg(P[0], P[1], r[0], r[1]), seg(P[1], P[2], r[1], r[2]));
+  for (let i = 0; i < 3; i++) out.push(circ(P[i], r[i]));
+  return out;
+}
+function rigBuild(o) { o.contours = rigContours(o.rig); o.nz = true; return o; }
+function rigValid(g) {
+  const num = (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi;
+  const pt = (p) => Array.isArray(p) && p.length === 2 && num(p[0], -1e6, 1e6) && num(p[1], -1e6, 1e6);
+  return !!g && pt(g.s) && pt(g.h) && num(g.l1, 1, 1e5) && num(g.l2, 1, 1e5) && Array.isArray(g.w) && g.w.length === 3 && g.w.every((v) => num(v, 0.5, 1e4));
+}
+function lerpRig(a, b, p) {
+  const L = (x, y) => x + (y - x) * p;
+  return { s: [L(a.s[0], b.s[0]), L(a.s[1], b.s[1])], h: [L(a.h[0], b.h[0]), L(a.h[1], b.h[1])], l1: L(a.l1, b.l1), l2: L(a.l2, b.l2), flip: a.flip < 0 ? -1 : 1, w: a.w.map((v, i) => L(v, b.w[i])) };
+}
+function normRigs(layers) {
+  for (const l of layers || []) for (const k of l.kfs || []) for (const o of k.objs || []) {
+    if (o.bind && !(o.kind === 'clip' && bindValid(o.bind))) delete o.bind;
+    if (!o.rig) continue;
+    o.rig.ghost = !!o.rig.ghost;
+    if (o.kind === 'path' && rigValid(o.rig)) { o.rig.flip = o.rig.flip < 0 ? -1 : 1; rigBuild(o); } else delete o.rig;
+  }
+}
+/* ---------- attaching symbols to bones ----------
+   A symbol instance with o.bind = { to: <rig object id>, bone: 0|1, lx, ly, lr } is held rigidly in the bone's frame (bone 0 = shoulder->elbow, 1 = elbow->hand).
+   The rig must be on the same layer. Evaluation overrides the instance's x, y and rotation from the rig's evaluated pose, so tweens and every renderer follow along. */
+const freeBind = new Set(); /* ids being dragged in the editor: shown where the pointer puts them until the drag is committed */
+function boneFrame(rigObj, bone) {
+  const k = rigSolve(rigObj.rig), M = matOf(rigObj.t), A = bone ? k.e : k.s, B = bone ? k.h : k.e;
+  const a = mapply(M, A[0], A[1]), b = mapply(M, B[0], B[1]);
+  return { x: a[0], y: a[1], r: Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / PI };
+}
+function bindPose(o, rigObj) {
+  const f = boneFrame(rigObj, o.bind.bone), th = f.r * PI / 180, c = Math.cos(th), s = Math.sin(th), b = o.bind;
+  return { x: f.x + c * b.lx - s * b.ly, y: f.y + s * b.lx + c * b.ly, r: f.r + b.lr };
+}
+function resolveBinds(objs) {
+  let any = false;
+  for (const o of objs) if (o.bind) { any = true; break; }
+  if (!any) return objs;
+  for (const o of objs) {
+    if (!o.bind || o.kind !== 'clip' || freeBind.has(o.id)) continue;
+    const r = objs.find((x) => x.id === o.bind.to && x.rig && x.kind === 'path');
+    if (!r) continue;
+    const q = bindPose(o, r);
+    o.t = Object.assign({}, o.t, { x: q.x, y: q.y, r: q.r });
+  }
+  return objs;
+}
+function bindOffsets(o, rigObj, bone) {
+  const f = boneFrame(rigObj, bone), th = f.r * PI / 180, c = Math.cos(th), s = Math.sin(th), dx = o.t.x - f.x, dy = o.t.y - f.y;
+  return { to: rigObj.id, bone, lx: c * dx + s * dy, ly: -s * dx + c * dy, lr: o.t.r - f.r };
+}
+/* attach (or move to another bone) on every keyframe of the layer that has both objects */
+function bindBone(layer, clipId, rigId, bone) {
+  let n = 0;
+  for (const k of layer.kfs) {
+    const o = k.objs.find((x) => x.id === clipId && x.kind === 'clip'), r = k.objs.find((x) => x.id === rigId && x.rig && x.kind === 'path');
+    if (!o || !r) continue;
+    o.bind = bindOffsets(o, r, bone === 1 ? 1 : 0); n++;
+  }
+  return n;
+}
+function unbindBone(layer, clipId) {
+  for (const k of layer.kfs) for (const o of k.objs) if (o.id === clipId && o.bind) delete o.bind;
+}
+function setRigGhost(layer, rigId, v) {
+  for (const k of layer.kfs) for (const o of k.objs) if (o.id === rigId && o.rig) o.rig.ghost = !!v;
+}
+/* keep stored x/y/rotation of bound instances in step with the pose; an instance in `edited` that the user moved is re-attached from where it now is */
+function settleBinds(objs, edited) {
+  for (const o of objs) {
+    if (!o.bind || o.kind !== 'clip') continue;
+    const r = objs.find((x) => x.id === o.bind.to && x.rig && x.kind === 'path');
+    if (!r) continue;
+    const q = bindPose(o, r);
+    if (edited && edited.has(o.id) && (Math.abs(q.x - o.t.x) > 0.01 || Math.abs(q.y - o.t.y) > 0.01 || Math.abs(q.r - o.t.r) > 0.01)) o.bind = bindOffsets(o, r, o.bind.bone);
+    else { o.t.x = q.x; o.t.y = q.y; o.t.r = q.r; }
+  }
+}
+function bindValid(b) {
+  const num = (v) => typeof v === 'number' && isFinite(v) && Math.abs(v) < 1e7;
+  return !!b && typeof b.to === 'string' && b.to.length < 80 && (b.bone === 0 || b.bone === 1) && num(b.lx) && num(b.ly) && num(b.lr);
+}
 function lerpObj(a, b, p, mode) {
   const o = Object.assign({}, a);
   o.t = lerpT(a.t, b.t, p);
+    // Labojam kustību tikai tad, ja abiem atslēgkadriem ir pielāgots pivot.
+  if (Array.isArray(a.pivot) && a.pivot.length === 2 &&
+      Array.isArray(b.pivot) && b.pivot.length === 2) {
+
+    // Nosakām pivot pozīciju pasaulē pirmajā atslēgkadrā.
+    const startPivot = mapply(matOf(a.t), a.pivot[0], a.pivot[1]);
+
+    // Nosakām pivot pozīciju pasaulē otrajā atslēgkadrā.
+    const endPivot = mapply(matOf(b.t), b.pivot[0], b.pivot[1]);
+
+    // Aprēķinām, kur pivot jāatrodas pašreizējā starpkadrā.
+    const targetX = lerp(startPivot[0], endPivot[0], p);
+    const targetY = lerp(startPivot[1], endPivot[1], p);
+
+    // Aprēķinām pivot lokālās koordinātas pašreizējā starpkadrā.
+    o.pivot = [
+      lerp(a.pivot[0], b.pivot[0], p),
+      lerp(a.pivot[1], b.pivot[1], p)
+    ];
+
+    // Noskaidrojam, kur pivot nonāktu ar veco transformācijas aprēķinu.
+    const actualPivot = mapply(matOf(o.t), o.pivot[0], o.pivot[1]);
+
+    // Izlabojam objekta pozīciju, lai pivot būtu vajadzīgajā vietā.
+    o.t.x += targetX - actualPivot[0];
+    o.t.y += targetY - actualPivot[1];
+  }
   o.op = lerp(nz(a.op, 1), nz(b.op, 1), p);
+  if (a.bind && b.bind && a.bind.to === b.bind.to && a.bind.bone === b.bind.bone) o.bind = { to: a.bind.to, bone: a.bind.bone, lx: lerp(a.bind.lx, b.bind.lx, p), ly: lerp(a.bind.ly, b.bind.ly, p), lr: lerp(a.bind.lr, b.bind.lr, p) };
   if (a.kind === 'text' && b.kind === 'text') { lerpPaint(o, a, b, p); return o; }
   if (a.kind === 'path' && b.kind === 'path') {
     lerpPaint(o, a, b, p);
@@ -997,6 +1154,7 @@ function lerpObj(a, b, p, mode) {
       o.grad = { type: a.grad.type, stops: a.grad.stops.map((s, i) => ({ o: lerp(s.o, b.grad.stops[i].o, p), c: lerpHex(s.c, b.grad.stops[i].c, p), a: lerp(nz(s.a, 1), nz(b.grad.stops[i].a, 1), p) })), m: a.grad.m && b.grad.m ? a.grad.m.map((v, i) => lerp(v, b.grad.m[i], p)) : (a.grad.m || b.grad.m) };
     }
     if (mode === 'shape') { const m = morphContours(a.contours, b.contours, p); if (m) o.contours = m; }
+    if (a.rig && b.rig) { o.rig = lerpRig(a.rig, b.rig, p); rigBuild(o); }
   }
   return o;
 }
@@ -1045,7 +1203,8 @@ function shapeTweenIssues(layer, f) {
   for (const [a, b] of tweenPairs(kf, next)) if (a.kind === 'path' && b.kind === 'path' && !morphContours(a.contours, b.contours, 0.5)) n++;
   return n;
 }
-function evalLayerObjs(layer, t) {
+function evalLayerObjs(layer, t) { return resolveBinds(evalLayerRaw(layer, t)); }
+function evalLayerRaw(layer, t) {
   const i = kfIndexAt(layer, t);
   if (i < 0) return [];
   const kf = layer.kfs[i], next = layer.kfs[i + 1];
@@ -1057,9 +1216,12 @@ function evalLayerObjs(layer, t) {
   }
   return withClips(layer, i, t, kf.objs);
 }
-function evalDoc(doc, t) {
+const notGhost = (o) => !(o.rig && o.rig.ghost);
+/* in the editor a bone arm is always drawn semi-transparent so the artwork under it stays visible; exports draw it as it really is */
+const fadeGhost = (o) => (o.rig ? Object.assign({}, o, { op: nz(o.op, 1) * 0.35 }) : o);
+function evalDoc(doc, t, ghosts) {
   _lib = doc.lib || {};
-  return doc.layers.map((layer) => ({ layer, objs: layer.visible === false ? [] : evalLayerObjs(layer, t) }));
+  return doc.layers.map((layer) => ({ layer, objs: layer.visible === false ? [] : ghosts ? evalLayerObjs(layer, t).map(fadeGhost) : evalLayerObjs(layer, t).filter(notGhost) }));
 }
 function sortKfs(layer) { layer.kfs.sort((a, b) => a.f - b.f); }
 
@@ -1107,6 +1269,39 @@ function moveKeyframe(layer, from, to) {
   const k = kfAt(layer, from);
   if (!k || from === 0 || to <= 0 || kfAt(layer, to)) return false;
   k.f = to; sortKfs(layer);
+  return true;
+}
+/* frame ranges: reverse the order of the keyframes inside frames a..b, or slide a block of keyframes together */
+function reverseFrames(layers, a, b, doc) {
+  b = Math.min(b, doc.frames - 1);
+  if (!(b > a)) return 0;
+  let n = 0;
+  for (const layer of layers) {
+    if (a > 0) insertKeyframe(layer, a, false);
+    if (b + 1 < doc.frames) insertKeyframe(layer, b + 1, false);
+    const ps = layer.kfs.filter((k) => k.f >= a && k.f <= b);
+    if (ps.length < 1) continue;
+    const old = ps.map((k) => ({ t: k.tween || 'none', e: k.ease }));
+    ps.forEach((k, i) => { const nx = ps[i + 1]; k.nf = a + b + 1 - (nx ? nx.f : b + 1); });
+    ps.forEach((k, i) => { k.f = k.nf; delete k.nf; k.tween = i ? old[i - 1].t : 'none'; if (i && old[i - 1].e) k.ease = old[i - 1].e; });
+    sortKfs(layer); n++;
+  }
+  return n;
+}
+function moveKeyframes(layers, a, b, delta, doc, only) {
+  if (!delta) return true;
+  const plan = [];
+  let top = 0;
+  for (const layer of layers) {
+    const mv = layer.kfs.filter((k) => k.f > 0 && (only ? only.has(k) : k.f >= a && k.f <= b));
+    if (!mv.length) continue;
+    const stay = new Set(layer.kfs.filter((k) => !mv.includes(k)).map((k) => k.f));
+    for (const k of mv) { const t = k.f + delta; if (t < 1 || stay.has(t)) return false; top = Math.max(top, t); }
+    plan.push([layer, mv]);
+  }
+  if (!plan.length || top + 1 > 900) return false;
+  for (const [layer, mv] of plan) { for (const k of mv) k.f += delta; sortKfs(layer); }
+  if (top + 1 > doc.frames) doc.frames = top + 1;
   return true;
 }
 /* returns {ok, msg} ; creates an end keyframe at the last doc frame when none follows */
@@ -1732,6 +1927,7 @@ function importInstance(el, ctx, depth, id) {
     ctx.inProg.delete(name);
   }
   const g = { id, kind: 'clip', sym: name, name: attr(el, 'name', ''), mc: type === 'movie clip', mode: 'loop', first: 0, pv: [0, 0], op: 1, t: newT() };
+  { const ae = xmlKid(el, 'Actionscript'), tx = ae ? (xmlKid(ae, 'script') || ae).textContent.trim() : ''; if (tx) { g.script = tx; ctx.rep.instScripts++; ctx.scripts.push(tx); } }
   if (type === 'button') { g.mode = 'single'; g.btn = true; ctx.rep.buttons++; }
   else if (type === 'graphic') {
     const lm = attr(el, 'loop', 'loop');
@@ -1779,7 +1975,7 @@ function importTimeline(tl, ctx, depth) {
       const kf = mkKf(f, objs);
       const scEl = xmlKid(fe, 'Framescript') || xmlKid(fe, 'Actionscript');
       const scTxt = scEl ? (xmlKid(scEl, 'script') || scEl).textContent.trim() : '';
-      if (scTxt) { kf.script = scTxt; ctx.rep.scripts++; }
+      if (scTxt) { kf.script = scTxt; ctx.rep.scripts++; ctx.scripts.push(scTxt); }
       const sn = attr(fe, 'soundName', '');
       if (sn) {
         const lm = attr(fe, 'soundLoopMode', ''), cnt = parseInt(attr(fe, 'soundLoop', 0), 10) || 0;
@@ -1926,7 +2122,7 @@ async function importFLA(buf) {
   let root;
   try { root = parseXML((await zip.file(domName).async('string')).replace(/^\uFEFF/, '')); }
   catch (e) { const er = new Error('badxml'); er.detail = String(e && e.message || e); throw er; }
-  const rep = { soundFrames: 0, soundMissing: 0, sounds: 0, gradient: 0, bitmap: 0, images: 0, bitmapMissing: 0, tlf: 0, textCount: 0, mask: 0, masked: 0, guide: 0, missing: 0, other: 0, motionObject: 0, scripts: 0, buttons: 0, animatedSyms: new Set() };
+  const rep = { soundFrames: 0, soundMissing: 0, sounds: 0, gradient: 0, bitmap: 0, images: 0, bitmapMissing: 0, tlf: 0, textCount: 0, mask: 0, masked: 0, guide: 0, missing: 0, other: 0, motionObject: 0, scripts: 0, instScripts: 0, buttons: 0, animatedSyms: new Set() };
   const lib = new Map();
   for (const name of Object.keys(zip.files)) {
     if (!name.startsWith(base) || !/^LIBRARY\/.*\.xml$/i.test(name.slice(base.length)) || zip.files[name].dir) continue;
@@ -1936,22 +2132,139 @@ async function importFLA(buf) {
     } catch (e) { /* skip unreadable library item */ }
   }
   const bms = await importBitmaps(root, zip, base, names, rep);
-  const ctx = { rep, lib, libOut: {}, inProg: new Set(), bitmaps: bms.map };
+  const ctx = { rep, lib, libOut: {}, inProg: new Set(), bitmaps: bms.map, scripts: [] };
   const timelines = xmlKid(root, 'timelines');
   const tls = xmlKids(timelines, 'DOMTimeline');
   if (!tls.length) throw new Error('nodom');
-  const tl = importTimeline(tls[0], ctx, 0);
+  /* scenes are joined into one timeline, as Flash does when it publishes: each scene's layers only have content inside that scene's frame range, and the first keyframe of each scene carries a scene marker */
+  const multi = tls.length > 1, parts = [];
+  let total = 0;
+  tls.forEach((te, i) => {
+    const t = importTimeline(te, ctx, 0), nm = attr(te, 'name', 'Scene ' + (i + 1));
+    if (!t.layers.length) { const l = mkLayer('Layer 1'); l.kfs = [mkKf(0)]; t.layers.push(l); }
+    parts.push({ t, nm, start: total }); total += t.frames;
+  });
+  const layers = [];
+  for (const { t, nm, start } of parts) {
+    const end = start + t.frames;
+    t.layers.forEach((l, li) => {
+      if (start > 0) { for (const k of l.kfs) k.f += start; l.kfs.unshift(mkKf(0)); }
+      if (end < total && !l.kfs.some((k) => k.f === end)) l.kfs.push(mkKf(end));
+      if (multi) l.name = nm + ': ' + l.name;
+      if (li === 0) { const k0 = l.kfs.find((k) => k.f === start); if (k0) k0.scene = nm; }
+      layers.push(l);
+    });
+  }
   const doc = {
     w: Math.round(+attr(root, 'width', 550)), h: Math.round(+attr(root, 'height', 400)), fps: +attr(root, 'frameRate', 24),
-    bg: attr(root, 'backgroundColor', '#FFFFFF'), frames: tl.frames, layers: tl.layers, lib: ctx.libOut
+    bg: attr(root, 'backgroundColor', '#FFFFFF'), frames: total, layers, lib: ctx.libOut
   };
+  /* scripts written for ActionScript 1/2 (the document says so, or the code gives it away) run through the player's AS1 layer */
+  { let asv = '';
+    try { const pf = zip.file(base + 'PublishSettings.xml'); if (pf) { const m = /<ActionScriptVersion>\s*(\d)/.exec(await pf.async('string')); if (m) asv = m[1]; } } catch (e) { /* no publish settings */ }
+    if (asv === '1' || asv === '2') { doc.lang = 'as1'; rep.lang = 'ActionScript ' + asv; }
+    else if (ctx.scripts.some(as1Looks)) { doc.lang = 'as1'; rep.lang = 'ActionScript 1/2 (detected)'; } }
   normalizeDoc(doc);
   doc.images = bms.images;
   doc.sounds = await importSounds(root, zip, base, names, rep);
   rep.sounds = Object.keys(doc.sounds).length;
   rep.scenes = tls.length;
+  if (total > 900) rep.truncated = total;
   rep.animatedSyms = Array.from(rep.animatedSyms);
   return { doc, report: rep };
+}
+
+
+/* ---------- ActionScript 1 / 2 support (parsing helpers; the runtime provides the AS1 environment) ---------- */
+const AS1_MARK = /\b(getURL|_root|_parent|_level0|onClipEvent|tellTarget|loadMovie|loadVariables|duplicateMovieClip|attachMovie|removeMovieClip|setProperty|getProperty|stopAllSounds|prevScene|nextScene)\b|\bon\s*\(\s*(press|release|releaseOutside|rollOver|rollOut|dragOver|dragOut|keyPress)\b|\b_(x|y|alpha|rotation|xscale|yscale|visible|currentframe|totalframes|xmouse|ymouse)\b|\.on(Press|Release|RollOver|RollOut|EnterFrame|Load)\s*=/;
+function as1Looks(src) { return AS1_MARK.test(String(src || '')); }
+function as1EndStr(s, i) { const q = s[i]; let j = i + 1; while (j < s.length && s[j] !== q) { if (s[j] === '\\') j++; j++; } return Math.min(s.length, j + 1); }
+function as1MatchBrace(s, i) { /* s[i] is '{' (or '('); returns the index after its partner */
+  const open = s[i], close = open === '{' ? '}' : ')'; let d = 0, j = i;
+  while (j < s.length) {
+    const c = s[j];
+    if (c === '"' || c === "'") { j = as1EndStr(s, j); continue; }
+    if (c === '/' && s[j + 1] === '/') { while (j < s.length && s[j] !== '\n') j++; continue; }
+    if (c === '/' && s[j + 1] === '*') { const e = s.indexOf('*/', j + 2); j = e < 0 ? s.length : e + 2; continue; }
+    if (c === open) d++; else if (c === close) { d--; if (d === 0) return j + 1; }
+    j++;
+  }
+  return -1;
+}
+/* drop AS2 type annotations: var x:Type, function f(a:Type):Type */
+function as1StripTypes(src) {
+  const T = '[A-Za-z_$][\\w$.]*';
+  const fix = (code) => code
+    .replace(new RegExp('\\bvar\\s+([\\w$]+)\\s*:\\s*' + T, 'g'), 'var $1')
+    .replace(new RegExp('\\bfunction\\s*([\\w$]*)\\s*\\(([^()]*)\\)\\s*(?::\\s*' + T + ')?', 'g'), (m, n, ps) => 'function ' + n + '(' + ps.replace(new RegExp('\\s*:\\s*' + T, 'g'), '') + ')');
+  let out = '', i = 0, seg = 0; const s = String(src);
+  while (i < s.length) {
+    const c = s[i];
+    let e = -1;
+    if (c === '"' || c === "'") e = as1EndStr(s, i);
+    else if (c === '/' && s[i + 1] === '/') { e = s.indexOf('\n', i); if (e < 0) e = s.length; }
+    else if (c === '/' && s[i + 1] === '*') { e = s.indexOf('*/', i + 2); e = e < 0 ? s.length : e + 2; }
+    if (e < 0) { i++; continue; }
+    out += fix(s.slice(seg, i)) + s.slice(i, e); i = seg = e;
+  }
+  return out + fix(s.slice(seg));
+}
+/* rewrite one AS1 script into JavaScript for the player's AS1 scope:
+   on(...) / onClipEvent(...) blocks -> __on / __clip registrations; top-level function and var become timeline variables;
+   tellTarget(x) { } -> with (__tt(x)) { } */
+function as1Prepare(src, inner) {
+  const s = inner ? String(src) : as1StripTypes(src), n = s.length;
+  let out = '', i = 0, depth = 0, stmt = true; const fns = [];
+  const ws = (j) => { while (j < n && /\s/.test(s[j])) j++; return j; };
+  const wordAt = (j) => { let k = j; while (k < n && /[\w$]/.test(s[k])) k++; return k; };
+  while (i < n) {
+    const c = s[i];
+    if (c === '"' || c === "'") { const e = as1EndStr(s, i); out += s.slice(i, e); i = e; stmt = false; continue; }
+    if (c === '/' && s[i + 1] === '/') { let e = s.indexOf('\n', i); if (e < 0) e = n; out += s.slice(i, e); i = e; continue; }
+    if (c === '/' && s[i + 1] === '*') { let e = s.indexOf('*/', i + 2); e = e < 0 ? n : e + 2; out += s.slice(i, e); i = e; continue; }
+    if (/[A-Za-z_$]/.test(c)) {
+      const j = wordAt(i), w = s.slice(i, j), prev = out.replace(/\s+$/, '').slice(-1);
+      const top = !inner && depth === 0 && prev !== '.';
+      if (top && (w === 'on' || w === 'onClipEvent')) {
+        const k = ws(j);
+        if (s[k] === '(') {
+          const pe = as1MatchBrace(s, k);
+          const b = pe < 0 ? -1 : ws(pe);
+          if (pe > 0 && s[b] === '{') {
+            const be = as1MatchBrace(s, b);
+            if (be > 0) {
+              const raw = s.slice(k + 1, pe - 1), evs = [];
+              raw.replace(/(\w+)(?:\s*"([^"]*)")?/g, (m, e, key) => { evs.push(key != null ? e + ':' + key : e); return m; });
+              out += (w === 'on' ? '__on(' : '__clip(') + JSON.stringify(evs) + ', function () {' + as1Prepare(s.slice(b + 1, be - 1), true) + '});';
+              i = be; stmt = true; continue;
+            }
+          }
+        }
+      }
+      if (top && w === 'function') {
+        const k = ws(j), e2 = wordAt(k);
+        if (e2 > k && s[ws(e2)] === '(') {
+          const name = s.slice(k, e2), pk = ws(e2), pe = as1MatchBrace(s, pk), b = pe < 0 ? -1 : ws(pe);
+          if (pe > 0 && s[b] === '{') {
+            const be = as1MatchBrace(s, b);
+            if (be > 0) { fns.push(name + ' = function ' + s.slice(pk, pe) + ' {' + as1Prepare(s.slice(b + 1, be - 1), true) + '};'); i = be; stmt = true; continue; }
+          }
+        }
+      }
+      if (top && w === 'var' && stmt) { i = ws(j); continue; }
+      if (w === 'tellTarget' && prev !== '.') {
+        const k = ws(j);
+        if (s[k] === '(') { const pe = as1MatchBrace(s, k); if (pe > 0) { out += 'with (__tt(' + s.slice(k + 1, pe - 1) + '))'; i = pe; stmt = false; continue; } }
+      }
+      out += w; i = j; stmt = false; continue;
+    }
+    if (c === '{') { depth++; stmt = true; }
+    else if (c === '}') { depth--; stmt = true; }
+    else if (c === ';') stmt = true;
+    else if (!/\s/.test(c)) stmt = false;
+    out += c; i++;
+  }
+  return fns.join('\n') + (fns.length ? '\n' : '') + out;
 }
 
 root.FCCore = {
@@ -1959,8 +2272,8 @@ root.FCCore = {
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,
   groupEntries, drawUnits, maskedDraw, groupAlpha, tweenPairs, shapeTweenIssues, ease, bezierEase, morphContours, evalLayerObjs, evalDoc, kfIndexAt, kfAt, kfFor, sortKfs, ensureEditable, insertKeyframe, insertFrames, removeFrames,
-  clearKeyframe, moveKeyframe, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
-  importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
+  rigSolve, rigBuild, rigValid, boneFrame, bindBone, unbindBone, setRigGhost, settleBinds, freeBind, notGhost, resolveBinds, clearKeyframe, moveKeyframe, reverseFrames, moveKeyframes, setTweenAt, drawObj, hitObj, frameSVG, objSVG, quantize, lzw, gifWriter, parseNum, parseEdges, assembleLoops,
+  as1Looks, as1StripTypes, as1Prepare, importFLA, setImages, preloadImages, setLib, setMeasure, kidsOf, layoutText
 };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -1985,7 +2298,7 @@ function create(doc, cv, opt) {
   /* ---- helpers ---- */
   const isInst = (o) => (o.kind === 'clip' && (o.mc || o.btn)) || (o.kind === 'text' && !!o.name);
   function hasScripts() {
-    const chk = (layers) => layers.some((l) => l.kfs.some((k) => k.script && String(k.script).trim()));
+    const chk = (layers) => layers.some((l) => l.kfs.some((k) => (k.script && String(k.script).trim()) || k.objs.some((o) => o.kind === 'clip' && o.script && String(o.script).trim())));
     if (chk(doc.layers)) return true;
     for (const k of Object.keys(lib)) if (chk(lib[k].layers)) return true;
     return false;
@@ -2004,7 +2317,7 @@ function create(doc, cv, opt) {
     if (f == null) f = inst.cur;
     if (f === inst.cur && inst.cache && inst.cache.f === f) return inst.cache.list;
     const list = [];
-    for (const l of inst.layers) list.push({ layer: l, objs: l.visible === false ? [] : Core.evalLayerObjs(l, f) }); /* hidden layers stay in the list (empty) so a hidden mask still disables its masking, exactly as in the editor */
+    for (const l of inst.layers) list.push({ layer: l, objs: l.visible === false ? [] : Core.evalLayerObjs(l, f).filter(Core.notGhost) }); /* hidden layers stay in the list (empty) so a hidden mask still disables its masking, exactly as in the editor */
     if (f === inst.cur) inst.cache = { f, list };
     return list;
   }
@@ -2068,6 +2381,7 @@ function create(doc, cv, opt) {
       if (!k) {
         k = newInst(o.kind === 'clip' ? (lib[o.sym] || { layers: [], frames: 1 }) : { layers: [], frames: 1 }, inst, key, o);
         k.sym = o.sym; inst.kids.set(key, k); link(inst, k); born.push(k);
+        if (o.kind === 'clip' && o.script && String(o.script).trim()) runInstScript(k, o);
       }
       k.last = o;
     }
@@ -2204,6 +2518,7 @@ function create(doc, cv, opt) {
     Sound, Tween, Ease, Touch: { enable() { return true; } }
   };
   function exec(inst, kf) {
+    if (AS1) { runAS1(inst, String(kf.script), inst, inst); return; }
     let fn = fnCache.get(kf);
     if (fn === undefined) {
       try { fn = new Function('createjs', 'exportRoot', 'stage', 'lib', 'images', String(kf.script)); }
@@ -2229,7 +2544,7 @@ function create(doc, cv, opt) {
       const born = sync(inst);
       runSounds(inst);
       runScripts(inst);
-      for (const k of born) if (k.alive) enter(k);
+      for (const k of born) if (k.alive) { enter(k); if (AS1) fireH(k, 'load'); }
     } finally { inst.depth--; }
   }
   function goto(inst, f, play) {
@@ -2243,11 +2558,199 @@ function create(doc, cv, opt) {
     if (!inst.alive) return;
     if (inst.fresh) inst.fresh = false;
     else if (inst.playing && inst.total > 1) { if (inst === rootInst && opt.loop === false && inst.cur >= inst.total - 1) inst.playing = false; else { inst.cur = (inst.cur + 1) % inst.total; enter(inst); } }
+    if (AS1 && inst.alive) fireH(inst, 'enterFrame');
     for (const k of Array.from(inst.kids.values())) tick(k);
   }
   function tickAll() {
     tick(rootInst);
     for (const fn of tickers.slice()) { try { fn({ type: 'tick', delta: 1000 / doc.fps, paused: false }); } catch (e) { report('Ticker error: ' + (e && e.message || e)); } }
+  }
+
+  /* ---- ActionScript 1/2 layer: gives AS1 code the environment it expects (_root, _x, on(release), gotoAndPlay("scene", 1), ...) ---- */
+  const AS1 = doc.lang === 'as1';
+  const scenes = (() => {
+    const a = [];
+    for (const l of doc.layers) for (const k of l.kfs) if (k.scene) a.push({ name: String(k.scene), start: k.f });
+    a.sort((x, y) => x.start - y.start);
+    const out = [];
+    for (const x of a) if (!out.some((o) => o.start === x.start)) out.push(x);
+    if (!out.length || out[0].start > 0) out.unshift({ name: 'Scene 1', start: 0 });
+    out.forEach((x, i) => { x.end = (i + 1 < out.length ? out[i + 1].start : doc.frames) - 1; });
+    return out;
+  })();
+  const sceneAt = (f) => { let r = scenes[0]; for (const x of scenes) if (x.start <= f) r = x; return r; };
+  const t0 = performance.now(), asWarned = new Set();
+  const warnOnce = (what) => { if (!asWarned.has(what)) { asWarned.add(what); report(what + ' is not supported by the player yet and was ignored.'); } };
+  const isNum = (v) => typeof v === 'number' || (typeof v === 'string' && /^\s*\d+\s*$/.test(v));
+  function as1Goto(inst, a, b, play) {
+    if (b !== undefined && inst === rootInst) {
+      const sc = scenes.find((x) => x.name === String(a));
+      if (sc) {
+        if (isNum(b)) return goto(inst, Math.min(sc.end, sc.start + Math.max(1, Math.floor(+b)) - 1), play);
+        const m = labelsOf(inst); return goto(inst, m.has(String(b)) ? m.get(String(b)) : sc.start, play);
+      }
+      a = b;
+    }
+    if (isNum(a)) {
+      const n = Math.max(1, Math.floor(+a));
+      if (inst === rootInst) { const cs = sceneAt(inst.cur); return goto(inst, Math.min(cs.end, cs.start + n - 1), play); }
+      return goto(inst, n - 1, play);
+    }
+    return goto(inst, a, play);
+  }
+  function as1Scene(delta) {
+    const i = scenes.indexOf(sceneAt(rootInst.cur)), j = i + delta;
+    if (j >= 0 && j < scenes.length) goto(rootInst, scenes[j].start, true);
+  }
+  let mouse = { x: 0, y: 0 };
+  const kidByName = (inst, n) => { for (const k of inst.kids.values()) if (k.alive && k.name === n) return k; return null; };
+  const AS_PROPS = { _x: ['x', 1], _y: ['y', 1], _rotation: ['rotation', 1], _xscale: ['scaleX', 100], _yscale: ['scaleY', 100], _alpha: ['alpha', 100] };
+  const AS_HANDLERS = { onPress: 'press', onRelease: 'release', onReleaseOutside: 'releaseOutside', onRollOver: 'rollOver', onRollOut: 'rollOut', onEnterFrame: 'enterFrame', onLoad: 'load', onMouseDown: 'mouseDown', onMouseUp: 'mouseUp', onMouseMove: 'mouseMove', onKeyDown: 'keyDown', onKeyUp: 'keyUp' };
+  const AS_METHODS = new Set(['gotoAndPlay', 'gotoAndStop', 'play', 'stop', 'nextFrame', 'prevFrame', 'nextScene', 'prevScene']);
+  function as1Wrap(inst) {
+    if (inst.w1) return inst.w1;
+    const vars = inst.vars || (inst.vars = Object.create(null)), P = inst.proxy;
+    const meth = {
+      gotoAndPlay: (a, b) => as1Goto(inst, a, b, true), gotoAndStop: (a, b) => as1Goto(inst, a, b, false),
+      play: () => { inst.playing = true; }, stop: () => { inst.playing = false; },
+      nextFrame: () => goto(inst, Math.min(inst.total - 1, inst.cur + 1), false), prevFrame: () => goto(inst, Math.max(0, inst.cur - 1), false),
+      nextScene: () => as1Scene(1), prevScene: () => as1Scene(-1)
+    };
+    const own = (p) => !!AS_PROPS[p] || AS_METHODS.has(p) || p === '_visible' || p === '_name' || p === '_parent' || p === '_root' || p === '_currentframe' || p === '_totalframes' || p === '_xmouse' || p === '_ymouse' || !!kidByName(inst, p) || p in vars;
+    inst.w1 = new Proxy({}, {
+      has: (_, p) => typeof p === 'string' && own(p),
+      get(_, p) {
+        if (typeof p !== 'string') return undefined;
+        const ap = AS_PROPS[p];
+        if (ap) return P[ap[0]] * ap[1];
+        if (meth[p]) return meth[p];
+        switch (p) {
+          case '_visible': return P.visible;
+          case '_name': return inst.name;
+          case '_parent': return inst.parent ? as1Wrap(inst.parent) : undefined;
+          case '_root': case '_level0': return as1Wrap(rootInst);
+          case '_currentframe': return inst.cur + 1;
+          case '_totalframes': return inst.total;
+          case '_xmouse': return mouse.x; case '_ymouse': return mouse.y;
+        }
+        if (p in vars) return vars[p];
+        const k = kidByName(inst, p);
+        return k ? as1Wrap(k) : undefined;
+      },
+      set(_, p, v) {
+        if (typeof p !== 'string') return true;
+        const ap = AS_PROPS[p];
+        if (ap) { P[ap[0]] = (+v || 0) / ap[1]; return true; }
+        if (p === '_visible') { P.visible = !!v; return true; }
+        if (AS_HANDLERS[p]) { (inst.hset || (inst.hset = {}))[AS_HANDLERS[p]] = v; return true; }
+        vars[p] = v; return true;
+      }
+    });
+    return inst.w1;
+  }
+  function fireH(inst, name, arg) {
+    let n = 0;
+    const run = (fn) => { n++; try { fn.call(as1Wrap(inst), arg); } catch (e) { report('Script error in ' + (inst.name || 'clip') + ' (' + name + '): ' + (e && e.message || e)); } };
+    for (const fn of ((inst.hs && inst.hs[name]) || []).slice()) run(fn);
+    const f = inst.hset && inst.hset[name];
+    if (typeof f === 'function') run(f);
+    return n;
+  }
+  const fireUp = (inst, name) => { for (let k = inst; k; k = k.parent) if (fireH(k, name) > 0) return; };
+  function walk(inst, fn) { if (!inst.alive) return; fn(inst); for (const k of Array.from(inst.kids.values())) walk(k, fn); }
+  const KEYS = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, SPACE: 32, ENTER: 13, ESCAPE: 27, BACKSPACE: 8, TAB: 9, SHIFT: 16, CONTROL: 17, DELETEKEY: 46, INSERT: 45, HOME: 36, END: 35, PGUP: 33, PGDN: 34, CAPSLOCK: 20 };
+  const KEYNAMES = { '<Left>': 37, '<Up>': 38, '<Right>': 39, '<Down>': 40, '<Space>': 32, '<Enter>': 13, '<Escape>': 27, '<Backspace>': 8, '<Tab>': 9, '<Delete>': 46, '<Insert>': 45, '<Home>': 36, '<End>': 35, '<PageUp>': 33, '<PageDown>': 34 };
+  const keyDown = new Set(), keyListeners = []; let lastKey = 0;
+  const KeyObj = Object.assign({ isDown: (c) => keyDown.has(+c), getCode: () => lastKey, getAscii: () => lastKey, addListener: (o) => { if (o && keyListeners.indexOf(o) < 0) keyListeners.push(o); }, removeListener: (o) => { const i = keyListeners.indexOf(o); if (i >= 0) keyListeners.splice(i, 1); }, isToggled: () => false }, KEYS);
+  const onKey = (e, down) => {
+    const t = e.target; if (t && /^(input|textarea|select)$/i.test(t.tagName || '')) return;
+    lastKey = e.keyCode || 0;
+    if (down) keyDown.add(lastKey); else keyDown.delete(lastKey);
+    walk(rootInst, (k) => {
+      fireH(k, down ? 'keyDown' : 'keyUp');
+      if (down && k.hs) for (const nm of Object.keys(k.hs)) if (nm.indexOf('keyPress:') === 0) { const kn = nm.slice(9); if (KEYNAMES[kn] === lastKey || (kn.length === 1 && kn.toUpperCase().charCodeAt(0) === lastKey)) fireH(k, nm); }
+    });
+    for (const o of keyListeners.slice()) { const f = down ? o.onKeyDown : o.onKeyUp; if (typeof f === 'function') { try { f.call(o); } catch (er) { report('Key listener error: ' + (er && er.message || er)); } } }
+  };
+  const keyDn = (e) => onKey(e, true), keyUp = (e) => onKey(e, false);
+  if (AS1) { document.addEventListener('keydown', keyDn); document.addEventListener('keyup', keyUp); }
+  function resolvePath(from, str) {
+    if (str && typeof str === 'object') return str;
+    let cur = from; const p = String(str == null ? '' : str);
+    let parts = p.split(/[\/.]/);
+    if (p[0] === '/') { cur = rootInst; parts = parts.slice(1); }
+    for (const part of parts) {
+      if (!part || part === '.') continue;
+      if (part === '..' || part === '_parent') cur = cur && cur.parent;
+      else if (part === '_root' || part === '_level0') cur = rootInst;
+      else cur = cur && kidByName(cur, part);
+      if (!cur) return null;
+    }
+    return cur;
+  }
+  const toInst = (from, t) => (t && t.__inst ? t.__inst : resolvePath(from, t));
+  function AS1Sound(target) {
+    const o = this; let id = null, h = null; o.onSoundComplete = null;
+    o.attachSound = (name) => { id = sndIds.get(String(name)) || null; if (!id) report('Sound "' + name + '" was not found in the library.'); };
+    o.start = (off, loops) => { if (!id) return; if (h) h.stop(); h = makeSound(id, { loop: Math.max(0, (loops | 0) - 1) }, true); h.on('complete', () => { if (typeof o.onSoundComplete === 'function') { try { o.onSoundComplete(); } catch (e) { report('onSoundComplete error: ' + (e && e.message || e)); } } }); if (o._vol != null) h.volume = o._vol; };
+    o.stop = () => { if (h) h.stop(); };
+    o.setVolume = (v) => { o._vol = Math.max(0, +v || 0) / 100; if (h) h.volume = o._vol; };
+    o.getVolume = () => Math.round((o._vol == null ? 1 : o._vol) * 100);
+    o.setPan = () => {}; o.getPan = () => 0;
+    Object.defineProperty(o, 'position', { get: () => (h ? h.position : 0) });
+    Object.defineProperty(o, 'duration', { get: () => (h ? h.duration : 0) });
+  }
+  const JS_GLOBALS = new Set(['Math', 'Date', 'Array', 'Object', 'String', 'Number', 'Boolean', 'RegExp', 'Error', 'Function', 'JSON', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'NaN', 'Infinity', 'undefined', 'escape', 'unescape', 'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'arguments', 'console']);
+  function as1Scope(owner, target) {
+    const tw = as1Wrap(target);
+    const G = {
+      __on: (evs, fn) => { const h = owner.hs || (owner.hs = {}); for (const e of evs) (h[e] || (h[e] = [])).push(fn); },
+      __clip: (evs, fn) => { const h = owner.hs || (owner.hs = {}); for (const e of evs) (h[e] || (h[e] = [])).push(fn); },
+      __tt: (p) => { const k = resolvePath(target, p); return k ? as1Wrap(k) : {}; },
+      trace: (...a) => { try { console.log.apply(console, a); } catch (e) { /* no console */ } },
+      getURL: (u, w) => { const url = String(u == null ? '' : u); if (/^\s*(javascript|data|vbscript):/i.test(url)) { report('getURL blocked an unsafe address.'); return; } if (opt.onURL) opt.onURL(url, w); else { try { root.open(url, w || '_self'); } catch (e) { /* blocked */ } } },
+      random: (n) => Math.floor(Math.random() * Math.floor(+n || 0)),
+      getTimer: () => Math.round(performance.now() - t0),
+      int: (v) => Math.trunc(+v) || 0,
+      stopAllSounds: () => Sound.stop(),
+      setProperty: (t, p, v) => { const k = toInst(target, t); if (k) as1Wrap(k)[p] = v; },
+      getProperty: (t, p) => { const k = toInst(target, t); return k ? as1Wrap(k)[p] : undefined; },
+      Key: KeyObj, Mouse: { addListener() {}, removeListener() {}, hide() {}, show() {} },
+      Sound: AS1Sound,
+      attachMovie: () => warnOnce('attachMovie()'), duplicateMovieClip: () => warnOnce('duplicateMovieClip()'), removeMovieClip: () => warnOnce('removeMovieClip()'),
+      loadMovie: () => warnOnce('loadMovie()'), loadMovieNum: () => warnOnce('loadMovieNum()'), loadVariables: () => warnOnce('loadVariables()'), unloadMovie: () => warnOnce('unloadMovie()'),
+      fscommand: () => {}, updateAfterEvent: () => {}, startDrag: () => warnOnce('startDrag()'), stopDrag: () => {}
+    };
+    return new Proxy({}, {
+      has: (_, p) => typeof p === 'string' && !JS_GLOBALS.has(p),
+      get: (_, p) => { if (typeof p !== 'string') return undefined; return Object.prototype.hasOwnProperty.call(G, p) ? G[p] : tw[p]; },
+      set: (_, p, v) => { if (typeof p === 'string') tw[p] = v; return true; }
+    });
+  }
+  const asCache = new Map();
+  function runAS1(owner, src, target, self) {
+    let fn = asCache.get(src);
+    if (fn === undefined) {
+      try { fn = new Function('__s', 'with (__s) {\n' + Core.as1Prepare(src) + '\n}'); }
+      catch (e) { report('Script syntax error: ' + e.message); fn = null; }
+      asCache.set(src, fn);
+    }
+    if (!fn) return;
+    try { fn.call(as1Wrap(self), as1Scope(owner, target)); }
+    catch (e) { report('Script error' + (owner.name ? ' in ' + owner.name : '') + ': ' + (e && e.message || e)); }
+  }
+  function runInstScript(k, o) {
+    const src = String(o.script);
+    if (AS1) { runAS1(k, src, k.btn ? k.parent : k, k); return; }
+    let fn = fnCache.get(src);
+    if (fn === undefined) {
+      try { fn = new Function('createjs', 'exportRoot', 'stage', 'lib', 'images', src); }
+      catch (e) { report('Script syntax error: ' + e.message); fn = null; }
+      fnCache.set(src, fn);
+    }
+    if (!fn) return;
+    try { fn.call(k.proxy, createjs, rootInst.proxy, stageShim(), {}, {}); }
+    catch (e) { report('Script error' + (k.name ? ' in ' + k.name : '') + ': ' + (e && e.message || e)); }
   }
 
   /* ---- drawing ---- */
@@ -2305,7 +2808,7 @@ function create(doc, cv, opt) {
       const en = entries[i], inst = en.inst;
       if (inst.kind === 'text' || inst.ov.mouse === false) continue;
       const hf = inst.btn && inst.total > 3 ? 3 : inst.cur;
-      const objs = hf === inst.cur ? evalInst(inst).find((x) => x.layer === en.layer) : { objs: Core.evalLayerObjs(en.layer, hf) };
+      const objs = hf === inst.cur ? evalInst(inst).find((x) => x.layer === en.layer) : { objs: Core.evalLayerObjs(en.layer, hf).filter(Core.notGhost) };
       if (!objs) continue;
       const p = en.M.inverse().transformPoint(new DOMPoint(px, py));
       for (const o of objs.objs) { if (isInst(o)) continue; if (Core.hitObj(o, p.x, p.y, 0, hc, true)) return inst; }
@@ -2313,7 +2816,9 @@ function create(doc, cv, opt) {
     return null;
   }
   const chainOf = (inst) => { const s = new Set(); for (let k = inst; k; k = k.parent) s.add(k); return s; };
+  const AS_MOUSE = { mousedown: 'press', click: 'release', mouseover: 'rollOver', mouseout: 'rollOut' };
   function dispatch(target, evt, from, bubble) {
+    if (AS1 && AS_MOUSE[evt.type] && from === undefined) fireUp(target, AS_MOUSE[evt.type]);
     evt.target = target.proxy;
     for (let k = from || target; k; k = bubble === false ? null : k.parent) {
       evt.currentTarget = k.proxy;
@@ -2321,7 +2826,7 @@ function create(doc, cv, opt) {
     }
   }
   const mk = (type, p) => ({ type, stageX: p.x / dpr, stageY: p.y / dpr, rawX: p.x / dpr, rawY: p.y / dpr });
-  function wantsPointer(chain) { for (const k of chain) if (k.btn || k.ls.click || k.ls.mousedown || k.ls.pressup) return true; return false; }
+  function wantsPointer(chain) { for (const k of chain) if (k.btn || k.ls.click || k.ls.mousedown || k.ls.pressup || (k.hs && (k.hs.press || k.hs.release || k.hs.releaseOutside)) || (k.hset && (k.hset.press || k.hset.release))) return true; return false; }
   function setHover(t, p) {
     if (t !== hoverTop) {
       if (hoverTop && hoverTop.alive) dispatch(hoverTop, mk('mouseout', p));
@@ -2330,19 +2835,22 @@ function create(doc, cv, opt) {
     }
     cv.style.cursor = t && wantsPointer(hoverChain) ? 'pointer' : '';
   }
-  cv.addEventListener('pointermove', (e) => { const p = evtPt(e); setHover(pick(p.x, p.y), p); if (paused) render(); });
+  cv.addEventListener('pointermove', (e) => { const p = evtPt(e); mouse = { x: p.x / dpr, y: p.y / dpr }; setHover(pick(p.x, p.y), p); if (AS1) walk(rootInst, (k) => fireH(k, 'mouseMove')); if (paused) render(); });
   cv.addEventListener('pointerleave', (e) => { setHover(null, evtPt(e)); });
   cv.addEventListener('pointerdown', (e) => {
     const p = evtPt(e), t = pick(p.x, p.y);
     down = t; downChain = t ? chainOf(t) : new Set();
     dispatch(rootInst, mk('stagemousedown', p), rootInst, false);
+    if (AS1) walk(rootInst, (k) => fireH(k, 'mouseDown'));
     if (t) dispatch(t, mk('mousedown', p));
   });
   cv.addEventListener('pointerup', (e) => {
     const p = evtPt(e), t = pick(p.x, p.y), d = down;
     down = null; downChain = new Set();
     dispatch(rootInst, mk('stagemouseup', p), rootInst, false);
+    if (AS1) walk(rootInst, (k) => fireH(k, 'mouseUp'));
     if (d && d.alive) dispatch(d, mk('pressup', p));
+    if (AS1 && d && d.alive && t !== d) fireUp(d, 'releaseOutside');
     if (t && d && t === d) dispatch(t, mk('click', p));
     if (paused) render();
   });
@@ -2375,7 +2883,7 @@ function create(doc, cv, opt) {
     root: rootInst.proxy, errors, start, render, hasScripts: hasScripts(),
     setPaused: (v) => { paused = !!v; }, isPaused: () => paused, tick: tickAll,
     scrub: (f) => { goto(rootInst, f, false); render(); },
-    stop: () => cancelAnimationFrame(raf)
+    stop: () => { cancelAnimationFrame(raf); document.removeEventListener('keydown', keyDn); document.removeEventListener('keyup', keyUp); }
   };
 }
 root.FCRuntime = { create };
@@ -2390,7 +2898,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const CW = 16, RH = 26, RULER = 24;
 const LS_DOC = 'flashcraft.doc.v1', LS_THEME = 'flashcraft.theme';
-const APP_VERSION = '0.11.0-beta', PROJECT_VERSION = 2;
+const APP_VERSION = '0.14.2-beta', PROJECT_VERSION = 2;
 /* diagnostics ring buffers + unsaved-work tracking */
 const FCLOG = { errs: [], msgs: [] };
 const logPush = (a, m) => { a.push(new Date().toISOString().slice(11, 19) + ' ' + String(m).slice(0, 240)); if (a.length > 15) a.shift(); };
@@ -2516,7 +3024,13 @@ function invalidate() {
   requestAnimationFrame(() => { dirty = false; renderStage(); drawTimeline(); });
 }
 let saveTimer = 0;
+/* keep attached symbols in step with their bones; one the user just moved is re-attached from its new spot */
+function settleAll() {
+  const ed = new Set(S.sel.map((q) => q.id));
+  for (const l of layers()) { const k = C.kfFor(l, S.frame); if (k && k.objs.some((o) => o.bind)) C.settleBinds(k.objs, ed); }
+}
 function commit() {
+  settleAll();
   markDirty();
   invalidate(); refreshProps(); updateTime();
   clearTimeout(saveTimer);
@@ -2591,13 +3105,13 @@ const s2w = (x, y) => ({ x: (x - S.view.px) / S.view.z, y: (y - S.view.py) / S.v
 
 /* ---------- stage rendering ---------- */
 function drawFrameObjs(ctx, f, opt) {
-  C.drawUnits(ctx, C.evalDoc(S.doc, f), opt);
+  C.drawUnits(ctx, C.evalDoc(S.doc, f, !!(opt && opt.ghosts)), opt);
 }
 function renderStage() {
   if (!S.doc) return;
   const ctx = sctx, z = S.view.z, d = S.doc;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = CSSV.pasteboard; ctx.fillRect(0, 0, stage.width, stage.height);
+  ctx.fillStyle = S.editBg || CSSV.pasteboard; ctx.fillRect(0, 0, stage.width, stage.height);
   ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * S.view.px, dpr * S.view.py);
   ctx.save();
   const inSym = S.edit.length > 0;
@@ -2609,7 +3123,7 @@ function renderStage() {
     for (let k = S.onion.b; k >= 1; k--) if (S.frame - k >= 0) drawFrameObjs(ctx, S.frame - k, { tint: { c: '#FF4D5E', a: 0.34 / k } });
     for (let k = S.onion.a; k >= 1; k--) if (S.frame + k < d.frames) drawFrameObjs(ctx, S.frame + k, { tint: { c: '#2FB36B', a: 0.34 / k } });
   }
-  drawFrameObjs(ctx, S.frame);
+  drawFrameObjs(ctx, S.frame, { ghosts: !S.playing });
   if (!S.playing && !(S.drawGhostOff)) {
     for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) if (layer.mask && layer.visible !== false) for (const o of objs) drawObj(ctx, o, { tint: { c: CSSV.accent, a: layer.id === S.layerId ? 0.4 : 0.22 } });
   }
@@ -2660,6 +3174,7 @@ function drawOverlay(ctx) {
     ctx.closePath(); ctx.stroke();
   }
   const one = sels.length === 1 ? sels[0] : null;
+  if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
   if (one && S.tool === 'select' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
@@ -2671,6 +3186,38 @@ function drawOverlay(ctx) {
       if (h.id === 'rot') ctx.arc(p[0], p[1], 5, 0, Math.PI * 2); else ctx.rect(p[0] - 4, p[1] - 4, 8, 8);
       ctx.fill(); ctx.stroke();
     }
+	    // Iegūstam atlasītās figūras rotācijas centru.
+    const pivot = getPivot(one.o);
+
+    // Pārveidojam pivot no lokālajām uz pasaules koordinātām.
+    const pivotWorld = mapply(matOf(one.o.t), pivot[0], pivot[1]);
+
+    // Pārveidojam pasaules koordinātas uz ekrāna koordinātām.
+    const pivotScreen = w2s(pivotWorld[0], pivotWorld[1]);
+
+    // Saglabājam pašreizējos zīmēšanas iestatījumus.
+    ctx.save();
+
+    // Izvēlamies oranžu krāsu un līnijas biezumu.
+    ctx.strokeStyle = '#ff9800';
+    ctx.lineWidth = 2;
+
+    // Sākam zīmēt krustiņu.
+    ctx.beginPath();
+
+    // Horizontālā līnija.
+    ctx.moveTo(pivotScreen[0] - 7, pivotScreen[1]);
+    ctx.lineTo(pivotScreen[0] + 7, pivotScreen[1]);
+
+    // Vertikālā līnija.
+    ctx.moveTo(pivotScreen[0], pivotScreen[1] - 7);
+    ctx.lineTo(pivotScreen[0], pivotScreen[1] + 7);
+
+    // Uzzīmējam abas līnijas.
+    ctx.stroke();
+
+    // Atjaunojam iepriekšējos zīmēšanas iestatījumus.
+    ctx.restore();
   }
   if (one && S.tool === 'node' && one.o.kind === 'path') {
     one.o.contours.forEach((c, ci) => {
@@ -2700,6 +3247,7 @@ function drawOverlay(ctx) {
   if (S.draw) drawPreview(ctx);
   drawBrushCursor(ctx);
   drawEraserCursor(ctx);
+  drawBonePreview(ctx);
   if (S.pen) drawPenPreview(ctx);
 }
 /* ===== Onionskyn app, part 2: tools and pointer input ===== */
@@ -2712,6 +3260,7 @@ const TOOLS = [
   { id: 'brush', k: 'B', n: 'Brush (paints a filled shape; [ and ] change size)', svg: '<path d="M16.5 3.5c-3 .6-6.5 4-8 7l1.5 1.5c3-1.5 6.4-5 7-8.5z"/><path d="M8.3 11.3c-2 0-3.3 1.2-3.3 3.2 0 1-.5 1.6-1.2 2 2.6.6 6-.2 6-3.4"/>', cur: 'crosshair' },
   { id: 'fluid', k: 'F', n: 'Fluid brush (smooth, tapered strokes; [ and ] change size)', svg: '<path d="M16.8 3.2c-4 .2-8.4 3.6-9.6 8.2l1.4 1.4c4.6-1.2 8-5.6 8.2-9.6z"/><path d="M7 12.6c-1.6 0-2.6 1.2-2.6 2.8 0 .8-.4 1.3-1 1.6 2.2.4 4.6-.6 4.6-2.8"/><path d="M10.5 16.5c1.6.4 3.2-.2 5-1.8" stroke-dasharray="1.6 2"/>', cur: 'crosshair' },
   { id: 'eraser', k: 'E', n: 'Eraser (cuts fills and lines on the active layer; [ and ] change size)', svg: '<path d="M7.5 16.5h8"/><path d="M4.2 11.8L11 5l4.2 4.2-6.8 6.8H6z"/><path d="M8 8.2l4.2 4.2"/>', cur: 'crosshair' },
+  { id: 'bone', k: 'J', n: 'Bone arm (click shoulder, elbow, then hand; drag the hand to pose it)', svg: '<circle cx="4.5" cy="15" r="2"/><circle cx="10" cy="7" r="2"/><circle cx="16" cy="13" r="2"/><path d="M5.8 13.4l3-4.8M11.6 8l3 3.6"/>', cur: 'crosshair' },
   { id: 'line', k: 'L', n: 'Line (Shift = 45°)', svg: '<path d="M4 16L16 4"/>', cur: 'crosshair' },
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
@@ -2740,6 +3289,7 @@ function buildTools() {
 function setTool(id) {
   if (S.pen && id !== 'pen') finishPen(false);
   endTextEdit(true);
+  S.bone = null;
   S.tool = id; S.draw = null; S.nodeSel = id === 'node' ? S.nodeSel : null;
   $$('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
   const t = TOOLS.find((x) => x.id === id);
@@ -2757,13 +3307,16 @@ function setTool(id) {
 }
 
 /* ---------- hit testing & creation ---------- */
-function hitAt(x, y, tolPx) {
+function hitAt(x, y, tolPx, rigFirst) {
   const tol = tolPx / S.view.z, ls = layers();
-  for (let i = ls.length - 1; i >= 0; i--) {
-    const l = ls[i];
-    if (!l.visible || l.locked) continue;
-    const objs = C.evalLayerObjs(l, S.frame);
-    for (let j = objs.length - 1; j >= 0; j--) if (hitObj(objs[j], x, y, tol, hctx)) return { lid: l.id, id: objs[j].id, o: objs[j] };
+  /* a bone arm is a guide laid over artwork, so it is picked last unless asked for first (Alt+click) */
+  for (const pass of rigFirst ? [true, false] : [false, true]) {
+    for (let i = ls.length - 1; i >= 0; i--) {
+      const l = ls[i];
+      if (!l.visible || l.locked) continue;
+      const objs = C.evalLayerObjs(l, S.frame);
+      for (let j = objs.length - 1; j >= 0; j--) if (!!objs[j].rig === pass && hitObj(objs[j], x, y, tol, hctx)) return { lid: l.id, id: objs[j].id, o: objs[j] };
+    }
   }
   return null;
 }
@@ -2883,6 +3436,7 @@ function onDown(e) {
     case 'fluid': if (canDraw()) S.draw = { type: 'fluid', pts: [brushPt(p.w, e)] }; break;
     case 'eraser': if (canDraw()) { S.draw = { type: 'erase', last: p.w, changed: false, undone: false }; eraseSweep(S.draw, p.w, p.w); S.brushHover = p.w; } break;
     case 'line': case 'rect': case 'ellipse': if (canDraw()) S.draw = { type: S.tool, start: p.w, cur: p.w, shift: e.shiftKey, alt: e.altKey }; break;
+    case 'bone': boneDown(e, p); break;
     case 'text': textDown(e, p); break;
     case 'bucket': bucketDown(e, p); break;
     case 'dropper': dropperDown(e, p); break;
@@ -2898,11 +3452,14 @@ function onMove(e) {
   const d = S.drag;
   if (d) {
     if (d.type === 'pan') { S.view.px = d.px + (p.sx - d.sx); S.view.py = d.py + (p.sy - d.sy); S.autoFit = false; invalidate(); return; }
+	if (d.type === 'pivot') pivotDrag(p.w);
+	else
     if (d.type === 'move') moveDrag(p.w, e);
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
     else if (d.type === 'grad') gradDrag(p.w);
+    else if (d.type === 'rig') rigDrag(p.w);
     return;
   }
   if (S.draw) {
@@ -2911,11 +3468,13 @@ function onMove(e) {
     if (dr.type === 'pencil') dr.pts.push(p.w); else if (dr.type === 'brush' || dr.type === 'fluid') dr.pts.push(brushPt(p.w, e)); else { dr.cur = p.w; dr.shift = e.shiftKey; dr.alt = e.altKey; }
     invalidate(); return;
   }
+  if (S.bone) invalidate();
   if (S.pen) { penMove(p.w); return; }
   if (S.tool === 'select' && !S.space) {
     const one = singleSel();
     let cur = 'default';
-    if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
+    if (one && !getLayer(one.lid).locked && rigEditing(one.o) && rigHit(one.o, p.sx, p.sy)) cur = 'pointer';
+    else if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
       cur = gradHit(one.o, p.sx, p.sy) ? 'pointer' : hitAt(p.w.x, p.w.y, 5) ? 'move' : 'default';
     } else if (one && !getLayer(one.lid).locked) {
       const h = hitHandle(getHandles(one.o), p.sx, p.sy);
@@ -2929,10 +3488,13 @@ function onUp(e) {
   const p = stagePt(e);
   const d = S.drag;
   if (d) {
+    C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
-    if ((d.type === 'node' || d.type === 'grad') && d.started) { commit(); }
-    if ((d.type === 'move' || d.type === 'scale' || d.type === 'rotate') && d.started) commit();
+    if ((d.type === 'node' || d.type === 'grad' || d.type === 'rig') && d.started) { commit(); }
+    // Saglabājam arī pabeigtu pivot pārvietošanu.
+    if ((d.type === 'move' || d.type === 'scale' ||
+	d.type === 'rotate' || d.type === 'pivot') && d.started) commit();
     S.drag = null; invalidate();
     return;
   }
@@ -2949,6 +3511,38 @@ function onUp(e) {
 }
 function onDbl(e) {
   const p = stagePt(e);
+    // Ctrl + dubultklikšķis uz pivot atgriež to figūras centrā.
+  if (S.tool === 'select' && e.ctrlKey) {
+
+    // Iegūstam pašlaik atlasīto figūru.
+    const one = singleSel();
+
+    // Pārbaudām, vai figūra ir atlasīta, nav bloķēta
+    // un pele atrodas tieši uz oranžā krustiņa.
+    if (one && !getLayer(one.lid).locked &&
+        pivotHit(one.o, p.sx, p.sy)) {
+
+      // Saglabājam iepriekšējo stāvokli Ctrl+Z vajadzībām.
+      pushUndo();
+
+      // Sagatavojam figūru rediģēšanai pašreizējā kadrā.
+      C.ensureEditable(getLayer(one.lid), S.frame);
+
+      // Atrodam rediģējamo figūru.
+      const o = findEditable(one.lid, one.id);
+
+      // Ja figūra atrasta, noņemam pielāgoto pivot.
+      if (o) {
+        delete o.pivot; // getPivot() atkal izmantos figūras centru.
+        commit();       // Saglabājam izmaiņas.
+        invalidate();   // Pārzīmējam ekrānu.
+      }
+
+      // Neļaujam dubultklikšķim atvērt simbolu.
+      e.preventDefault();
+      return;
+    }
+  }
   if (S.tool === 'pen' && S.pen) { finishPen(false); return; }
   if (S.tool === 'node') nodeDbl(p);
   if (S.tool === 'select') {
@@ -3015,16 +3609,41 @@ function endTextEdit(ok) {
     setTool('select');
   }
 }
+// Pārbauda, vai pele atrodas uz oranžā pivot krustiņa.
+function pivotHit(o, sx, sy) {
+  const pv = getPivot(o); // Iegūstam pivot lokālās koordinātas.
+  const world = mapply(matOf(o.t), pv[0], pv[1]); // Pārvēršam pasaules koordinātās.
+  const screen = w2s(world[0], world[1]); // Pārvēršam ekrāna koordinātās.
 
+  // Atgriež true, ja pele atrodas ne tālāk kā 9 pikseļus.
+  return Math.hypot(sx - screen[0], sy - screen[1]) <= 9;
+}
 /* ---------- selection tool ---------- */
 function selDown(e, p) {
   const w = p.w, one = singleSel();
+	// Ja nospiests uz pivot, sākam pārvietot tikai krustiņu.
+	if (one && !getLayer(one.lid).locked &&
+    !gradEditing(one.o) && !rigEditing(one.o) &&
+    pivotHit(one.o, p.sx, p.sy)) {
+
+	// Atceramies atlasīto figūru un sākuma punktu.
+	S.drag = {
+		type: 'pivot',
+		lid: one.lid,
+		id: one.id,
+		start: w,
+		started: false
+  };
+
+  return; // Beidzam selDown(), lai nesāktos figūras pārvietošana.
+}
+  if (one && !getLayer(one.lid).locked && rigEditing(one.o)) { const part = rigHit(one.o, p.sx, p.sy); if (part) { S.drag = { type: 'rig', part, lid: one.lid, id: one.id, start: p.w, started: false }; return; } }
   if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
   if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
     const h = hitHandle(getHandles(one.o), p.sx, p.sy);
     if (h) { S.drag = { type: h.id === 'rot' ? 'rotate' : 'scale', h, start: w, started: false, lid: one.lid, id: one.id }; return; }
   }
-  const hit = hitAt(w.x, w.y, 5);
+  const hit = hitAt(w.x, w.y, 5, e.altKey);
   if (hit) {
     const inSel = S.sel.some((s) => s.lid === hit.lid && s.id === hit.id);
     if (e.shiftKey) S.sel = inSel ? S.sel.filter((s) => !(s.lid === hit.lid && s.id === hit.id)) : S.sel.concat([{ lid: hit.lid, id: hit.id }]);
@@ -3049,11 +3668,56 @@ function moveDrag(w, e) {
     if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 3) return;
     d.started = true; beginEdit();
     d.orig = S.sel.map((s) => { const o = findEditable(s.lid, s.id); return o ? { o, x: o.t.x, y: o.t.y } : null; }).filter(Boolean);
+    for (const q of d.orig) if (q.o.bind) C.freeBind.add(q.o.id);
   }
   let dx = w.x - d.start.x, dy = w.y - d.start.y;
   if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
   for (const q of d.orig) { q.o.t.x = q.x + dx; q.o.t.y = q.y + dy; }
   invalidate(); refreshTransformFields();
+}
+// Atgriež objekta rotācijas centru lokālajās koordinātās.
+function getPivot(o) {
+  // Ja objektam jau ir pielāgots pivot, izmantojam to.
+  if (Array.isArray(o.pivot) && o.pivot.length === 2) {
+    return o.pivot;
+  }
+
+  // Citādi aprēķinām figūras sākotnējo viduspunktu.
+  const b = localBounds(o);
+
+  // Ja figūrai nav robežu, izmantojam koordinātu sākumpunktu.
+  if (!b) return [0, 0];
+
+  // Aprēķinām robežu viduspunktu.
+  return [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2];
+}
+// Pārvieto pivot, nekustinot pašu figūru.
+function pivotDrag(w) {
+  const d = S.drag; // Pašreizējās vilkšanas dati.
+
+  // Pirmajā kustībā sagatavojam rediģēšanu.
+  if (!d.started) {
+    // Ignorējam ļoti mazas nejaušas peles kustības.
+    if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 3) return;
+
+    pushUndo(); // Saglabājam vienu Ctrl+Z ierakstu.
+    C.ensureEditable(getLayer(d.lid), S.frame); // Sagatavojam pašreizējo kadru.
+
+    const o = findEditable(d.lid, d.id); // Atrodam rediģējamo figūru.
+    if (!o) { S.drag = null; return; } // Ja figūras nav, pārtraucam.
+
+    d.o = o; // Saglabājam figūru.
+    d.inv = minv(matOf(o.t)); // Apgrieztā transformācijas matrica.
+    d.started = true; // Vilkšana ir sākusies.
+  }
+
+  // Pārvēršam peles atrašanās vietu figūras lokālajās koordinātās.
+  const local = mapply(d.inv, w.x, w.y);
+
+  // Mainām tikai pivot, nevis figūras pozīciju.
+  d.o.pivot = [local[0], local[1]];
+
+  invalidate(); // Pārzīmējam krustiņu.
 }
 function xformDrag(w, e) {
   const d = S.drag;
@@ -3062,9 +3726,16 @@ function xformDrag(w, e) {
     pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
     const o = findEditable(d.lid, d.id);
     if (!o) { S.drag = null; return; }
+    if (o.bind) C.freeBind.add(o.id);
     d.o = o; d.t0 = Object.assign({}, o.t); d.b = localBounds(o); d.M0 = matOf(o.t); d.inv = minv(d.M0); d.started = true;
-    const cx = (d.b.x0 + d.b.x1) / 2, cy = (d.b.y0 + d.b.y1) / 2;
-    d.C = mapply(d.M0, cx, cy); d.cx = cx; d.cy = cy;
+    const pivot = getPivot(o);
+
+	// Saglabājam pivot X un Y koordinātas.
+	d.cx = pivot[0];
+	d.cy = pivot[1];
+
+	// Aprēķinām rotācijas centra atrašanās vietu pasaulē.
+	d.C = mapply(d.M0, d.cx, d.cy);
     d.a0 = Math.atan2(d.start.y - d.C[1], d.start.x - d.C[0]);
   }
   const t0 = d.t0, o = d.o, b = d.b;
@@ -3463,6 +4134,7 @@ function drawPenPreview(ctx) {
 /* ---------- node edit tool ---------- */
 function nodeDown(e, p) {
   const one = singleSel();
+  if (one && one.o.rig) { toast('A bone arm is posed with the Selection tool: drag its hand, elbow or shoulder.'); return; }
   if (one && one.o.kind === 'path' && !getLayer(one.lid).locked) {
     const hit = hitNodePart(one.o, p.sx, p.sy);
     if (hit) {
@@ -4019,7 +4691,7 @@ function eraseSweep(dr, a, b) {
   const r = eraserR(), P = [a.x, a.y], Q = [b.x, b.y];
   const bx0 = Math.min(P[0], Q[0]) - r, bx1 = Math.max(P[0], Q[0]) + r, by0 = Math.min(P[1], Q[1]) - r, by1 = Math.max(P[1], Q[1]) + r;
   const cand = C.evalLayerObjs(l, S.frame).filter((o) => {
-    if (o.kind !== 'path') return false;
+    if (o.kind !== 'path' || o.rig) return false;
     const wb = C.worldBounds(o); if (!wb) return false;
     const pad = (o.stroke ? o.sw : 0) / 2 + 1;
     return !(wb.x0 - pad > bx1 || wb.x1 + pad < bx0 || wb.y0 - pad > by1 || wb.y1 + pad < by0);
@@ -4046,6 +4718,77 @@ function drawEraserCursor(ctx) {
   const c = w2s(w.x, w.y), rr = eraserR() * S.view.z;
   ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(c[0], c[1], rr, 0, Math.PI * 2); ctx.stroke();
   ctx.strokeStyle = 'rgba(20,24,40,.85)'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.restore();
+}
+
+/* ---------- bone arm ---------- */
+const rigEditing = (o) => !!(o && o.kind === 'path' && o.rig && C.rigValid(o.rig));
+function boneDown(e, p) {
+  if (!canDraw()) return;
+  const B = S.bone || (S.bone = { pts: [] });
+  const last = B.pts[B.pts.length - 1];
+  if (last && Math.hypot(p.w.x - last.x, p.w.y - last.y) * S.view.z < 8) return;
+  B.pts.push(p.w);
+  if (B.pts.length === 3) finishBone();
+  invalidate();
+}
+function finishBone() {
+  const [a, b, c] = S.bone.pts; S.bone = null;
+  const l1 = Math.hypot(b.x - a.x, b.y - a.y), l2 = Math.hypot(c.x - b.x, c.y - b.y), L = l1 + l2;
+  const ux = (c.x - a.x), uy = (c.y - a.y), du = Math.hypot(ux, uy) || 1;
+  const side = (-uy / du) * (b.x - a.x) + (ux / du) * (b.y - a.y);
+  const pa = currentPaint(false);
+  const o = C.mkPath([], { fill: pa.fill || S.style.fill, fa: pa.fa, stroke: null }, { x: 0, y: 0 });
+  o.rig = { s: [a.x, a.y], h: [c.x, c.y], l1, l2, flip: side < 0 ? -1 : 1, w: [Math.max(3, L * 0.07), Math.max(2.5, L * 0.055), Math.max(2, L * 0.04)] };
+  C.rigBuild(o);
+  if (addObject(o)) { setTool('select'); refreshProps(); }
+}
+function rigPts(o) {
+  const M = matOf(o.t), k = C.rigSolve(o.rig), W = (q) => { const r = mapply(M, q[0], q[1]); return { x: r[0], y: r[1] }; };
+  return { s: W(k.s), e: W(k.e), h: W(o.rig.h), hh: W(k.h) };
+}
+function rigHit(o, sx, sy) {
+  const P = rigPts(o), near = (q) => { const p = w2s(q.x, q.y); return Math.hypot(p[0] - sx, p[1] - sy) <= 10; };
+  return near(P.h) ? 'h' : near(P.e) ? 'e' : near(P.s) ? 's' : null;
+}
+function drawRigHandles(ctx, o) {
+  const P = rigPts(o), acc = CSSV.accent, sc = (q) => w2s(q.x, q.y);
+  ctx.save(); ctx.lineWidth = 1.5; ctx.strokeStyle = acc;
+  const S0 = sc(P.s), E0 = sc(P.e), H0 = sc(P.hh), T0 = sc(P.h);
+  ctx.beginPath(); ctx.moveTo(S0[0], S0[1]); ctx.lineTo(E0[0], E0[1]); ctx.lineTo(H0[0], H0[1]); ctx.stroke();
+  if (Math.hypot(T0[0] - H0[0], T0[1] - H0[1]) > 2) { ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(H0[0], H0[1]); ctx.lineTo(T0[0], T0[1]); ctx.stroke(); ctx.setLineDash([]); }
+  const dot = (p, r, fill) => { ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.lineWidth = 1; ctx.strokeStyle = acc; ctx.stroke(); };
+  dot(S0, 6, CSSV.accentFg); dot(E0, 5, CSSV.accentFg); dot(T0, 7, acc);
+  ctx.restore();
+}
+function drawBonePreview(ctx) {
+  const B = S.bone; if (!B || !B.pts.length) return;
+  const pts = B.pts.concat(S.cursorW ? [S.cursorW] : []);
+  ctx.save(); ctx.strokeStyle = CSSV.accent; ctx.fillStyle = CSSV.accent; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); pts.forEach((q, i) => { const s = w2s(q.x, q.y); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }); ctx.stroke(); ctx.setLineDash([]);
+  B.pts.forEach((q) => { const s = w2s(q.x, q.y); ctx.beginPath(); ctx.arc(s[0], s[1], 5, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+function rigDrag(w) {
+  const d = S.drag;
+  if (!d.started) {
+    if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 2) return;
+    pushUndo(); C.ensureEditable(getLayer(d.lid), S.frame);
+    const o = findEditable(d.lid, d.id);
+    if (!o || !o.rig) { S.drag = null; return; }
+    d.o = o; d.inv = minv(matOf(o.t)); d.s0 = o.rig.s.slice(); d.h0 = o.rig.h.slice(); d.l0 = mapply(d.inv, d.start.x, d.start.y); d.started = true;
+  }
+  const g = d.o.rig, l = mapply(d.inv, w.x, w.y);
+  if (d.part === 'h') g.h = [l[0], l[1]];
+  else if (d.part === 's') { const dx = l[0] - d.l0[0], dy = l[1] - d.l0[1]; g.s = [d.s0[0] + dx, d.s0[1] + dy]; g.h = [d.h0[0] + dx, d.h0[1] + dy]; }
+  else if (d.part === 'e') { const cr = (g.h[0] - g.s[0]) * (l[1] - g.s[1]) - (g.h[1] - g.s[1]) * (l[0] - g.s[0]); if (Math.abs(cr) > 1e-6) g.flip = cr < 0 ? -1 : 1; }
+  C.rigBuild(d.o); syncBinds(d.lid); invalidate();
+}
+function syncBinds(lid) { const k = C.kfFor(getLayer(lid), S.frame); if (k) C.settleBinds(k.objs, null); }
+function rigEdit(fn) {
+  const one = singleSel(); if (!one || !one.o.rig || getLayer(one.lid).locked) return;
+  beginEditOnce(); C.ensureEditable(getLayer(one.lid), S.frame);
+  const o = findEditable(one.lid, one.id); if (!o || !o.rig) return;
+  fn(o.rig); C.rigBuild(o); syncBinds(one.lid); commit();
 }
 /* ===== Onionskyn app, part 3: timeline, layers, properties, menus, export, import, init ===== */
 const tlC = $('#tlCells'), tlR = $('#tlRuler'), tctx = tlC.getContext('2d'), rctx = tlR.getContext('2d');
@@ -4152,6 +4895,69 @@ function layerOp(op) {
   refreshAll();
 }
 
+/* ---------- frame range selection ---------- */
+function fselInfo() {
+  const r = S.fsel; if (!r) return null;
+  const all = layers();
+  const ls = r.all ? all.filter((l) => !l.locked) : all.filter((l) => l.id === r.lid && !l.locked);
+  if (!ls.length) return null;
+  return { a: Math.min(r.a, r.b), b: Math.min(Math.max(r.a, r.b), S.doc.frames - 1), layers: ls, all: r.all };
+}
+
+/* ---------- Copy Frames: pagaidām tikai kopēšana, bez ielīmēšanas ---------- */
+let copiedFrames = null; // Glabā nokopēto kadru diapazonu tikai programmas atmiņā
+function copySelectedFrames(layer, frame) {
+  const selection = fselInfo(); // Nolasa Shift+klikšķis atlasīto diapazonu
+  const useRange = selection && selection.layers.length === 1 && selection.layers[0].id === layer.id && frame >= selection.a && frame <= selection.b;
+  const a = useRange ? selection.a : frame; // Ja diapazons nav atlasīts, kopē vienu kadru
+  const b = useRange ? selection.b : frame; // Nosaka kopēšanas pēdējo kadru
+  copiedFrames = {
+    count: b - a + 1, // Saglabā kopējamo kadru skaitu
+    start: a, // Saglabā sākotnējo pozīciju turpmākai ielīmēšanas izstrādei
+    keyframes: clone(layer.kfs.filter((kf) => kf.f >= a && kf.f <= b)), // Neatkarīgas Keyframe kopijas
+    preceding: clone(layer.kfs.filter((kf) => kf.f <= a).at(-1) || null), // Saturs, ko manto parastie Frame
+    startObjs: clone(C.evalLayerObjs(layer, a)) // Precīzs sākuma kadra izskats arī Tween vidū
+  };
+  toast('Copied ' + copiedFrames.count + ' frame(s). Paste Frames vēl nav ieviests.'); // Testa apstiprinājums
+}
+
+/* ---------- Paste Frames: pārraksta kadru diapazonu bez nobīdes ---------- */
+function pasteSelectedFrames(layer, start) {
+  if (!copiedFrames) { toast('Vispirms izmanto Copy Frames.'); return; } // Bez kopijas nav ko ielīmēt
+  if (!layer || layer.locked) { toast('Slānis nav pieejams ielīmēšanai.'); return; } // Aizsargā bloķētu slāni
+  const end = start + copiedFrames.count - 1; // Pēdējais pārrakstāmais kadrs
+  if (end >= S.doc.frames) { toast('Paste Frames: projekta beigās nepietiek kadru.'); return; } // Neapgriež kopiju
+  const after = end + 1; // Pirmais kadrs, kuru nedrīkst mainīt
+  const oldAfter = after < S.doc.frames ? clone(C.kfAt(layer, after) || C.kfFor(layer, after)) : null; // Saglabā nākamā posma stāvokli
+  const oldAfterObjs = after < S.doc.frames ? clone(C.evalLayerObjs(layer, after)) : null; // Saglabā redzamo saturu pēc ielīmēšanas
+  const originalBoundary = after < S.doc.frames ? clone(C.kfAt(layer, after)) : null; // Vai aiz diapazona jau ir Keyframe?
+  const source = copiedFrames; // Izmanto iepriekš saglabāto neatkarīgo kopiju
+  if (after < S.doc.frames && !originalBoundary && oldAfter.tween !== 'none') { toast('Paste Frames: robežu šķērso Tween. Vispirms izveido Keyframe aiz ielīmēšanas diapazona.'); return; } // Nepārveido ārējo Tween
+  const first = clone(source.keyframes.find(k => k.f === source.start) || source.preceding); // Iegūst sākuma kadra saturu
+  if (!first) { toast('Copy Frames: trūkst sākuma kadra datu.'); return; } // Drošības pārbaude
+  pushUndo(); // Viena Undo darbība visam ielīmējumam
+  const inserted = source.keyframes.filter(k => k.f > source.start).map(k => {
+    const c = clone(k); c.f = start + (k.f - source.start); return c; // Saglabā relatīvo kadru attālumu
+  });
+  first.f = start; // Izveido atslēgkadru ielīmēšanas sākumā
+  if (!source.keyframes.some(k => k.f === source.start)) { first.objs = clone(source.startObjs); first.tween = 'none'; } // Parastā Frame saturu nofiksē tieši kopēšanas brīdī
+  layer.kfs = layer.kfs.filter(k => k.f < start || k.f > end); // Izņem tikai pārrakstāmos Keyframe
+  layer.kfs.push(first, ...inserted); // Ieliek nokopētos Keyframe
+  layer.kfs.sort((a,b) => a.f - b.f); // Atjauno hronoloģisku secību
+  const last = layer.kfs.filter(k => k.f <= end).at(-1); // Pēdējais ielīmētā posma Keyframe
+  if (last) last.tween = 'none'; // Neļauj kopētam Tween pāriet ārpus ielīmētā diapazona
+  if (after < S.doc.frames && !originalBoundary) {
+    const boundary = clone(oldAfter); // Saglabā iepriekšējā turpinājuma parametrus
+    boundary.f = after; boundary.objs = oldAfterObjs; boundary.tween = oldAfter.tween || 'none'; // Atjauno saturu
+    layer.kfs.push(boundary); // Izveido aizsargājošu Keyframe aiz ielīmējuma
+    layer.kfs.sort((a,b) => a.f - b.f); // Atjauno secību
+  }
+  S.fsel = null; // Notīra iepriekšējo diapazona atlasi
+  S.frame = start; // Pārvieto kursoru uz ielīmēšanas sākumu
+  pruneSel(); refreshAll(); // Atjauno redaktora attēlu un vēsturi
+  toast('Pasted ' + source.count + ' frame(s).'); // Paziņo rezultātu
+}
+
 /* ---------- frame actions ---------- */
 function frameAction(kind) {
   const l = curLayer(), f = S.frame, d = S.doc;
@@ -4159,10 +4965,13 @@ function frameAction(kind) {
   pushUndo();
   let fail = '';
   switch (kind) {
-    case 'frame': C.insertFrames(l, f, 1, d); break;
+    case 'frame':
+		C.insertFrames(l, f, 1, d); // Ievieto vienu kadru aiz pašreizējā
+		S.frame = f + 1;             // Pārvieto sarkano kursoru uz nākamo kadru
+	break;                       // Beidz šo switch atzaru
     case 'rmframe': C.removeFrames(l, f, 1, d); S.frame = clamp(S.frame, 0, d.frames - 1); break;
-    case 'key': if (C.kfAt(l, f)) fail = 'There is already a keyframe on this frame.'; else C.insertKeyframe(l, f, false); break;
-    case 'blank': C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); break;
+    case 'key': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } } else { C.insertKeyframe(l, f, false); } break;
+    case 'blank': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert blank keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert blank keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } } else { C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); } break;
     case 'clearkey': if (!C.clearKeyframe(l, f)) fail = 'Select a keyframe (other than the first) to clear.'; break;
     case 'motion': case 'shape': {
       const r = C.setTweenAt(d, l, f, kind);
@@ -4175,6 +4984,12 @@ function frameAction(kind) {
       break;
     }
     case 'notween': C.setTweenAt(d, l, f, 'none'); break;
+    case 'reverse': {
+      const r = fselInfo();
+      if (!r) { fail = 'Shift+click a frame to select a range first (Shift+click the frame numbers to include every layer).'; break; }
+      if (r.b <= r.a) { fail = 'Select at least two frames to reverse.'; break; }
+      C.reverseFrames(r.layers, r.a, r.b, d); break;
+    }
   }
   if (fail) { H.stack.pop(); updateHistoryButtons(); toast(fail); return; }
   pruneSel(); refreshAll();
@@ -4285,10 +5100,12 @@ function drawTimeline() {
       ctx.beginPath(); ctx.arc(x0 + CW / 2, cy, 3.6, 0, Math.PI * 2);
       if (has) ctx.fill(); else { ctx.fillStyle = CSSV.cell; ctx.fill(); ctx.stroke(); }
       if (k.sound) { ctx.fillStyle = CSSV.fg; ctx.font = '700 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('♪', x0 + CW / 2, cy + 11); ctx.textAlign = 'start'; }
+      if (k.scene) { ctx.fillStyle = CSSV.accent; ctx.font = '700 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('S', x0 + CW / 2 + 9, cy - 6); ctx.textAlign = 'start'; }
       if (k.script) { ctx.fillStyle = CSSV.fg; ctx.font = '700 9px ' + 'sans-serif'; ctx.textAlign = 'center'; ctx.fillText('a', x0 + CW / 2, cy - 6); ctx.textAlign = 'start'; }
     }
     ctx.restore();
     drawWaves(ctx, l, y, cy, n);
+    { const fi = S.fsel && fselInfo(); if (fi && fi.layers.includes(l)) { ctx.fillStyle = CSSV.accent; ctx.globalAlpha = 0.25; ctx.fillRect(fi.a * CW, y, (fi.b - fi.a + 1) * CW, RH); ctx.globalAlpha = 1; } }
     if (l.id === S.layerId) { ctx.strokeStyle = CSSV.accent; ctx.lineWidth = 2; ctx.strokeRect(S.frame * CW + 1, y + 1, CW - 2, RH - 2); }
   });
   const px = S.frame * CW + CW / 2;
@@ -4327,6 +5144,17 @@ tlC.addEventListener('pointerdown', (e) => {
   tlC.setPointerCapture(e.pointerId);
   if (S.playing) stopPlay();
   const c = cellAt(e, tlC), ls = layers().slice().reverse(), l = ls[c.row];
+  if (e.shiftKey && l) {
+    const from = S.fsel && S.fsel.lid === l.id && !S.fsel.all ? S.fsel.anchor : S.frame;
+    S.fsel = { lid: l.id, a: Math.min(from, c.f), b: Math.max(from, c.f), anchor: from, all: false };
+    selectLayer(l.id); setFrame(c.f); drawTimeline(); return;
+  }
+  const fi = S.fsel && fselInfo();
+  if (fi && l && c.f >= fi.a && c.f <= fi.b && fi.layers.includes(l) && c.f > 0 && fi.b > fi.a) {
+    selectLayer(l.id); setFrame(c.f);
+    tlDrag = { type: 'range', cur: c.f, moved: false, only: new Set(fi.layers.flatMap((x) => x.kfs.filter((k) => k.f >= fi.a && k.f <= fi.b))) }; return;
+  }
+  S.fsel = null;
   if (l) selectLayer(l.id);
   setFrame(c.f);
   const kf = l && C.kfAt(l, c.f);
@@ -4337,7 +5165,18 @@ tlC.addEventListener('pointermove', (e) => {
   if (!tlDrag) return;
   const c = cellAt(e, tlC);
   if (tlDrag.type === 'scrub') setFrame(c.f);
-  else if (c.f !== tlDrag.cur && c.f > 0 && !C.kfAt(tlDrag.layer, c.f)) {
+  else if (tlDrag.type === 'range') {
+    const fi = fselInfo();
+    if (fi && c.f !== tlDrag.cur) {
+      const dl = c.f - tlDrag.cur;
+      if (!tlDrag.moved) pushUndo();
+      if (C.moveKeyframes(fi.layers, fi.a, fi.b, dl, S.doc, tlDrag.only)) {
+        tlDrag.moved = true; tlDrag.cur = c.f;
+        S.fsel.a += dl; S.fsel.b += dl; if (S.fsel.anchor != null) S.fsel.anchor += dl;
+        S.frame = clamp(S.frame + dl, 0, S.doc.frames - 1); updateTime(); invalidate();
+      } else if (!tlDrag.moved) { H.stack.pop(); updateHistoryButtons(); }
+    }
+  } else if (c.f !== tlDrag.cur && c.f > 0 && !C.kfAt(tlDrag.layer, c.f)) {
     if (!tlDrag.moved) { pushUndo(); tlDrag.moved = true; }
     C.moveKeyframe(tlDrag.layer, tlDrag.cur, c.f);
     tlDrag.cur = c.f; S.frame = c.f; updateTime(); invalidate();
@@ -4345,7 +5184,12 @@ tlC.addEventListener('pointermove', (e) => {
 });
 const endTl = () => { if (tlDrag && tlDrag.moved) commit(); tlDrag = null; };
 tlC.addEventListener('pointerup', endTl); tlC.addEventListener('pointercancel', endTl);
-tlR.addEventListener('pointerdown', (e) => { tlR.setPointerCapture(e.pointerId); if (S.playing) stopPlay(); tlDrag = { type: 'scrub' }; setFrame(cellAt(e, tlR).f); });
+tlR.addEventListener('pointerdown', (e) => {
+  tlR.setPointerCapture(e.pointerId); if (S.playing) stopPlay();
+  const f = cellAt(e, tlR).f;
+  if (e.shiftKey) { const from = S.fsel && S.fsel.all ? S.fsel.anchor : S.frame; S.fsel = { a: Math.min(from, f), b: Math.max(from, f), anchor: from, all: true }; setFrame(f); drawTimeline(); return; }
+  S.fsel = null; tlDrag = { type: 'scrub' }; setFrame(f);
+});
 tlR.addEventListener('pointermove', (e) => { if (tlDrag && tlDrag.type === 'scrub') setFrame(cellAt(e, tlR).f); });
 tlR.addEventListener('pointerup', endTl); tlR.addEventListener('pointercancel', endTl);
 tlC.addEventListener('contextmenu', (e) => {
@@ -4354,6 +5198,9 @@ tlC.addEventListener('contextmenu', (e) => {
   if (l) selectLayer(l.id);
   setFrame(c.f);
   showMenu(null, [
+    { label: 'Copy Frames', fn: () => l && copySelectedFrames(l, c.f), disabled: !l || l.locked },
+    { label: 'Paste Frames', fn: () => l && pasteSelectedFrames(l, c.f), disabled: !l || l.locked || !copiedFrames },
+    '-',
     { label: 'Insert frame', kbd: 'F5', fn: () => frameAction('frame') },
     { label: 'Insert keyframe', kbd: 'F6', fn: () => frameAction('key') },
     { label: 'Insert blank keyframe', kbd: 'F7', fn: () => frameAction('blank') },
@@ -4363,7 +5210,9 @@ tlC.addEventListener('contextmenu', (e) => {
     '-',
     { label: 'Create motion tween', fn: () => frameAction('motion') },
     { label: 'Create shape tween', fn: () => frameAction('shape') },
-    { label: 'Remove tween', fn: () => frameAction('notween') }
+    { label: 'Remove tween', fn: () => frameAction('notween') },
+    '-',
+    { label: 'Reverse selected frames', fn: () => frameAction('reverse') }
   ], { x: e.clientX, y: e.clientY });
 });
 
@@ -4455,7 +5304,18 @@ function refreshProps() {
   { const k = curLayer() && C.kfAt(curLayer(), S.frame), nm = one && (one.o.kind === 'clip' || one.o.kind === 'text') ? one.o : null;
     $('#kfScript').disabled = !k; $('#kfLabel').disabled = !k; $('#iname').disabled = !nm;
     { const cl = one && one.o.kind === 'clip' ? one.o : null; $('#iclipRow').style.display = cl ? '' : 'none';
-      if (cl) { setVal($('#itype'), cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc ? 'none' : ''; } }
+      if (cl) { setVal($('#itype'), cl.btn ? 'btn' : cl.mc ? 'mc' : 'gr'); setVal($('#imode'), cl.mode || 'loop'); setVal($('#ifirst'), (cl.first || 0) + 1); $('#imode').style.display = $('#ifirst').style.display = cl.mc || cl.btn ? 'none' : ''; }
+      { const rg = one && one.o.rig && C.rigValid(one.o.rig) ? one.o.rig : null; $('#rigBox').style.display = rg ? '' : 'none'; if (rg) { $('#rigVis').checked = !rg.ghost; setVal($('#rigW0'), Math.round(rg.w[0])); setVal($('#rigW1'), Math.round(rg.w[1])); setVal($('#rigW2'), Math.round(rg.w[2])); } }
+      { const cl2 = one && one.o.kind === 'clip' ? one.o : null, sel = $('#bindSel'); let rigs = [];
+        if (cl2) { const ly = getLayer(one.lid); rigs = C.evalLayerObjs(ly, S.frame).filter((x) => x.rig && x.kind === 'path'); }
+        $('#bindRow').style.display = cl2 ? '' : 'none'; sel.disabled = !rigs.length;
+        if (cl2 && !rigs.length) sel.innerHTML = '<option value="">Draw a bone arm (J) on this layer first</option>';
+        if (cl2 && rigs.length) {
+          let h = '<option value="">None</option>';
+          rigs.forEach((r, i) => { const nm = rigs.length > 1 ? 'Arm ' + (i + 1) + ' · ' : ''; h += '<option value="' + r.id + ':0">' + nm + 'upper arm</option><option value="' + r.id + ':1">' + nm + 'forearm</option>'; });
+          sel.innerHTML = h; sel.value = cl2.bind ? cl2.bind.to + ':' + cl2.bind.bone : ''; if (sel.value !== (cl2.bind ? cl2.bind.to + ':' + cl2.bind.bone : '')) sel.value = '';
+        } }
+      $('#iscriptRow').style.display = cl && (cl.mc || cl.btn) ? '' : 'none'; setVal($('#iscript'), cl && cl.script || ''); }
     setVal($('#kfScript'), k && k.script || ''); setVal($('#kfLabel'), k && k.label || ''); setVal($('#iname'), nm && nm.name || '');
     refreshSoundSelect();
     $('#kfSound').disabled = !k; $('#kfSync').disabled = !k; $('#kfLoop').disabled = !k; $('#sndPlay').disabled = !k;
@@ -4474,7 +5334,12 @@ function refreshProps() {
   drawEaseCurve();
   $('#tweenInfo').textContent = kf ? 'span ' + fnum(kf.f) + ' to ' + (nx ? fnum(nx.f) : 'end') : '';
   const d = S.doc;
-  setVal($('#dname'), d.name || 'My animation'); setVal($('#dw'), d.w); setVal($('#dh'), d.h); setVal($('#dfps'), d.fps); setVal($('#dframes'), d.frames); setVal($('#dbg'), /^#[0-9a-f]{6}$/i.test(d.bg) ? d.bg : '#ffffff');
+  setVal($('#dlang'), d.lang === 'as1' ? 'as1' : 'js');
+  { const sc = []; for (const l of d.layers) for (const k of l.kfs) if (k.scene) sc.push({ f: k.f, n: k.scene }); sc.sort((a, b) => a.f - b.f);
+    const box = $('#dscenes'), key = sc.map((x) => x.f + ':' + x.n).join('|');
+    $('#dscenesRow').style.display = sc.length > 1 ? '' : 'none';
+    if (box.dataset.key !== key) { box.dataset.key = key; box.innerHTML = ''; for (const x of sc) { const b = document.createElement('button'); b.className = 'mbtn'; b.textContent = x.n; b.title = 'Go to frame ' + fnum(x.f); b.addEventListener('click', () => setFrame(x.f)); box.appendChild(b); } } }
+  setVal($('#dname'), d.name || 'My animation'); setVal($('#dw'), d.w); setVal($('#dh'), d.h); setVal($('#dfps'), d.fps); setVal($('#dframes'), d.frames); setVal($('#dbg'), /^#[0-9a-f]{6}$/i.test(d.bg) ? d.bg : '#ffffff'); setVal($('#pbg'), /^#[0-9a-f]{6}$/i.test(S.editBg || CSSV.pasteboard) ? (S.editBg || CSSV.pasteboard) : '#c9ced8');
   syncStyleUI();
   trackSelTab(sels); refreshAlignUI(sels.length); renderLibrary();
 }
@@ -4486,6 +5351,39 @@ function syncStyleUI() {
 function syncOnionUI() {
   $('#onionOn').checked = S.onion.on; $('#pOnion').setAttribute('aria-pressed', String(S.onion.on));
   setVal($('#onionB'), S.onion.b); setVal($('#onionA'), S.onion.a);
+  const pb = $('#opB'); if (pb) { setVal(pb, S.onion.b); setVal($('#opA'), S.onion.a); }
+}
+/* the onion-skin pop-over: opens when onion skin is switched on, with the before/after counts right there */
+function onionPopHide() { const p = $('#onionPop'); if (p) p.remove(); document.removeEventListener('pointerdown', onionPopAway, true); document.removeEventListener('keydown', onionPopKey, true); }
+function onionPopAway(e) { const p = $('#onionPop'); if (p && !p.contains(e.target) && e.target !== $('#pOnion') && !e.target.closest('#pOnionOpt')) onionPopHide(); }
+function onionPopKey(e) { if (e.key === 'Escape') onionPopHide(); }
+function onionPopShow() {
+  onionPopHide();
+  let auto = true; try { auto = localStorage.getItem('os_onionpop') !== '0'; } catch (_) {}
+  const p = document.createElement('div');
+  p.id = 'onionPop'; p.className = 'menu-pop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Onion skin');
+  p.innerHTML = '<div class="op-h">Onion skin</div><p class="op-t">Faint copies of the frames around this one, so you can draw the next pose against the last. Earlier frames are tinted <b class="op-r">red</b>, later ones <b class="op-g">green</b>.</p>'
+    + '<div class="row"><span>Frames before</span><div class="ctl"><input type="number" id="opB" min="0" max="10"></div></div>'
+    + '<div class="row"><span>Frames after</span><div class="ctl"><input type="number" id="opA" min="0" max="10"></div></div>'
+    + '<label class="op-c"><input type="checkbox" id="opAuto"> Show this when I turn onion skin on</label>'
+    + '<div class="op-f"><button class="btn" id="opOff">' + (S.onion.on ? 'Turn off' : 'Turn on') + '</button><button class="btn primary" id="opDone">Done</button></div>';
+  document.body.appendChild(p);
+  const r = $('#pOnion').getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - 270)) + 'px';
+  p.style.bottom = (innerHeight - r.top + 8) + 'px';
+  setVal($('#opB'), S.onion.b); setVal($('#opA'), S.onion.a); $('#opAuto').checked = auto;
+  $('#opB').addEventListener('input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  $('#opA').addEventListener('input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  $('#opAuto').addEventListener('change', (e) => { try { localStorage.setItem('os_onionpop', e.target.checked ? '1' : '0'); } catch (_) {} });
+  $('#opDone').addEventListener('click', onionPopHide);
+  $('#opOff').addEventListener('click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); onionPopHide(); });
+  document.addEventListener('pointerdown', onionPopAway, true); document.addEventListener('keydown', onionPopKey, true);
+}
+function setOnion(v, fromBtn) {
+  S.onion.on = v; syncOnionUI(); invalidate();
+  if (!v) { onionPopHide(); return; }
+  let auto = true; try { auto = localStorage.getItem('os_onionpop') !== '0'; } catch (_) {}
+  if (fromBtn && auto) onionPopShow();
 }
 function styleEdit(patch, fn) {
   Object.assign(S.style, patch);
@@ -4644,11 +5542,31 @@ function bindProps() {
     refreshAll(); if (key === 'w' || key === 'h') fitView();
   });
   docNum('dw', 'w', 16, 4096); docNum('dh', 'h', 16, 4096); docNum('dfps', 'fps', 1, 120); docNum('dframes', 'frames', 1, 900);
+  try { const v = localStorage.getItem('os_pbg'); if (/^#[0-9a-f]{6}$/i.test(v || '')) S.editBg = v; } catch (_) {}
+  on('#pbg', 'input', (e) => { S.editBg = e.target.value; try { localStorage.setItem('os_pbg', S.editBg); } catch (_) {} invalidate(); });
+  on('#pbgReset', 'click', () => { S.editBg = ''; try { localStorage.removeItem('os_pbg'); } catch (_) {} refreshProps(); invalidate(); });
+  on('#bindSel', 'change', (e) => {
+    const one = singleSel(); if (!one || one.o.kind !== 'clip' || getLayer(one.lid).locked) return;
+    const v = e.target.value, l = getLayer(one.lid);
+    pushUndo(); C.ensureEditable(l, S.frame);
+    if (!v) C.unbindBone(l, one.id);
+    else {
+      const [rid, b] = v.split(':'), r = C.kfFor(l, S.frame).objs.find((x) => x.id === rid);
+      C.bindBone(l, one.id, rid, +b);
+      if (r && r.rig && !r.rig.ghost) { C.setRigGhost(l, rid, true); toast('Attached. The arm is now a faint guide and is not drawn in the preview or exports (untick "Draw this arm" to change that).'); }
+    }
+    commit(); refreshProps();
+  });
+  on('#rigVis', 'change', (e) => { const one = singleSel(); if (!one || !one.o.rig || getLayer(one.lid).locked) return; pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame); C.setRigGhost(getLayer(one.lid), one.id, !e.target.checked); commit(); });
+  on('#rigFlip', 'click', () => rigEdit((g) => { g.flip = g.flip < 0 ? 1 : -1; }));
+  ['#rigW0', '#rigW1', '#rigW2'].forEach((id, i) => on(id, 'input', (e) => { const v = clamp(parseFloat(e.target.value) || 1, 1, 400); rigEdit((g) => { g.w[i] = v; }); }));
   on('#dbg', 'input', (e) => { beginEditOnce(); S.doc.bg = e.target.value; commit(); });
-  on('#onionOn', 'change', (e) => { S.onion.on = e.target.checked; syncOnionUI(); invalidate(); });
-  on('#pOnion', 'click', () => { S.onion.on = !S.onion.on; syncOnionUI(); invalidate(); });
-  on('#onionB', 'input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 5); invalidate(); });
-  on('#onionA', 'input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 5); invalidate(); });
+  on('#onionOn', 'change', (e) => setOnion(e.target.checked, false));
+  on('#pOnion', 'click', () => setOnion(!S.onion.on, true));
+  on('#pOnionOpt', 'click', () => { if ($('#onionPop')) onionPopHide(); else onionPopShow(); });
+  on('#pOnion', 'contextmenu', (e) => { e.preventDefault(); onionPopShow(); });
+  on('#onionB', 'input', (e) => { S.onion.b = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
+  on('#onionA', 'input', (e) => { S.onion.a = clamp(parseInt(e.target.value, 10) || 0, 0, 10); syncOnionUI(); invalidate(); });
 }
 
 /* ---------- easing curve editor ---------- */
@@ -4801,7 +5719,8 @@ function duplicateSel() {
     for (const id of ids) {
       const i = kf.objs.findIndex((o) => o.id === id);
       if (i < 0) continue;
-      const c = clone(kf.objs[i]); c.id = uid(); c.t.x += 12; c.t.y += 12;
+      const c = clone(kf.objs[i]); // Izveido precīzu oriģinālā objekta kopiju
+		c.id = uid();                // Piešķir kopijai jaunu unikālu ID
       kf.objs.splice(i + 1, 0, c); newSel.push({ lid: l.id, id: c.id });
     }
   }
@@ -4993,13 +5912,17 @@ async function importFLAFile(buf, fname) {
     if (report.guide) notes.push(plural(report.guide, 'guide layer') + ' skipped; tweens along motion guides run in a straight line.');
     if (report.motionObject) notes.push(plural(report.motionObject, 'new-style motion tween') + ' kept as still frames (only classic and shape tweens import).');
     if (report.missing) notes.push(plural(report.missing, 'symbol instance') + ' referenced a missing library item.');
-    if (report.scenes > 1) notes.push('Only the first of ' + report.scenes + ' scenes was imported.');
+    if (report.scenes > 1) notes.push(report.scenes + ' scenes were joined into one timeline, as Flash does when it publishes. Each scene starts at a marked keyframe (S on the timeline; jump to one from the Doc tab), and gotoAndPlay(\"Scene name\", 1) works.');
+    if (report.instScripts) notes.push(plural(report.instScripts, 'script') + ' on clips and buttons imported (see the Script box in the Object tab).');
+    if (report.lang) notes.push('Scripts look like ' + report.lang.replace(' (detected)', '') + ', so this document is set to run them through the ActionScript 1/2 layer (Doc tab, Scripts). Unsupported commands are reported once in Preview.');
+    if (report.lang && !report.instScripts && report.buttons) notes.push('This file has buttons but no button scripts. If it was re-saved in a recent Animate, Animate drops on (release) handlers when it converts old files to ActionScript 3. Paste the original handlers into each button’s Script box.');
+    if (report.truncated) notes.push('The scenes add up to ' + report.truncated + ' frames; only the first 900 are kept.');
     const body = '<p><b>' + doc.w + ' × ' + doc.h + '</b> at ' + doc.fps + ' fps, ' + plural(doc.layers.length, 'layer') + ', ' + plural(doc.frames, 'frame') + '.</p>' +
       (notes.length ? '<p>Import notes:</p><ul>' + notes.map((n) => '<li>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') + '</ul>' : '<p>Everything in this file imported cleanly.</p>');
     openModal('Imported ' + fname, body, [{ label: 'Done', primary: true }]);
   } catch (err) {
     const m = err && err.message, det = String(err && err.detail || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const msg = m === 'legacy' ? '<p>This is a legacy binary FLA (Flash CS4 or older). In Flash or Animate choose <b>File → Save As</b>, pick the <b>Flash CS5/CS6</b> or current Animate <b>.fla</b> format, then import that copy.</p>'
+    const msg = m === 'legacy' ? '<p>This is a legacy binary FLA (Flash CS4 or older). In Flash or Animate choose <b>File → Save As</b>, pick the <b>Flash CS5/CS6</b> or current Animate <b>.fla</b> format, then import that copy.</p><p class="hint">Heads-up: recent versions of Animate convert old ActionScript 1/2 files to ActionScript 3 when they re-save them, which drops button handlers such as on (release). Keep the original file so you can copy those scripts across.</p>'
       : m === 'nodom' ? '<p>The archive opened, but it has no <code>DOMDocument.xml</code>. What it contains:</p><p><code>' + det + '</code></p>'
       : m === 'notzip' ? '<p>This file is not a readable ZIP archive.</p><p class="hint">' + det + '</p>'
       : m === 'badxml' ? '<p>The document XML could not be parsed.</p><p class="hint">' + det + '</p>'
@@ -5045,7 +5968,7 @@ function buildPlayer(opts) {
 var doc=window.FC_DOC||JSON.parse(document.getElementById('fcDoc').textContent);
 var cv=document.getElementById('cv'),btn=document.getElementById('pp'),bar=document.getElementById('bar'),ctl=document.getElementById('ctl'),err=document.getElementById('err');
 var DEBUG=${opts.debug ? 'true' : 'false'},RESP='${resp}',FILL=${fill},CONTROLS=${controls};
-var rt=FCRuntime.create(doc,cv,{loop:${loop},onError:function(m){if(window.console)console.error(m);if(DEBUG){try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}}});
+var rt=FCRuntime.create(doc,cv,{loop:${loop},onURL:function(u,w){if(DEBUG){var m='getURL: '+u;try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}else{try{window.open(u,w||'_self')}catch(e){}}},onError:function(m){if(window.console)console.error(m);if(DEBUG){try{parent.postMessage({fcErr:m},'*')}catch(e){}err.textContent=m;err.style.display='block';}}});
 window.__rt=rt;rt.start();
 if(rt.hasScripts||!CONTROLS){ctl.style.display='none';}
 if(!rt.hasScripts){
@@ -5954,7 +6877,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -5963,7 +6886,7 @@ window.addEventListener('keydown', (e) => {
     if (modalBg.classList.contains('on')) { closeModal(); return; }
     if (menuEl) { closeMenu(); return; }
     if (typing) { t.blur(); return; }
-    if (S.pen) cancelPen(); else if (S.sel.length) { S.sel = []; S.nodeSel = null; refreshProps(); invalidate(); } else if (S.edit.length) exitSym();
+    if (S.bone) { S.bone = null; invalidate(); } else if (S.pen) cancelPen(); else if (S.sel.length) { S.sel = []; S.nodeSel = null; refreshProps(); invalidate(); } else if (S.edit.length) exitSym();
     return;
   }
   if (k === 'F9') { e.preventDefault(); if ($('#ced').classList.contains('on')) closeCed(); else openCed(); return; }
@@ -6091,7 +7014,9 @@ function init() {
     const o = findEditable(one.lid, one.id); if (!o) return;
     fn(o); markDirty(); invalidate(); clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700);
   };
-  $('#itype').addEventListener('change', (e) => { clipEdit((o) => { o.mc = e.target.value === 'mc'; if (o.mc) { o.mode = 'loop'; o.first = 0; } }); refreshProps(); });
+  $('#itype').addEventListener('change', (e) => { clipEdit((o) => { const v = e.target.value; o.mc = v === 'mc'; if (v === 'btn') { o.btn = true; o.mode = 'single'; o.first = 0; } else delete o.btn; if (o.mc) { o.mode = 'loop'; o.first = 0; } }); refreshProps(); });
+  $('#iscript').addEventListener('input', (e) => { const v = e.target.value; clipEdit((o) => { if (v.trim()) o.script = v; else delete o.script; }); });
+  $('#dlang').addEventListener('change', (e) => { beginEditOnce(); if (e.target.value === 'as1') S.doc.lang = 'as1'; else delete S.doc.lang; commit(); });
   $('#imode').addEventListener('change', (e) => clipEdit((o) => { o.mode = e.target.value; }));
   $('#ifirst').addEventListener('input', (e) => { const v = parseInt(e.target.value, 10); if (v >= 1) clipEdit((o) => { o.first = Math.min(v - 1, Math.max(0, ((S.doc.lib[o.sym] || {}).frames || 1) - 1)); }); });
   $('#iname').addEventListener('input', (e) => {
