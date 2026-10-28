@@ -293,6 +293,38 @@ function drawOverlay(ctx) {
       if (h.id === 'rot') ctx.arc(p[0], p[1], 5, 0, Math.PI * 2); else ctx.rect(p[0] - 4, p[1] - 4, 8, 8);
       ctx.fill(); ctx.stroke();
     }
+	    // Iegūstam atlasītās figūras rotācijas centru.
+    const pivot = getPivot(one.o);
+
+    // Pārveidojam pivot no lokālajām uz pasaules koordinātām.
+    const pivotWorld = mapply(matOf(one.o.t), pivot[0], pivot[1]);
+
+    // Pārveidojam pasaules koordinātas uz ekrāna koordinātām.
+    const pivotScreen = w2s(pivotWorld[0], pivotWorld[1]);
+
+    // Saglabājam pašreizējos zīmēšanas iestatījumus.
+    ctx.save();
+
+    // Izvēlamies oranžu krāsu un līnijas biezumu.
+    ctx.strokeStyle = '#ff9800';
+    ctx.lineWidth = 2;
+
+    // Sākam zīmēt krustiņu.
+    ctx.beginPath();
+
+    // Horizontālā līnija.
+    ctx.moveTo(pivotScreen[0] - 7, pivotScreen[1]);
+    ctx.lineTo(pivotScreen[0] + 7, pivotScreen[1]);
+
+    // Vertikālā līnija.
+    ctx.moveTo(pivotScreen[0], pivotScreen[1] - 7);
+    ctx.lineTo(pivotScreen[0], pivotScreen[1] + 7);
+
+    // Uzzīmējam abas līnijas.
+    ctx.stroke();
+
+    // Atjaunojam iepriekšējos zīmēšanas iestatījumus.
+    ctx.restore();
   }
   if (one && S.tool === 'node' && one.o.kind === 'path') {
     one.o.contours.forEach((c, ci) => {

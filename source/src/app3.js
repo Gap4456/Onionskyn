@@ -112,6 +112,60 @@ function fselInfo() {
   return { a: Math.min(r.a, r.b), b: Math.min(Math.max(r.a, r.b), S.doc.frames - 1), layers: ls, all: r.all };
 }
 
+/* ---------- Copy Frames: pagaidām tikai kopēšana, bez ielīmēšanas ---------- */
+let copiedFrames = null; // Glabā nokopēto kadru diapazonu tikai programmas atmiņā
+function copySelectedFrames(layer, frame) {
+  const selection = fselInfo(); // Nolasa Shift+klikšķis atlasīto diapazonu
+  const useRange = selection && selection.layers.length === 1 && selection.layers[0].id === layer.id && frame >= selection.a && frame <= selection.b;
+  const a = useRange ? selection.a : frame; // Ja diapazons nav atlasīts, kopē vienu kadru
+  const b = useRange ? selection.b : frame; // Nosaka kopēšanas pēdējo kadru
+  copiedFrames = {
+    count: b - a + 1, // Saglabā kopējamo kadru skaitu
+    start: a, // Saglabā sākotnējo pozīciju turpmākai ielīmēšanas izstrādei
+    keyframes: clone(layer.kfs.filter((kf) => kf.f >= a && kf.f <= b)), // Neatkarīgas Keyframe kopijas
+    preceding: clone(layer.kfs.filter((kf) => kf.f <= a).at(-1) || null), // Saturs, ko manto parastie Frame
+    startObjs: clone(C.evalLayerObjs(layer, a)) // Precīzs sākuma kadra izskats arī Tween vidū
+  };
+  toast('Copied ' + copiedFrames.count + ' frame(s). Paste Frames vēl nav ieviests.'); // Testa apstiprinājums
+}
+
+/* ---------- Paste Frames: pārraksta kadru diapazonu bez nobīdes ---------- */
+function pasteSelectedFrames(layer, start) {
+  if (!copiedFrames) { toast('Vispirms izmanto Copy Frames.'); return; } // Bez kopijas nav ko ielīmēt
+  if (!layer || layer.locked) { toast('Slānis nav pieejams ielīmēšanai.'); return; } // Aizsargā bloķētu slāni
+  const end = start + copiedFrames.count - 1; // Pēdējais pārrakstāmais kadrs
+  if (end >= S.doc.frames) { toast('Paste Frames: projekta beigās nepietiek kadru.'); return; } // Neapgriež kopiju
+  const after = end + 1; // Pirmais kadrs, kuru nedrīkst mainīt
+  const oldAfter = after < S.doc.frames ? clone(C.kfAt(layer, after) || C.kfFor(layer, after)) : null; // Saglabā nākamā posma stāvokli
+  const oldAfterObjs = after < S.doc.frames ? clone(C.evalLayerObjs(layer, after)) : null; // Saglabā redzamo saturu pēc ielīmēšanas
+  const originalBoundary = after < S.doc.frames ? clone(C.kfAt(layer, after)) : null; // Vai aiz diapazona jau ir Keyframe?
+  const source = copiedFrames; // Izmanto iepriekš saglabāto neatkarīgo kopiju
+  if (after < S.doc.frames && !originalBoundary && oldAfter.tween !== 'none') { toast('Paste Frames: robežu šķērso Tween. Vispirms izveido Keyframe aiz ielīmēšanas diapazona.'); return; } // Nepārveido ārējo Tween
+  const first = clone(source.keyframes.find(k => k.f === source.start) || source.preceding); // Iegūst sākuma kadra saturu
+  if (!first) { toast('Copy Frames: trūkst sākuma kadra datu.'); return; } // Drošības pārbaude
+  pushUndo(); // Viena Undo darbība visam ielīmējumam
+  const inserted = source.keyframes.filter(k => k.f > source.start).map(k => {
+    const c = clone(k); c.f = start + (k.f - source.start); return c; // Saglabā relatīvo kadru attālumu
+  });
+  first.f = start; // Izveido atslēgkadru ielīmēšanas sākumā
+  if (!source.keyframes.some(k => k.f === source.start)) { first.objs = clone(source.startObjs); first.tween = 'none'; } // Parastā Frame saturu nofiksē tieši kopēšanas brīdī
+  layer.kfs = layer.kfs.filter(k => k.f < start || k.f > end); // Izņem tikai pārrakstāmos Keyframe
+  layer.kfs.push(first, ...inserted); // Ieliek nokopētos Keyframe
+  layer.kfs.sort((a,b) => a.f - b.f); // Atjauno hronoloģisku secību
+  const last = layer.kfs.filter(k => k.f <= end).at(-1); // Pēdējais ielīmētā posma Keyframe
+  if (last) last.tween = 'none'; // Neļauj kopētam Tween pāriet ārpus ielīmētā diapazona
+  if (after < S.doc.frames && !originalBoundary) {
+    const boundary = clone(oldAfter); // Saglabā iepriekšējā turpinājuma parametrus
+    boundary.f = after; boundary.objs = oldAfterObjs; boundary.tween = oldAfter.tween || 'none'; // Atjauno saturu
+    layer.kfs.push(boundary); // Izveido aizsargājošu Keyframe aiz ielīmējuma
+    layer.kfs.sort((a,b) => a.f - b.f); // Atjauno secību
+  }
+  S.fsel = null; // Notīra iepriekšējo diapazona atlasi
+  S.frame = start; // Pārvieto kursoru uz ielīmēšanas sākumu
+  pruneSel(); refreshAll(); // Atjauno redaktora attēlu un vēsturi
+  toast('Pasted ' + source.count + ' frame(s).'); // Paziņo rezultātu
+}
+
 /* ---------- frame actions ---------- */
 function frameAction(kind) {
   const l = curLayer(), f = S.frame, d = S.doc;
@@ -119,10 +173,13 @@ function frameAction(kind) {
   pushUndo();
   let fail = '';
   switch (kind) {
-    case 'frame': C.insertFrames(l, f, 1, d); break;
+    case 'frame':
+		C.insertFrames(l, f, 1, d); // Ievieto vienu kadru aiz pašreizējā
+		S.frame = f + 1;             // Pārvieto sarkano kursoru uz nākamo kadru
+	break;                       // Beidz šo switch atzaru
     case 'rmframe': C.removeFrames(l, f, 1, d); S.frame = clamp(S.frame, 0, d.frames - 1); break;
-    case 'key': if (C.kfAt(l, f)) fail = 'There is already a keyframe on this frame.'; else C.insertKeyframe(l, f, false); break;
-    case 'blank': C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); break;
+    case 'key': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } } else { C.insertKeyframe(l, f, false); } break;
+    case 'blank': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert blank keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert blank keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } } else { C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); } break;
     case 'clearkey': if (!C.clearKeyframe(l, f)) fail = 'Select a keyframe (other than the first) to clear.'; break;
     case 'motion': case 'shape': {
       const r = C.setTweenAt(d, l, f, kind);
@@ -349,6 +406,9 @@ tlC.addEventListener('contextmenu', (e) => {
   if (l) selectLayer(l.id);
   setFrame(c.f);
   showMenu(null, [
+    { label: 'Copy Frames', fn: () => l && copySelectedFrames(l, c.f), disabled: !l || l.locked },
+    { label: 'Paste Frames', fn: () => l && pasteSelectedFrames(l, c.f), disabled: !l || l.locked || !copiedFrames },
+    '-',
     { label: 'Insert frame', kbd: 'F5', fn: () => frameAction('frame') },
     { label: 'Insert keyframe', kbd: 'F6', fn: () => frameAction('key') },
     { label: 'Insert blank keyframe', kbd: 'F7', fn: () => frameAction('blank') },
@@ -867,7 +927,8 @@ function duplicateSel() {
     for (const id of ids) {
       const i = kf.objs.findIndex((o) => o.id === id);
       if (i < 0) continue;
-      const c = clone(kf.objs[i]); c.id = uid(); c.t.x += 12; c.t.y += 12;
+      const c = clone(kf.objs[i]); // Izveido precīzu oriģinālā objekta kopiju
+		c.id = uid();                // Piešķir kopijai jaunu unikālu ID
       kf.objs.splice(i + 1, 0, c); newSel.push({ lid: l.id, id: c.id });
     }
   }

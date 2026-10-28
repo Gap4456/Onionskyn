@@ -200,6 +200,8 @@ function onMove(e) {
   const d = S.drag;
   if (d) {
     if (d.type === 'pan') { S.view.px = d.px + (p.sx - d.sx); S.view.py = d.py + (p.sy - d.sy); S.autoFit = false; invalidate(); return; }
+	if (d.type === 'pivot') pivotDrag(p.w);
+	else
     if (d.type === 'move') moveDrag(p.w, e);
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
@@ -238,7 +240,9 @@ function onUp(e) {
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
     if ((d.type === 'node' || d.type === 'grad' || d.type === 'rig') && d.started) { commit(); }
-    if ((d.type === 'move' || d.type === 'scale' || d.type === 'rotate') && d.started) commit();
+    // Saglabājam arī pabeigtu pivot pārvietošanu.
+    if ((d.type === 'move' || d.type === 'scale' ||
+	d.type === 'rotate' || d.type === 'pivot') && d.started) commit();
     S.drag = null; invalidate();
     return;
   }
@@ -255,6 +259,38 @@ function onUp(e) {
 }
 function onDbl(e) {
   const p = stagePt(e);
+    // Ctrl + dubultklikšķis uz pivot atgriež to figūras centrā.
+  if (S.tool === 'select' && e.ctrlKey) {
+
+    // Iegūstam pašlaik atlasīto figūru.
+    const one = singleSel();
+
+    // Pārbaudām, vai figūra ir atlasīta, nav bloķēta
+    // un pele atrodas tieši uz oranžā krustiņa.
+    if (one && !getLayer(one.lid).locked &&
+        pivotHit(one.o, p.sx, p.sy)) {
+
+      // Saglabājam iepriekšējo stāvokli Ctrl+Z vajadzībām.
+      pushUndo();
+
+      // Sagatavojam figūru rediģēšanai pašreizējā kadrā.
+      C.ensureEditable(getLayer(one.lid), S.frame);
+
+      // Atrodam rediģējamo figūru.
+      const o = findEditable(one.lid, one.id);
+
+      // Ja figūra atrasta, noņemam pielāgoto pivot.
+      if (o) {
+        delete o.pivot; // getPivot() atkal izmantos figūras centru.
+        commit();       // Saglabājam izmaiņas.
+        invalidate();   // Pārzīmējam ekrānu.
+      }
+
+      // Neļaujam dubultklikšķim atvērt simbolu.
+      e.preventDefault();
+      return;
+    }
+  }
   if (S.tool === 'pen' && S.pen) { finishPen(false); return; }
   if (S.tool === 'node') nodeDbl(p);
   if (S.tool === 'select') {
@@ -321,10 +357,34 @@ function endTextEdit(ok) {
     setTool('select');
   }
 }
+// Pārbauda, vai pele atrodas uz oranžā pivot krustiņa.
+function pivotHit(o, sx, sy) {
+  const pv = getPivot(o); // Iegūstam pivot lokālās koordinātas.
+  const world = mapply(matOf(o.t), pv[0], pv[1]); // Pārvēršam pasaules koordinātās.
+  const screen = w2s(world[0], world[1]); // Pārvēršam ekrāna koordinātās.
 
+  // Atgriež true, ja pele atrodas ne tālāk kā 9 pikseļus.
+  return Math.hypot(sx - screen[0], sy - screen[1]) <= 9;
+}
 /* ---------- selection tool ---------- */
 function selDown(e, p) {
   const w = p.w, one = singleSel();
+	// Ja nospiests uz pivot, sākam pārvietot tikai krustiņu.
+	if (one && !getLayer(one.lid).locked &&
+    !gradEditing(one.o) && !rigEditing(one.o) &&
+    pivotHit(one.o, p.sx, p.sy)) {
+
+	// Atceramies atlasīto figūru un sākuma punktu.
+	S.drag = {
+		type: 'pivot',
+		lid: one.lid,
+		id: one.id,
+		start: w,
+		started: false
+  };
+
+  return; // Beidzam selDown(), lai nesāktos figūras pārvietošana.
+}
   if (one && !getLayer(one.lid).locked && rigEditing(one.o)) { const part = rigHit(one.o, p.sx, p.sy); if (part) { S.drag = { type: 'rig', part, lid: one.lid, id: one.id, start: p.w, started: false }; return; } }
   if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
   if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
@@ -363,6 +423,50 @@ function moveDrag(w, e) {
   for (const q of d.orig) { q.o.t.x = q.x + dx; q.o.t.y = q.y + dy; }
   invalidate(); refreshTransformFields();
 }
+// Atgriež objekta rotācijas centru lokālajās koordinātās.
+function getPivot(o) {
+  // Ja objektam jau ir pielāgots pivot, izmantojam to.
+  if (Array.isArray(o.pivot) && o.pivot.length === 2) {
+    return o.pivot;
+  }
+
+  // Citādi aprēķinām figūras sākotnējo viduspunktu.
+  const b = localBounds(o);
+
+  // Ja figūrai nav robežu, izmantojam koordinātu sākumpunktu.
+  if (!b) return [0, 0];
+
+  // Aprēķinām robežu viduspunktu.
+  return [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2];
+}
+// Pārvieto pivot, nekustinot pašu figūru.
+function pivotDrag(w) {
+  const d = S.drag; // Pašreizējās vilkšanas dati.
+
+  // Pirmajā kustībā sagatavojam rediģēšanu.
+  if (!d.started) {
+    // Ignorējam ļoti mazas nejaušas peles kustības.
+    if (Math.hypot(w.x - d.start.x, w.y - d.start.y) * S.view.z < 3) return;
+
+    pushUndo(); // Saglabājam vienu Ctrl+Z ierakstu.
+    C.ensureEditable(getLayer(d.lid), S.frame); // Sagatavojam pašreizējo kadru.
+
+    const o = findEditable(d.lid, d.id); // Atrodam rediģējamo figūru.
+    if (!o) { S.drag = null; return; } // Ja figūras nav, pārtraucam.
+
+    d.o = o; // Saglabājam figūru.
+    d.inv = minv(matOf(o.t)); // Apgrieztā transformācijas matrica.
+    d.started = true; // Vilkšana ir sākusies.
+  }
+
+  // Pārvēršam peles atrašanās vietu figūras lokālajās koordinātās.
+  const local = mapply(d.inv, w.x, w.y);
+
+  // Mainām tikai pivot, nevis figūras pozīciju.
+  d.o.pivot = [local[0], local[1]];
+
+  invalidate(); // Pārzīmējam krustiņu.
+}
 function xformDrag(w, e) {
   const d = S.drag;
   if (!d.started) {
@@ -372,8 +476,14 @@ function xformDrag(w, e) {
     if (!o) { S.drag = null; return; }
     if (o.bind) C.freeBind.add(o.id);
     d.o = o; d.t0 = Object.assign({}, o.t); d.b = localBounds(o); d.M0 = matOf(o.t); d.inv = minv(d.M0); d.started = true;
-    const cx = (d.b.x0 + d.b.x1) / 2, cy = (d.b.y0 + d.b.y1) / 2;
-    d.C = mapply(d.M0, cx, cy); d.cx = cx; d.cy = cy;
+    const pivot = getPivot(o);
+
+	// Saglabājam pivot X un Y koordinātas.
+	d.cx = pivot[0];
+	d.cy = pivot[1];
+
+	// Aprēķinām rotācijas centra atrašanās vietu pasaulē.
+	d.C = mapply(d.M0, d.cx, d.cy);
     d.a0 = Math.atan2(d.start.y - d.C[1], d.start.x - d.C[0]);
   }
   const t0 = d.t0, o = d.o, b = d.b;

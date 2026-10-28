@@ -594,6 +594,33 @@ function bindValid(b) {
 function lerpObj(a, b, p, mode) {
   const o = Object.assign({}, a);
   o.t = lerpT(a.t, b.t, p);
+    // Labojam kustību tikai tad, ja abiem atslēgkadriem ir pielāgots pivot.
+  if (Array.isArray(a.pivot) && a.pivot.length === 2 &&
+      Array.isArray(b.pivot) && b.pivot.length === 2) {
+
+    // Nosakām pivot pozīciju pasaulē pirmajā atslēgkadrā.
+    const startPivot = mapply(matOf(a.t), a.pivot[0], a.pivot[1]);
+
+    // Nosakām pivot pozīciju pasaulē otrajā atslēgkadrā.
+    const endPivot = mapply(matOf(b.t), b.pivot[0], b.pivot[1]);
+
+    // Aprēķinām, kur pivot jāatrodas pašreizējā starpkadrā.
+    const targetX = lerp(startPivot[0], endPivot[0], p);
+    const targetY = lerp(startPivot[1], endPivot[1], p);
+
+    // Aprēķinām pivot lokālās koordinātas pašreizējā starpkadrā.
+    o.pivot = [
+      lerp(a.pivot[0], b.pivot[0], p),
+      lerp(a.pivot[1], b.pivot[1], p)
+    ];
+
+    // Noskaidrojam, kur pivot nonāktu ar veco transformācijas aprēķinu.
+    const actualPivot = mapply(matOf(o.t), o.pivot[0], o.pivot[1]);
+
+    // Izlabojam objekta pozīciju, lai pivot būtu vajadzīgajā vietā.
+    o.t.x += targetX - actualPivot[0];
+    o.t.y += targetY - actualPivot[1];
+  }
   o.op = lerp(nz(a.op, 1), nz(b.op, 1), p);
   if (a.bind && b.bind && a.bind.to === b.bind.to && a.bind.bone === b.bind.bone) o.bind = { to: a.bind.to, bone: a.bind.bone, lx: lerp(a.bind.lx, b.bind.lx, p), ly: lerp(a.bind.ly, b.bind.ly, p), lr: lerp(a.bind.lr, b.bind.lr, p) };
   if (a.kind === 'text' && b.kind === 'text') { lerpPaint(o, a, b, p); return o; }
