@@ -18,14 +18,16 @@ Requirements:
 
 Open a terminal in the `desktop` folder and run:
 
-```bash
+```
+bash
 npm ci
 npm start
 ```
 
 To build the Windows desktop application:
 
-```bash
+```
+bash
 npm run dist:win
 ```
 
