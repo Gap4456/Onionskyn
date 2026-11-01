@@ -21,6 +21,20 @@
     --danger: #FF7074; --shadow: 0 8px 28px rgba(0,0,0,.55); color-scheme: dark;
   }
 }
+/* KROGAN Sepia: warm, low-glare editor chrome. Stage artwork is unchanged. */
+:root[data-theme="sepia"] {
+  --bg: #D8D0C1; --panel: #E9E0D1; --panel2: #DED3C2;
+  --pasteboard: #C9BEAC; --line: #B7AA98; --line2: #C9BDAC;
+  --fg: #332E28; --mut: #6D6255; --accent: #7665B2;
+  --accent-fg: #FFFFFF; --accent-soft: #DCD3E9;
+  --playhead: #C65454; --motion: #C9C1E6; --shape: #B8D3B7;
+  --held: #D5CAB9; --cell: #F3EBDF; --cell5: #E8DDCE;
+  --key: #332E28; --danger: #B54D4D;
+  --shadow: 0 8px 28px rgba(60,45,30,.18);
+  color-scheme: light;
+  --c-kw: #7a3fd1; --c-str: #167a3a; --c-com: #7a8294;
+  --c-num: #c2410c; --c-bi: #0b63b8; --c-fn: #1d4ed8;
+}
 :root[data-theme="dark"] {
   --bg: #161921; --panel: #1E222C; --panel2: #262B37; --pasteboard: #10131A; --line: #323849; --line2: #2A3040;
   --fg: #E3E7F0; --mut: #8E97AC; --accent: #7F95FF; --accent-fg: #0E1220; --accent-soft: #2A3358;
@@ -131,8 +145,9 @@ input[type=checkbox] { accent-color: var(--accent); }
 .menu-pop kbd { font: 11px var(--f-mono); opacity: .65; }
 .menu-pop hr { border: 0; border-top: 1px solid var(--line2); margin: 4px 2px; }
 
-#crumb { position: absolute; left: 10px; top: 10px; z-index: 4; display: none; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px 3px 4px; box-shadow: var(--shadow); font-size: 12.5px; }
+#crumb { position: absolute; left: 10px; top: 56px; z-index: 4; display: none; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px 3px 4px; box-shadow: var(--shadow); font-size: 12.5px; }
 #crumb.on { display: flex; }
+@media (max-width: 860px) { #crumb { top: 96px; } }
 #crumb button { height: 24px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--line); background: var(--cell); }
 #crumb button:hover { border-color: var(--accent); }
 #prev { position: fixed; inset: 0; z-index: 60; background: rgba(14,16,24,.96); display: none; flex-direction: column; padding: 12px; gap: 8px; }
@@ -257,6 +272,131 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
   .tl-inner { grid-template-columns: 150px max-content; }
 }
 @media (prefers-reduced-motion: reduce) { #props { transition: none; } }
+
+/* KROGAN Color Lab — themed XP-style, one-click colour palette. */
+#kColorLab{position:fixed;z-index:90;width:min(286px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;display:none;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);padding:11px;font-size:12px}
+#kColorLab.on{display:block}#kColorLab .khead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}#kColorLab .khead button{border:0;background:transparent;font-size:19px;cursor:pointer}
+#kColorLab .kgrid{display:grid;grid-template-columns:repeat(8,24px);gap:5px;margin:5px 0 12px}#kColorLab .kswatch{width:24px;height:24px;min-width:0;border:1px solid #777;border-radius:5px;cursor:pointer;padding:0;position:relative}#kColorLab .kswatch:hover{outline:2px solid var(--accent)}#kColorLab .kswatch.selected{outline:2px solid var(--accent);outline-offset:1px}
+#kColorLab .kbottom{display:grid;grid-template-columns:1fr;gap:8px}#kColorLab .klabel{font-weight:600;margin:5px 0}#kColorLab .kcustom{height:24px}#kColorLab .kcontrol{display:flex;align-items:center;gap:6px;margin-top:6px}#kColorLab .kcontrol input{min-width:0;flex:1}#kColorLab .kcontrol button{padding:5px;border:1px solid var(--line);background:var(--cell);border-radius:4px}#kColorLab .kpreview{height:30px;border:1px solid var(--line);border-radius:3px;margin:6px 0}#kColorLab .kinfo{color:var(--mut);font-size:11px;margin-top:5px}#kColorLab .kspectrum{height:118px;width:100%;cursor:crosshair;display:block;border:1px solid var(--line);border-radius:3px;touch-action:none}#kColorLab input[type=range]{width:100%}
+#kNodeBar{display:none;align-items:center;gap:2px;white-space:nowrap}#kNodeBar.on{display:flex}
+#kSelectBar{display:none;align-items:center;gap:2px;white-space:nowrap}#kSelectBar.on{display:flex}#kSelectBar .tbtn{font-size:11px;font-weight:700;padding:0 7px}#kNodeBar .tbtn{font-size:11px;font-weight:700;padding:0 7px}
+
+#objBlurVal[hidden] { display:none !important; }
+
+/* KROGAN toolbar: two selectable layouts, no separator rows. */
+#tools { gap: 2px; }
+#tools .tool-layout-toggle { flex: none; width: 34px; min-height: 26px; margin-top: 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--cell); font: 700 10px var(--f-mono); cursor: pointer; }
+#tools .tool-layout-toggle:hover { border-color: var(--accent); }
+#tools .tool-layout-toggle { font-size: 0; }
+#tools .tool-layout-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+body.k-tools-double #app { grid-template-columns: 88px minmax(0,1fr) 248px; }
+body.k-tools-double #tools { display: grid; grid-template-columns: repeat(2, 34px); grid-auto-rows: 34px; align-content: start; justify-content: center; align-items: center; gap: 4px 6px; padding: 8px 5px; overflow-y: auto; }
+body.k-tools-double #tools .swatches { grid-column: 1 / -1; grid-row: auto; justify-self: start; margin: 0; }
+body.k-tools-double #tools .tool-layout-toggle { grid-column: 1 / -1; width: 74px; min-height: 26px; margin: 0; justify-self: center; }
+@media (max-width: 860px) {
+  body.k-tools-double #app { grid-template-columns: minmax(0,1fr); }
+  body.k-tools-double #tools { display: flex; flex-direction: row; justify-content: flex-start; padding: 4px 8px; overflow-x: auto; overflow-y: hidden; }
+}
+
+/* KROGAN V1.8: Project5-inspired cool silver/grey studio chrome (not an exact replica). */
+:root[data-theme="cakewalk"] {
+  --bg:#BFC5CA; --panel:#DCE0E3; --panel2:#C7CDD2;
+  --pasteboard:#AEB7BD; --line:#A4ADB5; --line2:#BCC3C9;
+  --fg:#27343D; --mut:#596974; --accent:#65879A;
+  --accent-fg:#FFFFFF; --accent-soft:#CAD9E1;
+  --playhead:#DB7947; --motion:#B4CEDB; --shape:#BBD5C8;
+  --held:#C5CCD2; --cell:#EEF0F1; --cell5:#DFE3E6;
+  --key:#27343D; --danger:#B75043;
+  --shadow:0 8px 28px rgba(30,45,55,.22);
+  color-scheme:light;
+  --c-kw:#6651A2; --c-str:#28734B; --c-com:#73808A;
+  --c-num:#B15D29; --c-bi:#286A91; --c-fn:#325F9E;
+}
+/* KROGAN V1.8: warm orange workshop chrome. Artwork colors remain unchanged. */
+:root[data-theme="orange"] {
+  --bg:#D9C4AC; --panel:#F1E1CF; --panel2:#E8CEB1;
+  --pasteboard:#CBB398; --line:#C5A582; --line2:#D9BFA4;
+  --fg:#3D2A1D; --mut:#775A42; --accent:#C36A27;
+  --accent-fg:#FFFFFF; --accent-soft:#F7CF9C;
+  --playhead:#C64638; --motion:#E7C5A5; --shape:#C7D7B4;
+  --held:#DDC2A5; --cell:#FFF2E3; --cell5:#F2DEC6;
+  --key:#3D2A1D; --danger:#B44234;
+  --shadow:0 8px 28px rgba(65,35,14,.22);
+  color-scheme:light;
+  --c-kw:#7C46A0; --c-str:#2F7444; --c-com:#97785C;
+  --c-num:#B54C1E; --c-bi:#226AA0; --c-fn:#885323;
+}
+/* KROGAN Color Lab V2: stable, square swatches and scrollable project bank. */
+#kColorLab #kProjectScroll{max-height:150px;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
+#kColorLab #kProjectScroll .kgrid{grid-template-columns:repeat(8,24px);margin-bottom:4px}
+/* V2.3: compact control and a visual boundary below project scroll. */
+#kColorLab #kProjectScroll{margin-bottom:8px;border-bottom:1px solid var(--line);padding-bottom:8px}
+#kColorLab .kcompact{grid-column:span 3;align-self:center;justify-self:start;min-height:24px;padding:2px 7px;border:1px solid var(--line);border-radius:5px;background:var(--cell);color:var(--fg);font-size:12px;cursor:pointer;white-space:nowrap}
+#kColorLab .kcompact:hover{border-color:var(--accent);background:var(--panel2)}
+/* V2.2: square swatches with four sharp corners. */
+#kColorLab .kswatch{border-radius:0;clip-path:none}
+#kColorLab .kswatch.selected{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+#kColorLab .kswatch:hover{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+#kColorLab .kspectrum{cursor:crosshair}
+#kColorLab .kswatch.kunused::after{content:"";position:absolute;right:1px;bottom:1px;width:11px;height:2px;background:#fff;transform:rotate(-45deg);box-shadow:0 1px 1px #111}
+#kColorLab .kswatch.kdrop{outline:2px dashed var(--accent);outline-offset:2px}
+#kColorLab .kswatch.kdrag{opacity:.35}
+#kColorLab .kinfo{line-height:1.35}
+
+/* KROGAN V2.8 Theme Lab: editor chrome only, not stage artwork. */
+:root[data-theme="bubblegum"] {
+  --bg: #FBE4F1; --panel: #FFF2FA; --panel2: #F5D2E9; --pasteboard: #EFC3DC; --line: #E5A5CA; --line2: #EAC2D9; --fg: #42233F; --mut: #855276; --accent: #FF168A; --accent-fg: #FFFFFF; --accent-soft: #FFD0E9; --playhead: #FF4D6D; --motion: #F8BADB; --shape: #B8C9FF; --held: #F0D1E3; --cell: #FFF7FB; --cell5: #FBE6F4;
+  --key: #42233F; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="cyberpunk"] {
+  --bg: #353414; --panel: #F1E94D; --panel2: #D4CC2B; --pasteboard: #262A46; --line: #8F891B; --line2: #B8AF29; --fg: #171B32; --mut: #4E4B1A; --accent: #262A46; --accent-fg: #FFFFFF; --accent-soft: #E4DC67; --playhead: #FF4DA6; --motion: #B4B844; --shape: #74C7D3; --held: #C3BD40; --cell: #FFF8A1; --cell5: #E8E068;
+  --key: #171B32; --danger: #C12F5A; --shadow: 0 8px 28px rgba(0,0,0,.25); color-scheme: light;
+}
+:root[data-theme="acid"] {
+  --bg: #444D18; --panel: #D8EA58; --panel2: #BED53D; --pasteboard: #64742B; --line: #8FA522; --line2: #A9BF3E; --fg: #1D2B0A; --mut: #4C631B; --accent: #426A00; --accent-fg: #FFFFFF; --accent-soft: #F0FF91; --playhead: #FF8B00; --motion: #B2D43C; --shape: #83C77B; --held: #B6CB56; --cell: #F4FFA5; --cell5: #DDEB77;
+  --key: #1D2B0A; --danger: #AF3E25; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="pirate"] {
+  --bg: #050A07; --panel: #09120B; --panel2: #102016; --pasteboard: #020503; --line: #174627; --line2: #10351C; --fg: #B5FFC9; --mut: #60D58C; --accent: #00F45A; --accent-fg: #001A08; --accent-soft: #103B1B; --playhead: #39FF7D; --motion: #174B27; --shape: #175536; --held: #193B23; --cell: #07110A; --cell5: #0C1B10;
+  --key: #B5FFC9; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: dark;
+}
+:root[data-theme="midnight"] {
+  --bg: #050509; --panel: #111117; --panel2: #1A1A24; --pasteboard: #020205; --line: #343442; --line2: #242435; --fg: #F5F5F8; --mut: #A0A0B6; --accent: #9A83FF; --accent-fg: #090612; --accent-soft: #292142; --playhead: #FF6B93; --motion: #303063; --shape: #235B50; --held: #2D2D3B; --cell: #0C0C13; --cell5: #151520;
+  --key: #F5F5F8; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: dark;
+}
+:root[data-theme="ocean"] {
+  --bg: #DDF8FC; --panel: #EEFCFF; --panel2: #C8EFF5; --pasteboard: #B2E4EB; --line: #91CCD9; --line2: #B7E3E9; --fg: #143F59; --mut: #47798C; --accent: #009DAB; --accent-fg: #FFFFFF; --accent-soft: #B6F4F5; --playhead: #FF7C80; --motion: #B8E7F9; --shape: #A2E6C9; --held: #C6E9EF; --cell: #F5FEFF; --cell5: #E2F6FA;
+  --key: #143F59; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="lava"] {
+  --bg: #21151B; --panel: #302027; --panel2: #39262A; --pasteboard: #140C11; --line: #604048; --line2: #483039; --fg: #FFE5D5; --mut: #BA968E; --accent: #FF7536; --accent-fg: #221009; --accent-soft: #623423; --playhead: #FF4242; --motion: #59302B; --shape: #31553C; --held: #46302D; --cell: #29191F; --cell5: #342127;
+  --key: #FFE5D5; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: dark;
+}
+:root[data-theme="forest"] {
+  --bg: #E5F5E4; --panel: #F2FFF0; --panel2: #D4EBD3; --pasteboard: #BBD7B7; --line: #9FC5A1; --line2: #C3DDC1; --fg: #1D432C; --mut: #54765B; --accent: #3F9D43; --accent-fg: #FFFFFF; --accent-soft: #C9F2B4; --playhead: #F67B62; --motion: #B7DBA8; --shape: #B4DFCE; --held: #C9DEC4; --cell: #F4FFF0; --cell5: #E2F3DF;
+  --key: #1D432C; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="lavender"] {
+  --bg: #F0E8FA; --panel: #F9F3FF; --panel2: #E4D8F5; --pasteboard: #D3C3E9; --line: #B8A8D6; --line2: #D7C9EB; --fg: #3F3159; --mut: #7E6A99; --accent: #8A63D2; --accent-fg: #FFFFFF; --accent-soft: #E3D4FF; --playhead: #F98FAD; --motion: #D6C4F8; --shape: #B8DEC8; --held: #E4D8F0; --cell: #FCF8FF; --cell5: #F0E8F8;
+  --key: #3F3159; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="solar"] {
+  --bg: #FFF6C7; --panel: #FFFCDF; --panel2: #F8EAA8; --pasteboard: #F4DF92; --line: #D6C46F; --line2: #F0DFAC; --fg: #544524; --mut: #8E7540; --accent: #E79D00; --accent-fg: #251A05; --accent-soft: #FFF0A0; --playhead: #FF705C; --motion: #F6DC84; --shape: #B1E5C8; --held: #E8DDAF; --cell: #FFFDEF; --cell5: #FFF4C7;
+  --key: #544524; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+/* Yellow-only refinement: empty timeline area matches surrounding panels. */
+:root[data-theme="cyberpunk"] .tl-scroll,
+:root[data-theme="acid"] .tl-scroll { background: var(--panel); }
+:root[data-theme="cyberpunk"] .tl-inner,
+:root[data-theme="acid"] .tl-inner { background: var(--panel); }
+
+#kThemeMenu{position:fixed;z-index:9999;right:10px;top:40px;width:254px;max-height:min(70vh,500px);overflow:auto;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);padding:8px;display:none}
+#kThemeMenu.open{display:block}
+#kThemeMenu .k-theme-opt{width:100%;display:flex;align-items:center;gap:10px;padding:7px 9px;border:1px solid transparent;background:transparent;color:var(--fg);text-align:left;border-radius:6px;cursor:pointer}
+#kThemeMenu .k-theme-opt:hover{background:var(--panel2)}
+#kThemeMenu .k-theme-opt[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft)}
+#kThemeMenu .k-theme-dot{width:27px;height:17px;flex:none;border-radius:4px;border:1px solid var(--line)}
+#kThemeMenu .k-theme-heading{font-size:11px;color:var(--mut);padding:8px 8px 3px;text-transform:uppercase;letter-spacing:.07em}
 </style>
 <script>
 /*!
@@ -313,6 +453,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <span class="sep"></span>
     <button class="tbtn" id="bUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3L2 6l3 3"/><path d="M2 6h7a4 4 0 010 8H6"/></svg></button>
     <button class="tbtn" id="bRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l3 3-3 3"/><path d="M14 6H7a4 4 0 000 8h3"/></svg></button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="mbtn" id="mPath" title="Bézier path operations" aria-haspopup="true" aria-expanded="false">Path ▾</button>
+    <div id="kNodeBar" aria-label="Node editing operations">
+      <button class="tbtn" data-knode="corner" title="Make selected nodes corner (independent handles)">Corner</button>
+      <button class="tbtn" data-knode="straight" title="Straighten segments between selected adjacent nodes">Straight</button>
+      <button class="tbtn" data-knode="smooth" title="Make selected nodes smooth">Smooth</button>
+      <button class="tbtn" data-knode="symmetric" title="Make selected nodes symmetric">Symmetric</button>
+      <button class="tbtn" data-knode="auto" title="Auto-smooth selected nodes">Auto</button>
+    </div>
+    <div id="kSelectBar" aria-label="Selection transforms">
+      <button class="tbtn" data-ktransform="flipH" title="Flip selected objects horizontally">Flip H</button>
+      <button class="tbtn" data-ktransform="flipV" title="Flip selected objects vertically">Flip V</button>
+      <button class="tbtn" data-ktransform="rotateL" title="Rotate selected objects 90° counterclockwise">↶ 90°</button>
+      <button class="tbtn" data-ktransform="rotateR" title="Rotate selected objects 90° clockwise">↷ 90°</button>
+    </div>
     <div class="grow"></div>
     <button class="tbtn wide-only" id="zOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
     <button class="tbtn zoomval wide-only" id="zVal" title="Fit stage (Shift+1)">100%</button>
@@ -322,8 +477,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <button class="tbtn" id="bTheme" title="Theme: system" aria-label="Theme">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="5.2"/><path d="M8 2.8v10.4" /><path d="M8 2.8a5.2 5.2 0 010 10.4" fill="currentColor"/></svg>
     </button>
+    <button class="tbtn" id="kThemePalette" type="button" title="Choose editor colour theme" aria-label="Choose editor colour theme" aria-haspopup="true" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 1.3-3.5 1.8 1.8 0 0 1 1.2-3.1H18a3 3 0 0 0 3-3A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/><circle cx="17.5" cy="11" r="1"/></svg></button>
     <button class="tbtn narrow-only" id="bProps" aria-label="Properties" aria-pressed="false">Props</button>
   </header>
+
+  <div id="kThemeMenu" role="listbox" aria-label="Editor themes"></div>
 
   <aside id="tools" role="toolbar" aria-label="Tools"></aside>
 
@@ -358,6 +516,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <div class="row"><span>Width</span><div class="ctl"><input type="number" id="sw" min="0" max="200" step="0.5"></div></div>
       <div class="row"><span>Cap / join</span><div class="ctl"><select id="cap" aria-label="Line cap"><option value="round">Round</option><option value="butt">Flat</option><option value="square">Square</option></select><select id="join" aria-label="Line join"><option value="round">Round</option><option value="miter">Miter</option><option value="bevel">Bevel</option></select></div></div>
       <div class="row"><span>Opacity</span><div class="ctl"><input type="range" id="opac" min="0" max="100"></div></div>
+       <div class="row"><span>Invisible</span><div class="ctl"><label class="chk" title="Turn this path into an invisibility mask for lower layers"><input type="checkbox" id="objInvis"> Invisibility Mask</label></div></div>
+       <div class="row"><span>Blur</span><div class="ctl"><input type="range" id="objBlur" min="0" max="30" step="0.5" value="0" aria-label="Gaussian blur in pixels"><output id="objBlurVal" hidden>0 px</output></div></div>
+       <p class="hint" style="margin:-3px 0 6px" title="High blur values may be hardware-intensive">⚠ High blur may slow down animation.</p>
     </div>
     <div class="sec">
       <h3>Position &amp; size</h3>
@@ -427,6 +588,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <div class="row" style="margin-top:6px"><span>Preset</span><div class="ctl"><select id="easePreset" aria-label="Easing preset"></select></div></div>
         <div class="bez"><label>x1<input type="number" id="bz0" step="0.01" min="0" max="1"></label><label>y1<input type="number" id="bz1" step="0.01" min="-1" max="2"></label><label>x2<input type="number" id="bz2" step="0.01" min="0" max="1"></label><label>y2<input type="number" id="bz3" step="0.01" min="-1" max="2"></label></div>
         <p class="hint" id="easeHint">Pick Custom curve, or drag a handle, to shape the speed of this tween.</p></div>
+      <div id="motionRotationBox" style="display:none;margin:12px 0 8px;padding:10px;border:1px solid var(--line);border-radius:7px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px">MOTION ROTATION</div>
+        <div class="mini" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <button id="rotCW" type="button" aria-pressed="false" title="Clockwise. Click again for shortest path">↻</button>
+          <button id="rotCCW" type="button" aria-pressed="false" title="Counterclockwise. Click again for shortest path">↺</button>
+          <button id="rotMinus" type="button" title="Remove one full rotation">X −</button>
+          <button id="rotPlus" type="button" title="Add one full rotation">X +</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px">
+          <span id="rotModeLabel">Shortest path</span><span id="rotTurnsLabel">Turns: 0</span>
+        </div>
+        <p class="hint" style="margin:6px 0 0">Settings belong to this Motion Tween span. Click the selected direction again for Shortest.</p>
+      </div>
       <p class="hint" id="tweenHint">Motion tweens move, scale, rotate and fade matching objects between keyframes. Shape tweens morph paths.</p>
     </div>
     <div class="sec">
@@ -484,14 +658,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button class="tbtn" id="pLast" title="Last frame (Shift+.)" aria-label="Last frame"><svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLoop" title="Loop playback" aria-pressed="true">Loop</button>
       <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button><button class="tbtn" id="pOnionOpt" title="Onion skin options" aria-label="Onion skin options" aria-haspopup="dialog" style="padding:0 6px;margin-left:-4px"><svg viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M3.5 10.5 8 5.5l4.5 5z"/></svg></button>
-      <span class="timecode" id="tcode"></span>
-      <span class="sep"></span>
-      <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>
       <button class="tbtn" data-fr="key" title="Insert keyframe (F6)">+ Key</button>
       <button class="tbtn" data-fr="blank" title="Insert blank keyframe (F7)">+ Blank</button>
+      <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>
       <button class="tbtn" data-fr="motion" title="Create motion tween">Tween</button>
       <button class="tbtn" data-fr="shape" title="Create shape tween">Shape</button>
       <button class="tbtn" data-fr="reverse" title="Reverse the selected frames (Shift+click to select a range; Shift+click the numbers to select all layers)">Reverse</button>
+      <span class="sep" aria-hidden="true"></span>
+      <span class="timecode" id="tcode"></span>
     </div>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl-inner">
@@ -511,6 +685,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   </section>
 </div>
 
+
+<div id="kColorLab" role="dialog" aria-label="Onionskyn color palette">
+  <div class="khead"><strong>Color · Onionskyn</strong><button id="kColorClose" title="Close">×</button></div>
+  <div class="klabel">Basic colors</div><div class="kgrid" id="kBasic"></div>
+  <div class="klabel">Custom colors · 16 slots</div><div class="kgrid" id="kCustom"></div>
+  <div class="klabel">Project colors · unlimited</div><div id="kProjectScroll"><div class="kgrid" id="kProject"></div></div>
+  <div class="kbottom"><div><canvas id="kSpectrum" class="kspectrum" width="220" height="118"></canvas><div class="kcontrol"><span>Hue</span><input type="range" id="kHue" min="0" max="360" value="0"></div><div class="kinfo">Click a color to apply instantly.</div></div>
+  <div><div class="kpreview" id="kPreview"></div><div class="kcontrol"><span>HEX</span><input type="text" id="kHex" maxlength="7" spellcheck="false" value="#FFFFFF"></div><div class="kcontrol"><button id="kApply">Apply HEX</button><button id="kSave">Save custom</button></div><div class="kinfo">Ctrl+drag to reorder or move. Ctrl+double-click to remove. Diagonal mark = unused.</div></div></div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="modalBg"><div id="modal" role="dialog" aria-modal="true"><header id="mTitle"></header><div class="mbody" id="mBody"></div><footer id="mFoot"></footer></div></div>
 <input type="file" id="imgIn" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" multiple hidden>
@@ -702,11 +885,64 @@ function maskedDraw(ctx, drawMembers, drawMask) {
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(a, 0, 0); ctx.restore();
   } finally { _md--; }
 }
+// KROGAN Invisibility Mask V1.3: erase only earlier objects in the SAME layer.
+// Composite each layer unit separately so higher artwork remains untouched.
+function invisMaskShape(o) {
+  return Object.assign({}, o, { invisMask: false, fill: '#ffffff', fa: 1,
+    grad: null, stroke: null, sw: 0, op: 1 });
+}
 function drawUnits(ctx, entries, opt, drawLayer) {
-  drawLayer = drawLayer || ((c, e, isMask) => { for (const o of e.objs) drawObj(c, o, isMask ? {} : opt); });
-  for (const u of groupEntries(entries)) {
-    if (!u.mask) drawLayer(ctx, u.e, false);
-    else maskedDraw(ctx, (c) => { for (const m of u.members) drawLayer(c, m, false); }, (c) => drawLayer(c, u.mask, true));
+  drawLayer = drawLayer || ((c, e, isMask) => { for (const o of e.objs) if (!o.invisMask) drawObj(c, o, isMask ? {} : opt); });
+  const units = groupEntries(entries);
+  const masks = [];
+  entries.forEach((e, li) => {
+    if (e.layer.visible === false) return;
+    e.objs.forEach((o, oi) => { if (o.invisMask && o.kind === 'path') masks.push({ o, li, oi }); });
+  });
+  if (!masks.length) {
+    for (const u of units) {
+      if (!u.mask) drawLayer(ctx, u.e, false);
+      else maskedDraw(ctx, c => { for (const m of u.members) drawLayer(c, m, false); }, c => drawLayer(c, u.mask, true));
+    }
+    return;
+  }
+  // Render each object independently. This also supports a mask and artwork
+  // on the SAME layer: later objects are above earlier objects.
+  const w = ctx.canvas.width, h = ctx.canvas.height, T = ctx.getTransform();
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+  const tc = tmp.getContext('2d');
+  const cut = document.createElement('canvas'); cut.width = w; cut.height = h;
+  const cc = cut.getContext('2d');
+  function paint(draw, li, oi) {
+    tc.setTransform(1,0,0,1,0,0); tc.globalAlpha = 1;
+    tc.globalCompositeOperation = 'source-over'; tc.filter = 'none'; tc.clearRect(0,0,w,h);
+    tc.setTransform(T); draw(tc);
+    const above = masks.filter(m => m.li === li && m.oi > oi);
+    if (above.length) {
+      cc.setTransform(1,0,0,1,0,0); cc.globalAlpha = 1;
+      cc.globalCompositeOperation = 'source-over'; cc.filter = 'none'; cc.clearRect(0,0,w,h);
+      cc.setTransform(T);
+      for (const m of above) drawObj(cc, invisMaskShape(m.o), {});
+      tc.setTransform(1,0,0,1,0,0); tc.globalAlpha = 1;
+      tc.globalCompositeOperation = 'destination-out'; tc.filter = 'none';
+      tc.drawImage(cut,0,0);
+    }
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(tmp,0,0); ctx.restore();
+  }
+  for (const u of units) {
+    if (!u.mask) {
+      const li = entries.indexOf(u.e);
+      u.e.objs.forEach((o, oi) => {
+        if (o.invisMask && o.kind === 'path') return;
+        paint(c => drawLayer(c, Object.assign({}, u.e, { objs: [o] }), false), li, oi);
+      });
+    } else {
+      const li = Math.max(...u.members.map(m => entries.indexOf(m)));
+      paint(c => maskedDraw(c,
+        mc => { for (const m of u.members) drawLayer(mc, m, false); },
+        mc => drawLayer(mc, u.mask, true)), li, Number.MAX_SAFE_INTEGER);
+    }
   }
 }
 function entriesToObjs(entries) {
@@ -1001,7 +1237,27 @@ function morphContours(A, B, p) {
 }
 
 /* ---------- timeline evaluation ---------- */
-function lerpT(a, b, p) { return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), sx: lerp(a.sx, b.sx, p), sy: lerp(a.sy, b.sy, p), r: lerp(a.r, b.r, p) }; }
+// V2.5: Tween rotation follows the shortest angular path (degrees).
+// Preserve the original direction for exact 180-degree ties.
+function lerpAngleShortest(a, b, p) {
+  const raw = b - a;
+  let delta = ((raw % 360) + 540) % 360 - 180;
+  if (delta === -180 && raw > 0) delta = 180;
+  return a + delta * p;
+}
+// V2.6: direction and extra complete turns are per Motion Tween keyframe.
+function lerpAngleTween(a, b, p, rot) {
+  if (!rot) return lerpAngleShortest(a, b, p);
+  const mode = rot.dir === 'cw' || rot.dir === 'ccw' ? rot.dir : 'short';
+  const turns = Math.max(0, Math.min(100, Math.floor(Number(rot.turns) || 0)));
+  const raw = b - a;
+  let delta = ((raw % 360) + 360) % 360; // clockwise, 0..359
+  if (mode === 'ccw') delta = delta === 0 ? 0 : delta - 360;
+  if (mode === 'short') delta = lerpAngleShortest(a, b, 1) - a;
+  const sign = mode === 'ccw' ? -1 : mode === 'cw' ? 1 : delta < 0 ? -1 : 1;
+  return a + (delta + sign * turns * 360) * p;
+}
+function lerpT(a, b, p, rot) { return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), sx: lerp(a.sx, b.sx, p), sy: lerp(a.sy, b.sy, p), r: lerpAngleTween(a.r, b.r, p, rot) }; }
 function lerpPaint(o, a, b, p) {
   for (const k of ['fill', 'stroke']) {
     const ak = k === 'fill' ? 'fa' : 'sa';
@@ -1115,9 +1371,9 @@ function bindValid(b) {
   const num = (v) => typeof v === 'number' && isFinite(v) && Math.abs(v) < 1e7;
   return !!b && typeof b.to === 'string' && b.to.length < 80 && (b.bone === 0 || b.bone === 1) && num(b.lx) && num(b.ly) && num(b.lr);
 }
-function lerpObj(a, b, p, mode) {
+function lerpObj(a, b, p, mode, rot) {
   const o = Object.assign({}, a);
-  o.t = lerpT(a.t, b.t, p);
+  o.t = lerpT(a.t, b.t, p, mode === 'motion' ? rot : null);
     // Labojam kustību tikai tad, ja abiem atslēgkadriem ir pielāgots pivot.
   if (Array.isArray(a.pivot) && a.pivot.length === 2 &&
       Array.isArray(b.pivot) && b.pivot.length === 2) {
@@ -1146,6 +1402,7 @@ function lerpObj(a, b, p, mode) {
     o.t.y += targetY - actualPivot[1];
   }
   o.op = lerp(nz(a.op, 1), nz(b.op, 1), p);
+  o.blur = lerp(nz(a.blur, 0), nz(b.blur, 0), p);
   if (a.bind && b.bind && a.bind.to === b.bind.to && a.bind.bone === b.bind.bone) o.bind = { to: a.bind.to, bone: a.bind.bone, lx: lerp(a.bind.lx, b.bind.lx, p), ly: lerp(a.bind.ly, b.bind.ly, p), lr: lerp(a.bind.lr, b.bind.lr, p) };
   if (a.kind === 'text' && b.kind === 'text') { lerpPaint(o, a, b, p); return o; }
   if (a.kind === 'path' && b.kind === 'path') {
@@ -1212,7 +1469,7 @@ function evalLayerRaw(layer, t) {
     const p = (t - kf.f) / (next.f - kf.f);
     const e = ease(kf.ease && kf.ease.type, kf.ease && kf.ease.amt, p, kf.ease && kf.ease.p);
     const pairs = tweenPairs(kf, next);
-    return withClips(layer, i, t, kf.objs.map((a) => { const b = pairs.get(a); return b ? lerpObj(a, b, e, kf.tween) : a; }));
+    return withClips(layer, i, t, kf.objs.map((a) => { const b = pairs.get(a); return b ? lerpObj(a, b, e, kf.tween, kf.rot) : a; }));
   }
   return withClips(layer, i, t, kf.objs);
 }
@@ -1231,7 +1488,7 @@ function ensureEditable(layer, f) {
   if (i < 0) { const k = mkKf(f); layer.kfs.push(k); sortKfs(layer); return k; }
   const kf = layer.kfs[i], next = layer.kfs[i + 1];
   if (kf.f !== f && kf.tween !== 'none' && next) {
-    const k = { f, objs: clone(evalLayerObjs(layer, f)), tween: kf.tween, ease: Object.assign({}, kf.ease, kf.ease && kf.ease.p ? { p: kf.ease.p.slice() } : {}) };
+    const k = { f, objs: clone(evalLayerObjs(layer, f)), tween: kf.tween, rot: kf.rot ? { ...kf.rot } : undefined, ease: Object.assign({}, kf.ease, kf.ease && kf.ease.p ? { p: kf.ease.p.slice() } : {}) };
     layer.kfs.splice(i + 1, 0, k);
     return k;
   }
@@ -1244,7 +1501,7 @@ function insertKeyframe(layer, f, blank) {
   const k = mkKf(f, blank ? [] : clone(evalLayerObjs(layer, f)));
   if (cur && cur.tween !== 'none' && !blank) {
     const next = layer.kfs[layer.kfs.indexOf(cur) + 1];
-    if (next) { k.tween = cur.tween; k.ease = Object.assign({}, cur.ease, cur.ease && cur.ease.p ? { p: cur.ease.p.slice() } : {}); }
+    if (next) { k.tween = cur.tween; k.rot = cur.rot ? { ...cur.rot } : undefined; k.ease = Object.assign({}, cur.ease, cur.ease && cur.ease.p ? { p: cur.ease.p.slice() } : {}); }
   }
   layer.kfs.push(k); sortKfs(layer);
   return k;
@@ -1382,6 +1639,36 @@ function drawObj(ctx, o, opt) {
 function drawObjRaw(ctx, o, opt, noOp) {
   opt = opt || {};
   ctx.save();
+  const blur = Math.max(0, Math.min(30, Number(o.blur) || 0));
+  // KROGAN V1.1: render gradient paths into a transparent object-sized layer first.
+  // Blurring the finished layer (not the giant gradient fillRect) preserves soft outer edges.
+  if (blur > 0 && o.kind === 'path' && o.fill && o.grad && 'filter' in ctx) {
+    const r = deviceRect(ctx, o);
+    if (r && r.w > 0 && r.h > 0) {
+      const T = ctx.getTransform();
+      const scale = Math.max(Math.hypot(T.a, T.b), Math.hypot(T.c, T.d), 1);
+      const radius = blur * scale;
+      const pad = Math.ceil(radius * 3 + 4);
+      const x = Math.floor(r.x - pad), y = Math.floor(r.y - pad);
+      const w = Math.ceil(r.w + pad * 2), h = Math.ceil(r.h + pad * 2);
+      // Limit temporary allocations if a transformed object becomes enormous.
+      if (w > 0 && h > 0 && w * h <= 24000000) {
+        const layer = document.createElement('canvas');
+        layer.width = w; layer.height = h;
+        const lc = layer.getContext('2d');
+        if (lc) {
+          lc.setTransform(T.a, T.b, T.c, T.d, T.e - x, T.f - y);
+          drawObjRaw(lc, Object.assign({}, o, { blur: 0 }), opt, noOp);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.filter = 'blur(' + radius + 'px)';
+          ctx.drawImage(layer, x, y);
+          ctx.restore();
+          return;
+        }
+      }
+    }
+  }
+  if (blur > 0 && 'filter' in ctx) ctx.filter = 'blur(' + blur + 'px)';
   const m = matOf(o.t);
   ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
   if (!noOp) ctx.globalAlpha *= nz(o.op, 1);
@@ -1463,24 +1750,50 @@ function svgMasked(maskObjs, inner) {
 }
 function layersSVG(entries) {
   let body = '';
+  const masks = [];
+  entries.forEach((e, li) => {
+    if (e.layer.visible === false) return;
+    e.objs.forEach((o, oi) => { if (o.invisMask && o.kind === 'path') masks.push({ o, li, oi }); });
+  });
+  function applyMasks(inner, li, oi) {
+    if (!inner) return '';
+    const above = masks.filter(m => m.li === li && m.oi > oi);
+    if (!above.length) return inner;
+    const id = 'invis' + (++_gid);
+    const shapes = above.map(m => objSVG(Object.assign({}, invisMaskShape(m.o), { fill: '#000000' }))).join('');
+    return '<defs><mask id="' + id + '" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" style="mask-type:luminance" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="white"/>' + shapes + '</mask></defs><g mask="url(#' + id + ')">' + inner + '</g>';
+  }
   for (const u of groupEntries(entries)) {
-    if (!u.mask) { for (const o of u.e.objs) body += objSVG(o); continue; }
-    let inner = ''; for (const m of u.members) for (const o of m.objs) inner += objSVG(o);
-    body += svgMasked(u.mask.objs, inner);
+    if (!u.mask) {
+      const li = entries.indexOf(u.e);
+      u.e.objs.forEach((o, oi) => {
+        if (!o.invisMask) body += applyMasks(objSVG(o), li, oi);
+      });
+    } else {
+      let contents = '';
+      for (const m of u.members) contents += m.objs.filter(o => !o.invisMask).map(objSVG).join('');
+      const li = Math.max(...u.members.map(m => entries.indexOf(m)));
+      body += applyMasks(svgMasked(u.mask.objs, contents), li, Number.MAX_SAFE_INTEGER);
+    }
   }
   return body;
 }
 function objSVG(o) {
   const m = matOf(o.t), tr = 'matrix(' + m.map((n) => +n.toFixed(5)).join(' ') + ')', op = nz(o.op, 1);
   const opa = op < 1 ? ' opacity="' + +op.toFixed(3) + '"' : '';
-  if (o.kind === 'group') { const inner = o.children.map(objSVG).join(''); return '<g transform="' + tr + '"' + opa + '>' + (o.mask ? svgMasked(o.mask, inner) : inner) + '</g>'; }
+  const blur = Math.max(0, Math.min(30, Number(o.blur) || 0));
+  const blurId = blur > 0 ? 'blur' + (++_gid) : '';
+  const blurDef = blurId ? '<defs><filter id="' + blurId + '" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="' + blur + '"/></filter></defs>' : '';
+  const blurAttr = blurId ? ' filter="url(#' + blurId + ')"' : '';
+  const wrapBlur = (svg) => blurId ? blurDef + '<g' + blurAttr + '>' + svg + '</g>' : svg;
+  if (o.kind === 'group') { const inner = o.children.map(objSVG).join(''); return wrapBlur('<g transform="' + tr + '"' + opa + '>' + (o.mask ? svgMasked(o.mask, inner) : inner) + '</g>'); }
   if (o.kind === 'clip') {
     const pv = o.pv ? '<g transform="translate(' + -o.pv[0] + ' ' + -o.pv[1] + ')">' : '<g>';
-    return '<g transform="' + tr + '"' + opa + '>' + pv + kidsOf(o).map(objSVG).join('') + '</g></g>';
+    return wrapBlur('<g transform="' + tr + '"' + opa + '>' + pv + kidsOf(o).map(objSVG).join('') + '</g></g>');
   }
   if (o.kind === 'image') {
     const rec = _images[o.img];
-    return rec && rec.b64 ? '<image transform="' + tr + '" width="' + +(o.w || 0).toFixed(2) + '" height="' + +(o.h || 0).toFixed(2) + '" preserveAspectRatio="none"' + opa + ' xlink:href="data:' + rec.mime + ';base64,' + rec.b64 + '"/>' : '';
+    return rec && rec.b64 ? wrapBlur('<image transform="' + tr + '" width="' + +(o.w || 0).toFixed(2) + '" height="' + +(o.h || 0).toFixed(2) + '" preserveAspectRatio="none"' + opa + ' xlink:href="data:' + rec.mime + ';base64,' + rec.b64 + '"/>') : '';
   }
   if (o.kind === 'text') {
     const lay = layoutText(o);
@@ -1494,7 +1807,7 @@ function objSVG(o) {
         x += sg.w;
       }
     }
-    return out + '</g>';
+    return wrapBlur(out + '</g>');
   }
   let defs = '', fillAttr;
   if (o.fill && o.grad) {
@@ -1507,7 +1820,7 @@ function objSVG(o) {
     fillAttr = 'fill="url(#' + id + ')" fill-rule="' + (o.nz ? 'nonzero' : 'evenodd') + '"';
   } else fillAttr = o.fill ? 'fill="' + esc(o.fill) + '" fill-opacity="' + +nz(o.fa, 1).toFixed(3) + '" fill-rule="' + (o.nz ? 'nonzero' : 'evenodd') + '"' : 'fill="none"';
   const stroke = o.stroke && o.sw > 0 ? ' stroke="' + esc(o.stroke) + '" stroke-opacity="' + +nz(o.sa, 1).toFixed(3) + '" stroke-width="' + +o.sw.toFixed(3) + '" stroke-linecap="' + (o.cap || 'round') + '" stroke-linejoin="' + (o.join || 'round') + '"' : '';
-  return defs + '<path transform="' + tr + '" d="' + pathD(o.contours) + '" ' + fillAttr + stroke + opa + '/>';
+  return wrapBlur(defs + '<path transform="' + tr + '" d="' + pathD(o.contours) + '" ' + fillAttr + stroke + opa + '/>');
 }
 function frameSVG(doc, t) {
   _gid = 0;
@@ -2267,7 +2580,190 @@ function as1Prepare(src, inner) {
   return fns.join('\n') + (fns.length ? '\n' : '') + out;
 }
 
+
+/* KROGAN Simplify: fit a cubic across two existing cubic segments.
+   Removes nodes with the least visual deviation first; retains true cubic handles. */
+function kroganSimplifyContour(contour) {
+  // Iterative cubic refitting: after EVERY deletion, recalculate the neighboring curve.
+  // Unlike the previous batch approach, adjacent deletions are safe and two-node loops work.
+  const nodes = contour.nodes.map(p => ({...p}));
+  const closed = !!contour.closed, minimum = closed ? 2 : 2;
+  const original = nodes.length;
+  if (original <= minimum) return {contour:{...contour,nodes},removed:0};
+  const target = Math.min(Math.floor(original / 2), original - minimum);
+  const xs = nodes.map(p=>p.x), ys = nodes.map(p=>p.y);
+  const diagonal = Math.hypot(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)) || 1;
+  const cubic = (p0,p1,p2,p3,t) => {
+    const u=1-t;return {x:u*u*u*p0.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t*t*t*p3.x,
+      y:u*u*u*p0.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t*t*t*p3.y};
+  };
+  const cp=(a,b)=>[{x:a.x,y:a.y},{x:a.x+(a.ox||0),y:a.y+(a.oy||0)},
+    {x:b.x+(b.ix||0),y:b.y+(b.iy||0)},{x:b.x,y:b.y}];
+  function candidate(i) {
+    const n=nodes.length, a=nodes[(i-1+n)%n],m=nodes[i],b=nodes[(i+1)%n];
+    const first=cp(a,m),second=cp(m,b), samples=[];
+    for(let j=0;j<=24;j++){
+      const t=j/24;
+      const pt=t<=.5?cubic(...first,t*2):cubic(...second,(t-.5)*2);
+      samples.push(pt);
+    }
+    // Chord-length parameterization avoids distorting a long arc into a short one.
+    let total=0;const lengths=[0];
+    for(let j=1;j<samples.length;j++){
+      total+=Math.hypot(samples[j].x-samples[j-1].x,samples[j].y-samples[j-1].y);
+      lengths.push(total);
+    }
+    if(total<1e-8)return null;
+    let aa=0,ab=0,bb=0,rx=0,ry=0,sx=0,sy=0;
+    for(let j=1;j<samples.length-1;j++){
+      const t=lengths[j]/total,u=1-t,A=3*u*u*t,B=3*u*t*t,p=samples[j];
+      const x=p.x-(u*u*u*a.x+t*t*t*b.x),y=p.y-(u*u*u*a.y+t*t*t*b.y);
+      aa+=A*A;ab+=A*B;bb+=B*B;rx+=A*x;ry+=A*y;sx+=B*x;sy+=B*y;
+    }
+    const det=aa*bb-ab*ab;if(Math.abs(det)<1e-12)return null;
+    const p1={x:(rx*bb-sx*ab)/det,y:(ry*bb-sy*ab)/det};
+    const p2={x:(sx*aa-rx*ab)/det,y:(sy*aa-ry*ab)/det};
+    let error=0;
+    for(let j=0;j<samples.length;j++){
+      const q=cubic({x:a.x,y:a.y},p1,p2,{x:b.x,y:b.y},lengths[j]/total);
+      error=Math.max(error,Math.hypot(q.x-samples[j].x,q.y-samples[j].y));
+    }
+    // Avoid collapsing actual corners until the user has simplified repeatedly.
+    const vin={x:-(m.ix||0),y:-(m.iy||0)},vout={x:m.ox||0,y:m.oy||0};
+    const norm=Math.hypot(vin.x,vin.y)*Math.hypot(vout.x,vout.y);
+    const cosine=norm>1e-9?(vin.x*vout.x+vin.y*vout.y)/norm:1;
+    const corner=(1-Math.max(-1,Math.min(1,cosine)))*diagonal*.012;
+    return {i,error,score:error+corner,p1,p2};
+  }
+  let removed=0;
+  while(removed<target && nodes.length>minimum){
+    let best=null;
+    for(let i=closed?0:1;i<(closed?nodes.length:nodes.length-1);i++){
+      const c=candidate(i);if(c && (!best||c.score<best.score))best=c;
+    }
+    if(!best)break;
+    // Limit shape drift; repeated clicks allow progressive simplification.
+    const tolerance=diagonal*.018;
+    if(best.error>tolerance)break;
+    const n=nodes.length, a=nodes[(best.i-1+n)%n],b=nodes[(best.i+1)%n];
+    a.ox=best.p1.x-a.x;a.oy=best.p1.y-a.y;
+    b.ix=best.p2.x-b.x;b.iy=best.p2.y-b.y;
+    nodes.splice(best.i,1);removed++;
+  }
+  return {contour:{...contour,nodes},removed};
+}
+
+/* KROGAN Bézier intersection engine — isolated from existing drawing and tween logic. */
+const KroganBezier = (() => {
+/* KROGAN step 1: independent cubic Bézier intersection solver.
+   Coordinates are in pixels. No application state is modified. */
+'use strict';
+function point(a,b,c,d,t) {const s=1-t;return {x:s*s*s*a.x+3*s*s*t*b.x+3*s*t*t*c.x+t*t*t*d.x,y:s*s*s*a.y+3*s*s*t*b.y+3*s*t*t*c.y+t*t*t*d.y};}
+function derivative(c,t){const s=1-t;return {x:3*(s*s*(c[1].x-c[0].x)+2*s*t*(c[2].x-c[1].x)+t*t*(c[3].x-c[2].x)),y:3*(s*s*(c[1].y-c[0].y)+2*s*t*(c[2].y-c[1].y)+t*t*(c[3].y-c[2].y))};}
+function evalC(c,t){return point(...c,t);}
+function split(c){const mix=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});const a=mix(c[0],c[1]),b=mix(c[1],c[2]),d=mix(c[2],c[3]),e=mix(a,b),f=mix(b,d),g=mix(e,f);return [[c[0],a,e,g],[g,f,d,c[3]]];}
+function bounds(c){return {minx:Math.min(...c.map(p=>p.x)),maxx:Math.max(...c.map(p=>p.x)),miny:Math.min(...c.map(p=>p.y)),maxy:Math.max(...c.map(p=>p.y))};}
+function overlap(a,b,eps){return a.maxx+eps>=b.minx&&b.maxx+eps>=a.minx&&a.maxy+eps>=b.miny&&b.maxy+eps>=a.miny;}
+function refine(a,b,t,u){for(let k=0;k<16;k++){const p=evalC(a,t),q=evalC(b,u),v=derivative(a,t),w=derivative(b,u),dx=q.x-p.x,dy=q.y-p.y,det=v.y*w.x-v.x*w.y;if(Math.abs(det)<1e-13)break;const dt=(-dx*w.y+dy*w.x)/det,du=(v.x*dy-v.y*dx)/det;t=Math.max(0,Math.min(1,t+dt));u=Math.max(0,Math.min(1,u+du));if(Math.max(Math.abs(dt),Math.abs(du))<1e-12)break;}const p=evalC(a,t),q=evalC(b,u);return {t,u,x:(p.x+q.x)/2,y:(p.y+q.y)/2,error:Math.hypot(p.x-q.x,p.y-q.y)};}
+function intersections(a,b,{tolerance=1e-5,maxDepth=40}={}){
+ if(!Array.isArray(a)||!Array.isArray(b)||a.length!==4||b.length!==4||![...a,...b].every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)))throw new TypeError('Expected two cubic curves of four finite {x,y} points');
+ const found=[],stack=[{a,b,ta:0,tb:1,ua:0,ub:1,depth:0}];
+ while(stack.length){const n=stack.pop(),ba=bounds(n.a),bb=bounds(n.b);if(!overlap(ba,bb,tolerance))continue;
+ const sa=Math.max(ba.maxx-ba.minx,ba.maxy-ba.miny),sb=Math.max(bb.maxx-bb.minx,bb.maxy-bb.miny);
+ if((sa<=tolerance&&sb<=tolerance)||n.depth>=maxDepth){const r=refine(a,b,(n.ta+n.tb)/2,(n.ua+n.ub)/2);if(r.error<=tolerance*2&&!found.some(z=>Math.hypot(z.x-r.x,z.y-r.y)<tolerance*3))found.push(r);continue;}
+ if(sa>=sb){const [l,r]=split(n.a),mid=(n.ta+n.tb)/2;stack.push({...n,a:r,ta:mid,depth:n.depth+1},{...n,a:l,tb:mid,depth:n.depth+1});}
+ else{const [l,r]=split(n.b),mid=(n.ua+n.ub)/2;stack.push({...n,b:r,ua:mid,depth:n.depth+1},{...n,b:l,ub:mid,depth:n.depth+1});}
+ }
+ return found.sort((p,q)=>p.t-q.t);
+}
+function fromOnionskynNodes(start,end){return [{x:start.x,y:start.y},{x:start.x+(start.ox||0),y:start.y+(start.oy||0)},{x:end.x+(end.ix||0),y:end.y+(end.iy||0)},{x:end.x,y:end.y}];}
+/* Split one original segment at sorted, unique t-values, without polygonizing.
+   Each new node carries the exact de Casteljau handles. Original nodes are copied. */
+function splitAtParameters(start, end, parameters, epsilon=1e-8) {
+  if (!Array.isArray(parameters) || parameters.some(t => !Number.isFinite(t)))
+    throw new TypeError('Expected finite Bézier parameters');
+  const ts = [...parameters].filter(t => t > epsilon && t < 1-epsilon).sort((a,b)=>a-b);
+  const unique = ts.filter((t,i)=>i===0 || t-ts[i-1]>epsilon);
+  let a={...start}, b={...end}, previous=0;
+  const result=[];
+  for (const t of unique) {
+    const local=(t-previous)/(1-previous);
+    const [left, middle, right]=splitSeg(a,b,local);
+    result.push(left);
+    a=middle; b=right; previous=t;
+  }
+  result.push(a,b);
+  return result;
+}
+/* Insert intersection nodes into a contour, retaining its closed/open state.
+   cuts: [{segment: 0-based index, t: parameter}, ...].
+   Only interior intersections require inserted nodes. */
+function splitContourAtParameters(contour,cuts,epsilon=1e-8) {
+  if (!contour || !Array.isArray(contour.nodes) || !Array.isArray(cuts))
+    throw new TypeError('Expected contour and cuts array');
+  const n=contour.nodes, count=contour.closed?n.length:Math.max(0,n.length-1);
+  const grouped=new Map();
+  for(const cut of cuts){
+    if(!Number.isInteger(cut.segment)||cut.segment<0||cut.segment>=count)
+      throw new RangeError('Invalid contour segment index');
+    if(!grouped.has(cut.segment))grouped.set(cut.segment,[]);
+    grouped.get(cut.segment).push(cut.t);
+  }
+  if(!count)return {...contour,nodes:n.map(v=>({...v}))};
+  const output=[];
+  let lastEnd=null;
+  for(let i=0;i<count;i++){
+    const parts=splitAtParameters(n[i],n[(i+1)%n.length],grouped.get(i)||[],epsilon);
+    if(i===0)output.push(parts[0]);
+    else output[output.length-1]=parts[0];
+    output.push(...parts.slice(1));
+    lastEnd=parts[parts.length-1];
+  }
+  if(contour.closed){
+    const first=output[0], closing=output.pop();
+    first.ix=closing.ix;first.iy=closing.iy;
+  }
+  return {...contour,nodes:output};
+}
+/* STEP 4: classify exact Bézier segments against another closed contour.
+   Only the point-in-shape test is approximated; geometry and handles remain untouched.
+   Boundary/tangency and coincident edges require separate Boolean handling. */
+function pointInContour(pt, contour, steps=48) {
+  if (!contour || !contour.closed || !Array.isArray(contour.nodes) || contour.nodes.length < 2)
+    return false;
+  let inside=false;
+  const nodes=contour.nodes;
+  for(let i=0;i<nodes.length;i++){
+    const curve=fromOnionskynNodes(nodes[i],nodes[(i+1)%nodes.length]);
+    let prev=curve[0];
+    for(let k=1;k<=steps;k++){
+      const next=evalC(curve,k/steps);
+      if ((prev.y>pt.y)!==(next.y>pt.y)) {
+        const x=prev.x+(pt.y-prev.y)*(next.x-prev.x)/(next.y-prev.y);
+        if(x>pt.x) inside=!inside;
+      }
+      prev=next;
+    }
+  }
+  return inside;
+}
+function classifySegments(contour, other) {
+  if (!contour || !Array.isArray(contour.nodes)) throw new TypeError('Expected contour');
+  const nodes=contour.nodes, count=contour.closed?nodes.length:Math.max(0,nodes.length-1);
+  const result=[];
+  for(let i=0;i<count;i++){
+    const start=nodes[i],end=nodes[(i+1)%nodes.length];
+    const midpoint=evalC(fromOnionskynNodes(start,end),0.5);
+    result.push({segment:i,inside:pointInContour(midpoint,other),midpoint});
+  }
+  return result;
+}
+
+return { intersections, fromOnionskynNodes, split, evalC, splitAtParameters, splitContourAtParameters, pointInContour, classifySegments };
+})();
+
 root.FCCore = {
+  KroganBezier, kroganSimplifyContour,
   uid, clamp, lerp, clone, nz, hexToRgb, rgbToHex, lerpHex, rgba,
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,
@@ -2762,6 +3258,8 @@ function create(doc, cv, opt) {
       const prev = ctx; ctx = c;
       try {
         for (const o of e.objs) {
+          // Invisibility mask geometry is consumed by Core.drawUnits; never paint it visibly.
+          if (o.invisMask && o.kind === 'path') continue;
           const k = isInst(o) ? inst.kids.get(e.layer.id + '|' + o.id) : null;
           if (k) drawKid(k, o); else Core.drawObj(ctx, o, {});
         }
@@ -3124,6 +3622,14 @@ function renderStage() {
     for (let k = S.onion.a; k >= 1; k--) if (S.frame + k < d.frames) drawFrameObjs(ctx, S.frame + k, { tint: { c: '#2FB36B', a: 0.34 / k } });
   }
   drawFrameObjs(ctx, S.frame, { ghosts: !S.playing });
+  if (!S.playing) {
+    for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) {
+      if (layer.visible === false) continue;
+      for (const o of objs) if (o.invisMask && o.kind === 'path') {
+        drawObj(ctx, Object.assign({}, o, { invisMask: false, fill: '#688fe9', fa: 0.25, grad: null, stroke: '#4169b4', sa: 0.8, sw: 1, blur: 0 }), {});
+      }
+    }
+  }
   if (!S.playing && !(S.drawGhostOff)) {
     for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) if (layer.mask && layer.visible !== false) for (const o of objs) drawObj(ctx, o, { tint: { c: CSSV.accent, a: layer.id === S.layerId ? 0.4 : 0.22 } });
   }
@@ -3135,7 +3641,50 @@ function renderStage() {
     ctx.strokeStyle = CSSV.accent; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(S.view.px - 7, S.view.py); ctx.lineTo(S.view.px + 7, S.view.py); ctx.moveTo(S.view.px, S.view.py - 7); ctx.lineTo(S.view.px, S.view.py + 7); ctx.stroke();
   }
-  if (!S.playing) drawOverlay(ctx);
+  if (!S.playing) { drawOverlay(ctx); kroganDrawGhostPlaceholders(ctx); }
+  else kroganGhostTargets = [];
+}
+
+/* KROGAN V2.4: editor-only rescue markers for symbol instances whose current
+   internal frame contains no artwork. No document data, tween, or export changes. */
+let kroganGhostTargets = [];
+function kroganGhostAt(sx, sy) {
+  return kroganGhostTargets.find(g => sx >= g.x && sx <= g.x + 24 && sy >= g.y && sy <= g.y + 24) || null;
+}
+function kroganDrawGhostPlaceholders(ctx) {
+  kroganGhostTargets = [];
+  if (S.playing || S.edit.length || !S.doc || !S.doc.lib) return;
+  const candidates = [];
+  for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) {
+    if (layer.visible === false || layer.locked) continue;
+    for (const o of objs) {
+      if (o.kind !== 'clip') continue;
+      const lib = S.doc.lib[o.sym];
+      if (!lib || !Array.isArray(lib.layers)) continue;
+      const frame = o._f || 0;
+      // A blank symbol frame must have no drawable objects in visible layers.
+      const empty = lib.layers.every(l => l.visible === false || C.evalLayerObjs(l, frame).length === 0);
+      if (empty) candidates.push({ sym: o.sym, name: o.name || o.sym });
+    }
+  }
+  if (!candidates.length) return;
+  // Fixed screen pixels, independent of zoom and original object dimensions.
+  const x = Math.max(4, Math.round(S.view.px - 32));
+  const top = Math.max(4, Math.round(S.view.py));
+  const rows = Math.max(1, Math.floor((stage.clientHeight - top - 4) / 29));
+  ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  candidates.forEach((g, i) => {
+    const col = Math.floor(i / rows), row = i % rows;
+    const gx = x - col * 29, gy = top + row * 29;
+    if (gx < 0 || gy + 24 > stage.clientHeight) return;
+    kroganGhostTargets.push({ ...g, x: gx, y: gy });
+    ctx.fillStyle = 'rgba(125,108,190,0.20)'; ctx.fillRect(gx, gy, 24, 24);
+    ctx.strokeStyle = 'rgba(104,83,177,0.85)'; ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]); ctx.strokeRect(gx + .5, gy + .5, 23, 23); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(104,83,177,0.8)';
+    ctx.fillRect(gx + 10, gy + 10, 4, 4);
+  });
+  ctx.restore();
 }
 
 /* ---------- handles & overlay ---------- */
@@ -3175,7 +3724,7 @@ function drawOverlay(ctx) {
   }
   const one = sels.length === 1 ? sels[0] : null;
   if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
-  if (one && S.tool === 'select' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
+  if (one && (S.tool === 'select' || S.tool === 'gradient') && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
     const rot = hs.find((h) => h.id === 'rot'), nh = hs.find((h) => h.id === 'n');
@@ -3265,32 +3814,56 @@ const TOOLS = [
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
   { sep: 1 },
-  { id: 'text', k: 'T', n: 'Text (click to type; double-click text to edit)', svg: '<path d="M4.5 5V3.5h11V5M10 3.5v13M7.5 16.5h5"/>', cur: 'text' },
+  { id: 'text', k: 'T', n: 'Text (click to type; double-click text to edit)', svg: '<path d="M3.5 16.5L9.2 3.5h1.6l5.7 13M5.6 12h8.8"/>', cur: 'text' },
   { id: 'bucket', k: 'K', n: 'Paint bucket (Alt = stroke)', svg: '<path d="M4 10l5.5-5.5 6 6-5.5 5.5z"/><path d="M16.5 12.5c0 1.5 1.2 1.9 1.2 3.1a1.2 1.2 0 01-2.4 0c0-1.2 1.2-1.6 1.2-3.1z"/>', cur: 'cell' },
   { id: 'dropper', k: 'I', n: 'Eyedropper (Alt = stroke)', svg: '<path d="M12.5 3.5l4 4-2 2-4-4z"/><path d="M10.5 5.5L4.5 11.5 4 15.5l4-.5 6-6"/>', cur: 'copy' },
+  { id: 'gradient', k: 'G', n: 'Gradient (drag across a filled path; double-click line to add stop)', svg: '<rect x="3" y="5" width="14" height="10" rx="1"/><path d="M5 12L15 8M5 15V5"/>', cur: 'crosshair' },
   { id: 'hand', k: 'H', n: 'Hand (or hold Space)', svg: '<path d="M7 9.5V5a1.2 1.2 0 012.4 0v3.5V4a1.2 1.2 0 012.4 0v4.5V5a1.2 1.2 0 012.4 0v6.2c0 3-2 5-5 5-2.6 0-3.8-1.5-4.8-3.4L4 10.6a1.2 1.2 0 012-.8z"/>', cur: 'grab' }
 ];
 function buildTools() {
   const box = $('#tools');
   for (const t of TOOLS) {
-    if (t.sep) { const s = document.createElement('div'); s.className = 'toolsep'; box.appendChild(s); continue; }
+    if (t.sep) continue; // KROGAN: no divider rows in either layout
     const b = document.createElement('button');
     b.className = 'tool'; b.dataset.tool = t.id; b.title = t.n + ' (' + t.k + ')'; b.setAttribute('aria-label', t.n); b.setAttribute('aria-pressed', 'false');
     b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true">' + t.svg + '</svg><kbd>' + t.k + '</kbd>';
     b.addEventListener('click', () => setTool(t.id));
     box.appendChild(b);
   }
-  const s = document.createElement('div'); s.className = 'toolsep'; box.appendChild(s);
   const sw = document.createElement('div');
   sw.className = 'swatches';
   sw.innerHTML = '<input type="color" id="swStroke" title="Stroke colour" aria-label="Stroke colour"><input type="color" id="swFill" title="Fill colour" aria-label="Fill colour">';
+  const layout = document.createElement('button');
+  layout.type = 'button';
+  layout.id = 'kToolLayout';
+  layout.className = 'tool-layout-toggle';
+  layout.title = 'Switch between one-column and two-column toolbars';
+  layout.setAttribute('aria-label', 'Toggle toolbar columns');
+  layout.textContent = '';
+  box.appendChild(layout);
   box.appendChild(sw);
+  let compact = false;
+  try { compact = localStorage.getItem('kroganToolColumns') === '2'; } catch (_) {}
+  const syncLayout = () => {
+    document.body.classList.toggle('k-tools-double', compact);
+    layout.setAttribute('aria-pressed', String(compact));
+    layout.title = compact ? 'Use one toolbar column' : 'Use two toolbar columns';
+  };
+  layout.addEventListener('click', () => {
+    compact = !compact;
+    syncLayout();
+    try { localStorage.setItem('kroganToolColumns', compact ? '2' : '1'); } catch (_) {}
+  });
+  syncLayout();
 }
 function setTool(id) {
   if (S.pen && id !== 'pen') finishPen(false);
   endTextEdit(true);
   S.bone = null;
   S.tool = id; S.draw = null; S.nodeSel = id === 'node' ? S.nodeSel : null;
+  if (id !== 'node') S.kNodeSelection = [];
+  document.getElementById('kNodeBar')?.classList.toggle('on', id === 'node');
+  document.getElementById('kSelectBar')?.classList.toggle('on', id === 'select');
   $$('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
   const t = TOOLS.find((x) => x.id === id);
   stage.style.cursor = t ? t.cur : 'default';
@@ -3396,6 +3969,7 @@ stage.addEventListener('contextmenu', (e) => e.preventDefault());
 stage.addEventListener('wheel', (e) => {
   e.preventDefault();
   const p = stagePt(e);
+  if (S.tool === 'node' && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && kNodeWheel(e.deltaY)) return;
   if (e.ctrlKey || e.metaKey || e.altKey) zoomAt(p.sx, p.sy, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025)));
   else { S.view.px -= e.deltaX; S.view.py -= e.deltaY; S.autoFit = false; invalidate(); }
 }, { passive: false });
@@ -3420,6 +3994,7 @@ function movePinch() {
 function onDown(e) {
   if (S.playing) stopPlay();
   const p = stagePt(e);
+  if (e.button === 0 && kroganGhostAt(p.sx, p.sy)) return; // Ghost marker: no drawing or selection behind it.
   if (e.button === 1 || S.space || S.tool === 'hand') {
     S.drag = { type: 'pan', sx: p.sx, sy: p.sy, px: S.view.px, py: S.view.py };
     stage.style.cursor = 'grabbing';
@@ -3430,6 +4005,7 @@ function onDown(e) {
   switch (S.tool) {
     case 'select': selDown(e, p); break;
     case 'node': nodeDown(e, p); break;
+    case 'gradient': kroganGradDown(e, p); break;
     case 'pen': penDown(e, p); break;
     case 'pencil': if (canDraw()) S.draw = { type: 'pencil', pts: [p.w] }; break;
     case 'brush': if (canDraw()) S.draw = { type: 'brush', pts: [brushPt(p.w, e)] }; break;
@@ -3458,7 +4034,9 @@ function onMove(e) {
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
+    else if (d.type === 'curve-bend') kCurveDrag(p.w);
     else if (d.type === 'grad') gradDrag(p.w);
+    else if (d.type === 'kgrad-create') kroganGradMove(p.w);
     else if (d.type === 'rig') rigDrag(p.w);
     return;
   }
@@ -3470,6 +4048,7 @@ function onMove(e) {
   }
   if (S.bone) invalidate();
   if (S.pen) { penMove(p.w); return; }
+  if (S.tool === 'gradient' && !S.space) { stage.style.cursor = 'crosshair'; }
   if (S.tool === 'select' && !S.space) {
     const one = singleSel();
     let cur = 'default';
@@ -3491,7 +4070,7 @@ function onUp(e) {
     C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
-    if ((d.type === 'node' || d.type === 'grad' || d.type === 'rig') && d.started) { commit(); }
+    if ((d.type === 'node' || d.type === 'curve-bend' || d.type === 'grad' || d.type === 'rig' || d.type === 'kgrad-create') && d.started) { commit(); }
     // Saglabājam arī pabeigtu pivot pārvietošanu.
     if ((d.type === 'move' || d.type === 'scale' ||
 	d.type === 'rotate' || d.type === 'pivot') && d.started) commit();
@@ -3511,6 +4090,8 @@ function onUp(e) {
 }
 function onDbl(e) {
   const p = stagePt(e);
+  const rescue = kroganGhostAt(p.sx, p.sy);
+  if (rescue) { e.preventDefault(); enterSym(rescue.sym); return; }
     // Ctrl + dubultklikšķis uz pivot atgriež to figūras centrā.
   if (S.tool === 'select' && e.ctrlKey) {
 
@@ -3545,6 +4126,7 @@ function onDbl(e) {
   }
   if (S.tool === 'pen' && S.pen) { finishPen(false); return; }
   if (S.tool === 'node') nodeDbl(p);
+  if (S.tool === 'gradient') { kroganGradDouble(p); return; }
   if (S.tool === 'select') {
     const h = hitAt(p.w.x, p.w.y, 5);
     if (h && h.o.kind === 'text') startTextEdit(null, { lid: h.lid, id: h.id });
@@ -4131,6 +4713,185 @@ function drawPenPreview(ctx) {
   ctx.restore();
 }
 
+/* KROGAN node selection and Inkscape-style path operations. */
+function kNodeFromKey(key) { const [ci,ni] = key.split(':').map(Number); return {ci,ni}; }
+function kNodeKeys() {
+  const one = singleSel();
+  if (!one || one.o.kind !== 'path') return [];
+  const keys = (S.kNodeSelection || []).filter(k => { const {ci,ni}=kNodeFromKey(k); return !!one.o.contours[ci]?.nodes[ni]; });
+  if (!keys.length && S.nodeSel) keys.push(S.nodeSel.ci + ':' + S.nodeSel.ni);
+  return keys;
+}
+function kNodeWheel(dy) {
+  const one = singleSel();
+  if (!one || one.o.kind !== 'path') return false;
+  const keys = kNodeKeys();
+  if (!keys.length) return false;
+  if (dy < 0) {
+    // Move forward from the last ADDED node, not the currently drawn handle.
+    const last = kNodeFromKey(keys[keys.length - 1]);
+    const c = one.o.contours[last.ci];
+    if (!c || !c.nodes.length) return true;
+    for (let step = 1; step <= c.nodes.length; step++) {
+      const ni = (last.ni + step) % c.nodes.length;
+      const key = last.ci + ':' + ni;
+      if (!keys.includes(key)) { keys.push(key); break; }
+    }
+  } else if (keys.length > 1) {
+    keys.pop();
+  }
+  S.kNodeSelection = keys;
+  S.nodeSel = kNodeFromKey(keys[keys.length - 1]);
+  invalidate();
+  return true;
+}
+// The original renderer highlights only S.nodeSel. Overlay the other
+// selected anchors without modifying the original drawing implementation.
+const kOriginalDrawOverlay = drawOverlay;
+drawOverlay = function(ctx) {
+  kOriginalDrawOverlay(ctx);
+  if (S.tool !== 'node') return;
+  const one = singleSel();
+  if (!one || one.o.kind !== 'path') return;
+  const keys = kNodeKeys();
+  kDrawTrueContours(ctx, one.o);
+  if (keys.length < 2) return;
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = CSSV.accent;
+  ctx.fillStyle = CSSV.accent;
+  for (const key of keys) {
+    const {ci, ni} = kNodeFromKey(key);
+    const n = one.o.contours[ci]?.nodes[ni];
+    if (!n) continue;
+    const p = nodeScreen(one.o, n, 'anchor');
+    ctx.fillRect(p[0] - 3.5, p[1] - 3.5, 7, 7);
+    ctx.strokeRect(p[0] - 4.5, p[1] - 4.5, 9, 9);
+  }
+  ctx.restore();
+};
+function kNodeOperation(op) {
+  const one=singleSel(); if (!one || one.o.kind!=='path' || getLayer(one.lid).locked) return;
+  const keys=kNodeKeys(); if (!keys.length) { toast('Select a node first'); return; }
+  pushUndo(); C.ensureEditable(getLayer(one.lid),S.frame);
+  const o=findEditable(one.lid,one.id); if (!o) return;
+  const selected=new Set(keys);
+  if (op==='straight') {
+    let count=0;
+    o.contours.forEach((c,ci)=>{ const len=c.nodes.length;
+      for(let i=0;i<(c.closed?len:len-1);i++){
+        const j=(i+1)%len;
+        if(!selected.has(ci+':'+i)||!selected.has(ci+':'+j))continue;
+        const a=c.nodes[i],b=c.nodes[j];
+        a.ox=a.oy=b.ix=b.iy=0; a.s=b.s=false; count++;
+      }
+    });
+    if(!count) toast('Select two adjacent nodes to straighten their segment');
+  } else {
+    keys.forEach(key=>{
+      const {ci,ni}=kNodeFromKey(key),c=o.contours[ci],n=c?.nodes[ni]; if(!n)return;
+      if(op==='corner'){n.s=false;return;}
+      const [prev,next]=nodeNeighbors(c,ni);
+      let dx=next.x-prev.x,dy=next.y-prev.y;
+      let mag=Math.hypot(dx,dy);
+      if(mag<1e-6){dx=1;dy=0;mag=1;}
+      dx/=mag;dy/=mag;
+      const li=Math.hypot(n.ix,n.iy)||Math.hypot(n.x-prev.x,n.y-prev.y)/3;
+      const lo=Math.hypot(n.ox,n.oy)||Math.hypot(next.x-n.x,next.y-n.y)/3;
+      const L=op==='symmetric'?(li+lo)/2:0;
+      n.ix=-dx*(L||li);n.iy=-dy*(L||li);
+      n.ox=dx*(L||lo);n.oy=dy*(L||lo);n.s=true;
+    });
+  }
+  commit(); invalidate();
+}
+function kNodeInitToolbar(){
+  document.querySelectorAll('#kNodeBar [data-knode]').forEach(b=>b.addEventListener('click',()=>kNodeOperation(b.dataset.knode)));
+  document.getElementById('kNodeBar')?.classList.toggle('on',S.tool==='node');
+  document.getElementById('kSelectBar')?.classList.toggle('on',S.tool==='select');
+  document.querySelectorAll('#kSelectBar [data-ktransform]').forEach(b => b.addEventListener('click', () => kroganSelectionTransform(b.dataset.ktransform)));
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',kNodeInitToolbar);else kNodeInitToolbar();
+
+
+/* KROGAN V4: segment hit testing, direct Bézier bending and blur-proof guide. */
+function kCurveHit(o, sx, sy) {
+  let best=null, min=9; // Screen pixels: same tolerance at every zoom.
+  o.contours.forEach((c,ci)=>{
+    const len=c.nodes.length, count=c.closed?len:len-1;
+    for(let ni=0;ni<count;ni++) {
+      const a=c.nodes[ni], b=c.nodes[(ni+1)%len];
+      // Sample the actual cubic, not the blurred/stroked raster.
+      for(let j=0;j<=80;j++) {
+        const t=j/80, xy=C.bezPt(a,b,t);
+        const world=mapply(matOf(o.t),xy[0],xy[1]);
+        const screen=w2s(world[0],world[1]);
+        const dist=Math.hypot(screen[0]-sx,screen[1]-sy);
+        if(dist<min){min=dist;best={ci,ni,t};}
+      }
+    }
+  });
+  return best;
+}
+/* Inkscape-inspired direct curve dragging. Source: Inkscape curve-drag-point.cpp (GPL-2.0-or-later). */
+function kCurveDrag(w) {
+  const d=S.drag;
+  if(!d.started) {
+    if(Math.hypot(w.x-d.start.x,w.y-d.start.y)*S.view.z<2)return;
+    pushUndo(); C.ensureEditable(getLayer(d.lid),S.frame);
+    const o=findEditable(d.lid,d.id);
+    if(!o){S.drag=null;return;}
+    d.o=o;d.inv=minv(matOf(o.t));
+    const c=o.contours[d.ci],a=c?.nodes[d.ni],b=c?.nodes[(d.ni+1)%c.nodes.length];
+    if(!a||!b){S.drag=null;return;}
+    d.a=a;d.b=b;
+    d.original={ax:a.ox,ay:a.oy,bx:b.ix,by:b.iy};
+    d.p0=mapply(d.inv,d.start.x,d.start.y);
+    // Straight segment: open its cubic handles at 1/3 of the chord, like Inkscape.
+    if(Math.hypot(a.ox,a.oy)<1e-8 && Math.hypot(b.ix,b.iy)<1e-8) {
+      a.ox=(b.x-a.x)/3;a.oy=(b.y-a.y)/3;
+      b.ix=(a.x-b.x)/3;b.iy=(a.y-b.y)/3;
+      d.original={ax:a.ox,ay:a.oy,bx:b.ix,by:b.iy};
+    }
+    d.basePoint=C.bezPt(a,b,d.t);
+    d.started=true;
+  }
+  const xy=mapply(d.inv,w.x,w.y);
+  const dx=xy[0]-d.p0[0],dy=xy[1]-d.p0[1];
+  // Inkscape's cubic weight gives more control to the nearby handle.
+  // The hit tester samples t at 1/80 increments, so endpoint t=0/1 is excluded.
+  const t=Math.max(1/80,Math.min(79/80,d.t)),u=1-t;
+  let weight;
+  if(t<=1/6)weight=0;
+  else if(t<=.5)weight=Math.pow((6*t-1)/2,3)/2;
+  else if(t<=5/6)weight=(1-Math.pow((6*u-1)/2,3))/2+.5;
+  else weight=1;
+  const k0=(1-weight)/(3*t*u*u),k1=weight/(3*t*t*u);
+  d.a.ox=d.original.ax+k0*dx;d.a.oy=d.original.ay+k0*dy;
+  d.b.ix=d.original.bx+k1*dx;d.b.iy=d.original.by+k1*dy;
+  // Avoid automatically re-aligning the opposite handles during this segment edit.
+  d.a.s=false;d.b.s=false;
+  invalidate();
+}
+
+function kDrawTrueContours(ctx,o) {
+  ctx.save();ctx.lineWidth=1.15;ctx.strokeStyle=CSSV.accent;
+  ctx.setLineDash([4,4]);
+  o.contours.forEach(c=>{
+    const len=c.nodes.length,count=c.closed?len:len-1;
+    if(!count)return;
+    ctx.beginPath();
+    const start=nodeScreen(o,c.nodes[0],'anchor');ctx.moveTo(start[0],start[1]);
+    for(let i=0;i<count;i++){
+      const a=c.nodes[i],b=c.nodes[(i+1)%len];
+      const out=nodeScreen(o,a,'out'),inn=nodeScreen(o,b,'in'),end=nodeScreen(o,b,'anchor');
+      ctx.bezierCurveTo(out[0],out[1],inn[0],inn[1],end[0],end[1]);
+    }
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 /* ---------- node edit tool ---------- */
 function nodeDown(e, p) {
   const one = singleSel();
@@ -4138,16 +4899,42 @@ function nodeDown(e, p) {
   if (one && one.o.kind === 'path' && !getLayer(one.lid).locked) {
     const hit = hitNodePart(one.o, p.sx, p.sy);
     if (hit) {
+      if (e.shiftKey && hit.part === 'anchor') {
+        const key = hit.ci + ':' + hit.ni;
+        if (!S.kNodeSelection?.length && S.nodeSel)
+          S.kNodeSelection = [S.nodeSel.ci + ':' + S.nodeSel.ni];
+        S.kNodeSelection ||= [];
+        const at = S.kNodeSelection.indexOf(key);
+        if (at < 0) S.kNodeSelection.push(key); else S.kNodeSelection.splice(at, 1);
+        S.nodeSel = S.kNodeSelection.length ? kNodeFromKey(S.kNodeSelection.at(-1)) : null;
+        refreshProps(); invalidate(); return;
+      }
+      // Keep multi-selection when grabbing an already selected anchor.
+      // Clicking an unselected anchor without Shift starts a new selection.
+      const key = hit.ci + ':' + hit.ni;
+      const existing = kNodeKeys();
+      const moveGroup = hit.part === 'anchor' && existing.length > 1 && existing.includes(key);
+      if (!moveGroup) S.kNodeSelection = [key];
       S.nodeSel = { ci: hit.ci, ni: hit.ni };
-      S.drag = { type: 'node', part: hit.part, ci: hit.ci, ni: hit.ni, lid: one.lid, id: one.id, start: p.w, started: false };
+      S.drag = { type: 'node', part: hit.part, ci: hit.ci, ni: hit.ni, lid: one.lid, id: one.id, start: p.w, started: false,
+        groupKeys: moveGroup ? [...existing] : null };
       refreshProps(); return;
+    }
+  }
+  // KROGAN: grab the actual mathematical segment, even if blur hides it.
+  if (one && one.o.kind === 'path' && !getLayer(one.lid).locked && !e.shiftKey) {
+    const curve = kCurveHit(one.o, p.sx, p.sy);
+    if (curve) {
+      S.drag = {type:'curve-bend', lid:one.lid, id:one.id,
+        ci:curve.ci, ni:curve.ni, t:curve.t, start:p.w, started:false};
+      return;
     }
   }
   const h = hitAt(p.w.x, p.w.y, 6);
   if (h && h.o.kind === 'path') { S.sel = [{ lid: h.lid, id: h.id }]; selectLayer(h.lid, true); }
   else if (h) toast('Ungroup (Ctrl+Shift+G) to edit nodes inside a group.');
   else S.sel = [];
-  S.nodeSel = null; refreshProps();
+  S.nodeSel = null; S.kNodeSelection = []; refreshProps();
 }
 function hitNodePart(o, sx, sy) {
   const near = (a) => Math.hypot(a[0] - sx, a[1] - sy) <= 9;
@@ -4171,12 +4958,25 @@ function nodeDrag(w, e) {
     d.o = o; d.inv = minv(matOf(o.t));
     const n = o.contours[d.ci].nodes[d.ni];
     d.n = n; d.n0 = Object.assign({}, n);
+    // Snapshot each selected anchor at drag start, so the group moves as one.
+    if (d.part === 'anchor' && d.groupKeys?.length > 1) {
+      d.groupNodes = d.groupKeys.map(key => {
+        const {ci, ni} = kNodeFromKey(key);
+        const anchor = o.contours[ci]?.nodes[ni];
+        return anchor ? {anchor, x:anchor.x, y:anchor.y} : null;
+      }).filter(Boolean);
+    }
     if (!n.ix && !n.iy && !n.ox && !n.oy && d.part !== 'anchor') n.s = true;
     d.p0 = mapply(d.inv, d.start.x, d.start.y);
     d.started = true;
   }
   const pl = mapply(d.inv, w.x, w.y), n = d.n;
-  if (d.part === 'anchor') { n.x = d.n0.x + pl[0] - d.p0[0]; n.y = d.n0.y + pl[1] - d.p0[1]; }
+  if (d.part === 'anchor') {
+    const dx = pl[0] - d.p0[0], dy = pl[1] - d.p0[1];
+    if (d.groupNodes?.length) {
+      for (const item of d.groupNodes) { item.anchor.x = item.x + dx; item.anchor.y = item.y + dy; }
+    } else { n.x = d.n0.x + dx; n.y = d.n0.y + dy; }
+  }
   else {
     const hx = pl[0] - n.x, hy = pl[1] - n.y;
     const mine = d.part === 'out' ? 'o' : 'i', other = d.part === 'out' ? 'i' : 'o';
@@ -4364,6 +5164,73 @@ function gradDrag(w) {
   invalidate(); if (window.gsSync) window.gsSync();
 }
 
+
+/* KROGAN Gradient V1: single straight fill axis, no stroke changes. */
+let kGradSelected = null;
+function kroganGradDown(e,p) {
+  const current = singleSel();
+  if (current && !getLayer(current.lid).locked && gradEditing(current.o)) {
+    const handle = gradHit(current.o,p.sx,p.sy);
+    if (handle) {
+      kGradSelected = {lid:current.lid,id:current.id,part:handle.id,i:handle.i};
+      gradDown(e,p,current);
+      return;
+    }
+  }
+  const hit = hitAt(p.w.x,p.w.y,5);
+  if (!hit || hit.o.kind !== 'path' || getLayer(hit.lid).locked) return;
+  S.sel=[{lid:hit.lid,id:hit.id}]; selectLayer(hit.lid,true);
+  const obj = hit.o;
+  if (!obj.fill && !obj.grad) { toast('Gradient needs a filled path.'); refreshProps(); return; }
+  pushUndo(); C.ensureEditable(getLayer(hit.lid),S.frame);
+  const o=findEditable(hit.lid,hit.id);
+  if (!o) return;
+  const base=o.grad?.stops?.[0]?.c || o.fill || S.style.fill || '#FFFFFF';
+  const inv=minv(matOf(o.t));
+  const a=mapply(inv,p.w.x,p.w.y);
+  const b=[a[0]+0.01,a[1]];
+  o.grad={type:'linear',stops:[{o:0,c:base,a:1},{o:1,c:base,a:0}],m:[(b[0]-a[0])/(2*GR),0,0,(b[0]-a[0])/(2*GR),(a[0]+b[0])/2,a[1]]};
+  o.fill=base;
+  S.drag={type:'kgrad-create',lid:hit.lid,id:hit.id,start:a,inv,started:true};
+  kGradSelected={lid:hit.lid,id:hit.id,part:'b'};
+  refreshProps(); invalidate();
+}
+function kroganGradMove(w) {
+  const d=S.drag;if(!d||d.type!=='kgrad-create')return;
+  const o=findEditable(d.lid,d.id);if(!o||!o.grad)return;
+  const b=mapply(d.inv,w.x,w.y),a=d.start;
+  let dx=b[0]-a[0],dy=b[1]-a[1];
+  if(Math.hypot(dx,dy)<0.1){dx=0.1;dy=0;}
+  o.grad.m=[dx/(2*GR),dy/(2*GR),-dy/(2*GR),dx/(2*GR),(a[0]+b[0])/2,(a[1]+b[1])/2];
+  invalidate();
+}
+function kroganGradDouble(p) {
+  const one=singleSel();if(!one||!gradEditing(one.o)||getLayer(one.lid).locked)return;
+  const g=one.o.grad;if(g.type!=='linear')return;
+  const pts=gradPts(one.o),A=pts.find(q=>q.id==='a'),B=pts.find(q=>q.id==='b');
+  const a=w2s(A.x,A.y),b=w2s(B.x,B.y),dx=b[0]-a[0],dy=b[1]-a[1],len=dx*dx+dy*dy;
+  if(len<1)return;
+  const t=((p.sx-a[0])*dx+(p.sy-a[1])*dy)/len;
+  if(t<=0.005||t>=0.995||Math.hypot(a[0]+dx*t-p.sx,a[1]+dy*t-p.sy)>8)return;
+  pushUndo();C.ensureEditable(getLayer(one.lid),S.frame);
+  const o=findEditable(one.lid,one.id);if(!o?.grad)return;
+  const col=gradColorAt(o.grad.stops,t);
+  o.grad.stops.push({o:t,c:col.c,a:col.a});o.grad.stops.sort((x,y)=>x.o-y.o);
+  kGradSelected={lid:one.lid,id:one.id,part:'s',i:o.grad.stops.findIndex(x=>x.o===t)};
+  commit();refreshProps();
+}
+function kroganGradDelete() {
+  const q=kGradSelected,one=singleSel();
+  if(!q||!one||one.id!==q.id||one.lid!==q.lid||!one.o.grad)return false;
+  pushUndo();C.ensureEditable(getLayer(q.lid),S.frame);
+  const o=findEditable(q.lid,q.id);if(!o?.grad)return false;
+  const stops=o.grad.stops;
+  if(q.part==='s'&&stops.length>2&&stops[q.i])stops.splice(q.i,1);
+  else if(q.part==='a')stops[0].a=0;
+  else if(q.part==='b')stops[stops.length-1].a=0;
+  else return false;
+  kGradSelected=null;commit();refreshProps();return true;
+}
 /* ---------- bucket & eyedropper ---------- */
 /* ---------- region fill (Flash-style paint bucket on enclosed space) ---------- */
 const GAPS = { none: 0, small: 2, medium: 5, large: 10 };
@@ -4790,6 +5657,34 @@ function rigEdit(fn) {
   const o = findEditable(one.lid, one.id); if (!o || !o.rig) return;
   fn(o.rig); C.rigBuild(o); syncBinds(one.lid); commit();
 }
+
+/* KROGAN V1.7 — context-sensitive selection transforms. Preserve the world
+   position of each object's own pivot when mirroring or rotating. */
+function kroganSelectionTransform(action) {
+  if (S.tool !== 'select' || !S.sel.length) return;
+  const targets = S.sel.filter(q => findEval(q.lid, q.id));
+  if (!targets.length) return;
+  pushUndo();
+  for (const lid of new Set(targets.map(q => q.lid))) C.ensureEditable(getLayer(lid), S.frame);
+  for (const q of targets) {
+    const o = findEditable(q.lid, q.id);
+    if (!o || !o.t) continue;
+    const b = localBounds(o);
+    const pivot = Array.isArray(o.pivot) && o.pivot.length === 2 ? o.pivot :
+      b ? [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2] : [0, 0];
+    const oldPos = mapply(matOf(o.t), pivot[0], pivot[1]);
+    if (action === 'flipH') o.t.sx *= -1;
+    else if (action === 'flipV') o.t.sy *= -1;
+    else if (action === 'rotateL') o.t.r -= 90;
+    else if (action === 'rotateR') o.t.r += 90;
+    else continue;
+    const newPos = mapply(matOf(o.t), pivot[0], pivot[1]);
+    o.t.x += oldPos[0] - newPos[0];
+    o.t.y += oldPos[1] - newPos[1];
+    if (o.bind) C.freeBind.add(o.id);
+  }
+  commit();
+}
 /* ===== Onionskyn app, part 3: timeline, layers, properties, menus, export, import, init ===== */
 const tlC = $('#tlCells'), tlR = $('#tlRuler'), tctx = tlC.getContext('2d'), rctx = tlR.getContext('2d');
 const tlScroll = $('#tlScroll');
@@ -4904,7 +5799,32 @@ function fselInfo() {
   return { a: Math.min(r.a, r.b), b: Math.min(Math.max(r.a, r.b), S.doc.frames - 1), layers: ls, all: r.all };
 }
 
-/* ---------- Copy Frames: pagaidām tikai kopēšana, bez ielīmēšanas ---------- */
+/* ---------- Paste Frames in Place: scene-to-symbol coordinates ---------- */
+function frameSpaceMatrix() {
+  let matrix = [1, 0, 0, 1, 0, 0]; // Main dokumenta koordinātu sākums
+  for (const entry of S.edit) { // Katram iegultajam simbolam atrodam instanci vecāka laika skalā
+    const matches = [];
+    for (const layer of entry.layers) {
+      if (layer.visible === false) continue;
+      for (const obj of C.evalLayerObjs(layer, entry.frame)) {
+        if (obj.kind === 'clip' && obj.sym === entry.sym) matches.push(obj);
+      }
+    }
+    if (matches.length !== 1) return null; // Vairākas instances: nevar droši noteikt, kuru rediģējam
+    const clip = matches[0];
+    const pivot = clip.pv || [0, 0];
+    const local = mmul(matOf(clip.t), [1, 0, 0, 1, -pivot[0], -pivot[1]]);
+    matrix = mmul(matrix, local); // Simbola lokālās koordinātas -> Main
+  }
+  return matrix;
+}
+function rebasePastedKeyframe(kf, transform) {
+  for (const obj of kf.objs || []) {
+    C.setObjMatrix(obj, mmul(transform, matOf(obj.t))); // Core funkcija pieejama caur C // Viena transformācija visam kadram
+  }
+}
+
+/* ---------- Copy Frames: kopē atlasītos kadrus ielīmēšanai ---------- */
 let copiedFrames = null; // Glabā nokopēto kadru diapazonu tikai programmas atmiņā
 function copySelectedFrames(layer, frame) {
   const selection = fselInfo(); // Nolasa Shift+klikšķis atlasīto diapazonu
@@ -4912,35 +5832,80 @@ function copySelectedFrames(layer, frame) {
   const a = useRange ? selection.a : frame; // Ja diapazons nav atlasīts, kopē vienu kadru
   const b = useRange ? selection.b : frame; // Nosaka kopēšanas pēdējo kadru
   copiedFrames = {
+    space: frameSpaceMatrix(), // Avota koordinātu sistēma attiecībā pret Main
+    path: S.edit.map(e => e.sym), // Pārbaude kopēšanai tajā pašā simbolā
     count: b - a + 1, // Saglabā kopējamo kadru skaitu
     start: a, // Saglabā sākotnējo pozīciju turpmākai ielīmēšanas izstrādei
     keyframes: clone(layer.kfs.filter((kf) => kf.f >= a && kf.f <= b)), // Neatkarīgas Keyframe kopijas
     preceding: clone(layer.kfs.filter((kf) => kf.f <= a).at(-1) || null), // Saturs, ko manto parastie Frame
     startObjs: clone(C.evalLayerObjs(layer, a)) // Precīzs sākuma kadra izskats arī Tween vidū
   };
-  toast('Copied ' + copiedFrames.count + ' frame(s). Paste Frames vēl nav ieviests.'); // Testa apstiprinājums
+  toast('Copied ' + copiedFrames.count + ' frame(s). Ready to paste.'); // Apstiprina kopēšanu
+}
+
+/* ---------- Symbol cycle guard: prevent a symbol from containing itself ---------- */
+function pasteWouldCreateSymbolCycle(source) {
+  if (!S.edit.length) return false; // Galvenajā laika skalā nav vecāksimbola
+  const target = S.edit[S.edit.length - 1].sym; // Pašlaik rediģētais simbols
+  const lib = S.doc.lib || {}; // Simbolu bibliotēka
+  const visited = new Set(); // Neapmeklē vienu simbolu bezgalīgi
+  function reachesTarget(name) {
+    if (name === target) return true; // Tieša vai netieša atsauce uz sevi
+    if (visited.has(name)) return false; // Šī atzara simbols jau pārbaudīts
+    visited.add(name);
+    const def = lib[name]; // Iegūst iegultā simbola saturu
+    if (!def || !def.layers) return false;
+    for (const l of def.layers) for (const k of l.kfs || []) {
+      for (const o of k.objs || []) if (containsCycle(o)) return true;
+    }
+    return false;
+  }
+  function containsCycle(o) {
+    if (!o || typeof o !== 'object') return false;
+    if (o.kind === 'clip' && o.sym && reachesTarget(o.sym)) return true;
+    for (const child of o.children || []) if (containsCycle(child)) return true;
+    for (const child of o.mask || []) if (containsCycle(child)) return true;
+    return false;
+  }
+  for (const k of source.keyframes || []) for (const o of k.objs || []) if (containsCycle(o)) return true;
+  for (const o of source.startObjs || []) if (containsCycle(o)) return true;
+  if (source.preceding) for (const o of source.preceding.objs || []) if (containsCycle(o)) return true;
+  return false;
 }
 
 /* ---------- Paste Frames: pārraksta kadru diapazonu bez nobīdes ---------- */
 function pasteSelectedFrames(layer, start) {
   if (!copiedFrames) { toast('Vispirms izmanto Copy Frames.'); return; } // Bez kopijas nav ko ielīmēt
   if (!layer || layer.locked) { toast('Slānis nav pieejams ielīmēšanai.'); return; } // Aizsargā bloķētu slāni
+  if (pasteWouldCreateSymbolCycle(copiedFrames)) { toast('Paste blocked: a symbol cannot contain itself. Copy frames from inside the symbol instead.'); return; } // Novērš bezgalīgu simbolu rekursiju
   const end = start + copiedFrames.count - 1; // Pēdējais pārrakstāmais kadrs
-  if (end >= S.doc.frames) { toast('Paste Frames: projekta beigās nepietiek kadru.'); return; } // Neapgriež kopiju
+  if (end >= 900) { toast('Paste Frames: maksimālais projekta garums ir 900 kadri.'); return; } // Dokumenta drošības limits
   const after = end + 1; // Pirmais kadrs, kuru nedrīkst mainīt
   const oldAfter = after < S.doc.frames ? clone(C.kfAt(layer, after) || C.kfFor(layer, after)) : null; // Saglabā nākamā posma stāvokli
   const oldAfterObjs = after < S.doc.frames ? clone(C.evalLayerObjs(layer, after)) : null; // Saglabā redzamo saturu pēc ielīmēšanas
   const originalBoundary = after < S.doc.frames ? clone(C.kfAt(layer, after)) : null; // Vai aiz diapazona jau ir Keyframe?
   const source = copiedFrames; // Izmanto iepriekš saglabāto neatkarīgo kopiju
+  const targetSpace = frameSpaceMatrix(); // Mērķa koordinātu sistēma
+  const sameSpace = JSON.stringify(source.path) === JSON.stringify(S.edit.map(e => e.sym));
+  if (!sameSpace && (!source.space || !targetSpace)) {
+    toast('Paste in Place: ambiguous symbol instance. Paste within the same symbol or use a unique instance.');
+    return; // Nesabojā kadrus ar minētu nobīdi
+  }
+  const placement = sameSpace ? null : mmul(minv(targetSpace), source.space); // Avots -> Main -> mērķis
   if (after < S.doc.frames && !originalBoundary && oldAfter.tween !== 'none') { toast('Paste Frames: robežu šķērso Tween. Vispirms izveido Keyframe aiz ielīmēšanas diapazona.'); return; } // Nepārveido ārējo Tween
   const first = clone(source.keyframes.find(k => k.f === source.start) || source.preceding); // Iegūst sākuma kadra saturu
   if (!first) { toast('Copy Frames: trūkst sākuma kadra datu.'); return; } // Drošības pārbaude
   pushUndo(); // Viena Undo darbība visam ielīmējumam
+  if (end >= S.doc.frames) S.doc.frames = end + 1; // Pagarina laika skalu, nepārbīdot citus kadrus
   const inserted = source.keyframes.filter(k => k.f > source.start).map(k => {
     const c = clone(k); c.f = start + (k.f - source.start); return c; // Saglabā relatīvo kadru attālumu
   });
   first.f = start; // Izveido atslēgkadru ielīmēšanas sākumā
   if (!source.keyframes.some(k => k.f === source.start)) { first.objs = clone(source.startObjs); first.tween = 'none'; } // Parastā Frame saturu nofiksē tieši kopēšanas brīdī
+  if (placement) { // Pārrēķina tikai kopijas, oriģinālie kadri paliek neskarti
+    rebasePastedKeyframe(first, placement);
+    for (const k of inserted) rebasePastedKeyframe(k, placement);
+  }
   layer.kfs = layer.kfs.filter(k => k.f < start || k.f > end); // Izņem tikai pārrakstāmos Keyframe
   layer.kfs.push(first, ...inserted); // Ieliek nokopētos Keyframe
   layer.kfs.sort((a,b) => a.f - b.f); // Atjauno hronoloģisku secību
@@ -4955,7 +5920,59 @@ function pasteSelectedFrames(layer, start) {
   S.fsel = null; // Notīra iepriekšējo diapazona atlasi
   S.frame = start; // Pārvieto kursoru uz ielīmēšanas sākumu
   pruneSel(); refreshAll(); // Atjauno redaktora attēlu un vēsturi
-  toast('Pasted ' + source.count + ' frame(s).'); // Paziņo rezultātu
+  toast('Pasted ' + source.count + ' frame(s) in place.'); // Paziņo rezultātu
+}
+
+/* ---------- Clear Selected Frames: iztukšo diapazonu bez kadru pārbīdes ---------- */
+function clearSelectedFrames(layer, frame) {
+  if (!layer || layer.locked) { toast('Layer is locked.'); return; } // Bloķētu slāni nemaina
+  const selection = fselInfo(); // Nolasa atlasītos kadrus
+  const useRange = selection && selection.layers.length === 1 && selection.layers[0].id === layer.id && frame >= selection.a && frame <= selection.b;
+  const a = useRange ? selection.a : frame; // Sākuma kadrs
+  const b = useRange ? selection.b : frame; // Beigu kadrs
+  const after = b + 1; // Pirmais kadrs aiz dzēšamā posma
+  const oldAfterKey = after < S.doc.frames ? C.kfAt(layer, after) : null; // Vai jau ir robežkadrs?
+  const oldAfterState = after < S.doc.frames ? clone(C.evalLayerObjs(layer, after)) : null; // Saglabā turpinājuma attēlu
+  const oldAfterSource = after < S.doc.frames ? C.kfFor(layer, after) : null; // Saglabā turpinājuma parametrus
+  if (after < S.doc.frames && !oldAfterKey && oldAfterSource && oldAfterSource.tween !== 'none') {
+    toast('Clear Frames: tween crosses the end. Add a keyframe after the selection first.'); // Neizmaina Tween ārpus atlases
+    return;
+  }
+  pushUndo(); // Visa darbība atsaucama ar Ctrl+Z
+  layer.kfs = layer.kfs.filter(k => k.f < a || k.f > b); // Izņem atlasītos atslēgkadrus
+  if (a === 0) {
+    const base = { f: 0, objs: [], tween: 'none', ease: {} }; // Pirmajam kadram jāpaliek
+    layer.kfs.push(base);
+  } else {
+    layer.kfs.push({ f: a, objs: [], tween: 'none', ease: {} }); // Tukšs sākuma atslēgkadrs
+  }
+  if (after < S.doc.frames && !oldAfterKey) {
+    const boundary = clone(oldAfterSource); // Atjauno turpinājumu aiz atlases
+    boundary.f = after; boundary.objs = oldAfterState;
+    layer.kfs.push(boundary);
+  }
+  layer.kfs.sort((x, y) => x.f - y.f); // Pareiza kadru secība
+  S.fsel = null; S.frame = a; // Notīra atlasi un pāriet uz sākumu
+  pruneSel(); refreshAll(); // Atjauno skatu
+  toast('Cleared ' + (b - a + 1) + ' frame(s).'); // Rezultāts
+}
+
+/* ---------- Cut Selected Frames: copy, then clear without shifting later frames ---------- */
+function cutSelectedFrames(layer, frame) {
+  if (!layer || layer.locked) { toast('Layer is locked.'); return; }
+  const selection = fselInfo();
+  const useRange = selection && selection.layers.length === 1 && selection.layers[0].id === layer.id && frame >= selection.a && frame <= selection.b;
+  const b = useRange ? selection.b : frame;
+  const after = b + 1;
+  // Validate before copying: a crossing Tween cannot be cleared without altering following frames.
+  const boundary = after < S.doc.frames ? C.kfAt(layer, after) : null;
+  const source = after < S.doc.frames ? C.kfFor(layer, after) : null;
+  if (after < S.doc.frames && !boundary && source && source.tween !== 'none') {
+    toast('Cut Frames: tween crosses the end. Add a keyframe after the selection first.');
+    return;
+  }
+  copySelectedFrames(layer, frame); // Preserve full selected frame data in clipboard.
+  clearSelectedFrames(layer, frame); // Existing clear operation has one Undo and never shifts frames.
 }
 
 /* ---------- frame actions ---------- */
@@ -4970,8 +5987,8 @@ function frameAction(kind) {
 		S.frame = f + 1;             // Pārvieto sarkano kursoru uz nākamo kadru
 	break;                       // Beidz šo switch atzaru
     case 'rmframe': C.removeFrames(l, f, 1, d); S.frame = clamp(S.frame, 0, d.frames - 1); break;
-    case 'key': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } } else { C.insertKeyframe(l, f, false); } break;
-    case 'blank': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert blank keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert blank keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } } else { C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); } break;
+    case 'key': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) { C.insertFrames(l, f, 1, d); C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } else if (C.kfAt(l, f + 1)) fail = 'Cannot insert keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } } else { C.insertKeyframe(l, f, false); } break;
+    case 'blank': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) { C.insertFrames(l, f, 1, d); C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } else if (C.kfAt(l, f + 1)) fail = 'Cannot insert blank keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } } else { C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); } break;
     case 'clearkey': if (!C.clearKeyframe(l, f)) fail = 'Select a keyframe (other than the first) to clear.'; break;
     case 'motion': case 'shape': {
       const r = C.setTweenAt(d, l, f, kind);
@@ -5072,6 +6089,10 @@ function drawTimeline() {
   const ctx = tctx;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = CSSV.cell; ctx.fillRect(0, 0, W, Hc);
+  // Yellow themes: the 24px canvas overhang must match the surrounding timeline panel.
+  if (["cyberpunk", "acid"].includes(document.documentElement.dataset.theme)) {
+    ctx.fillStyle = CSSV.panel; ctx.fillRect(n * CW, 0, W - n * CW, Hc);
+  }
   for (let f = 4; f < n; f += 5) { ctx.fillStyle = CSSV.cell5; ctx.fillRect(f * CW, 0, CW, Hc); }
   ctx.strokeStyle = CSSV.line2; ctx.lineWidth = 1;
   ctx.beginPath();
@@ -5199,7 +6220,9 @@ tlC.addEventListener('contextmenu', (e) => {
   setFrame(c.f);
   showMenu(null, [
     { label: 'Copy Frames', fn: () => l && copySelectedFrames(l, c.f), disabled: !l || l.locked },
+    { label: 'Cut Selected Frames', fn: () => l && cutSelectedFrames(l, c.f), disabled: !l || l.locked },
     { label: 'Paste Frames', fn: () => l && pasteSelectedFrames(l, c.f), disabled: !l || l.locked || !copiedFrames },
+    { label: 'Clear Selected Frames', fn: () => l && clearSelectedFrames(l, c.f), disabled: !l || l.locked },
     '-',
     { label: 'Insert frame', kbd: 'F5', fn: () => frameAction('frame') },
     { label: 'Insert keyframe', kbd: 'F6', fn: () => frameAction('key') },
@@ -5324,12 +6347,32 @@ function refreshProps() {
   setVal($('#sw'), src ? src.sw : st.sw); setVal($('#cap'), src ? src.cap || 'round' : st.cap); setVal($('#join'), src ? src.join || 'round' : st.join);
   setVal($('#opac'), one ? Math.round(C.nz(one.o.op, 1) * 100) : 100);
   $('#opac').disabled = !sels.length;
+  const blurValue = one ? Math.max(0, Math.min(30, Number(one.o.blur) || 0)) : 0;
+  setVal($('#objBlur'), blurValue); $('#objBlurVal').textContent = blurValue + ' px';
+  $('#objBlur').disabled = !sels.length;
+  $('#objInvis').checked = !!(one && one.o.invisMask);
+  $('#objInvis').disabled = !one || one.o.kind !== 'path';
   $$('[data-act]').forEach((b) => { b.disabled = !sels.length; });
   refreshTransformFields();
   setVal($('#radius'), st.radius); setVal($('#smooth'), st.smooth);
   setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#esize'), st.esize || 20); setVal($('#esizeR'), Math.min(200, st.esize || 20)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; $('#bgap').value = st.bgap || 'small'; $('#ball').checked = !!st.ball; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
   const l = curLayer(), kf = l && C.kfFor(l, S.frame), nx = kf && l.kfs[l.kfs.indexOf(kf) + 1];
   $('#tweenType').value = kf ? kf.tween : 'none';
+  // V2.6: display controls only for a real Motion Tween span.
+  { const active = !!(kf && kf.tween === 'motion' && nx);
+    const box = $('#motionRotationBox'); box.style.display = active ? '' : 'none';
+    const rot = active && kf.rot || {}, dir = rot.dir || 'short', turns = Math.max(0, Math.min(100, Math.floor(Number(rot.turns) || 0)));
+    for (const [id, value] of [['rotCW', 'cw'], ['rotCCW', 'ccw']]) {
+      const btn = $('#' + id), pressed = active && dir === value;
+      btn.setAttribute('aria-pressed', String(pressed));
+      btn.style.background = pressed ? 'var(--accent, #6755ed)' : '';
+      btn.style.color = pressed ? '#fff' : '';
+    }
+    $('#rotModeLabel').textContent = dir === 'cw' ? 'Clockwise' : dir === 'ccw' ? 'Counterclockwise' : 'Shortest path';
+    $('#rotTurnsLabel').textContent = 'Turns: ' + turns;
+    $('#rotMinus').disabled = !active || turns === 0;
+    $('#rotPlus').disabled = !active || turns >= 100;
+  }
   $('#easeType').value = kf && kf.ease ? kf.ease.type : 'linear'; setVal($('#easeAmt'), kf && kf.ease ? kf.ease.amt : 50);
   drawEaseCurve();
   $('#tweenInfo').textContent = kf ? 'span ' + fnum(kf.f) + ' to ' + (nx ? fnum(nx.f) : 'end') : '';
@@ -5465,6 +6508,23 @@ function bindProps() {
   on('#join', 'change', (e) => { const v = e.target.value; styleEdit({ join: v }, (p) => { p.join = v; }); });
   on('#swFill', 'input', (e) => { const c = e.target.value; styleEdit({ fill: c, fillOn: true }, (p) => { p.fill = c; if (p.fa == null) p.fa = 1; }); refreshProps(); });
   on('#swStroke', 'input', (e) => { const c = e.target.value; styleEdit({ stroke: c, strokeOn: true }, (p) => { p.stroke = c; if (!(p.sw > 0)) p.sw = S.style.sw || 3; }); refreshProps(); });
+  on('#objInvis', 'change', (e) => {
+    const one = selEval();
+    if (one.length !== 1 || one[0].o.kind !== 'path') return;
+    beginEditOnce();
+    C.ensureEditable(getLayer(one[0].lid), S.frame);
+    const obj = findEditable(one[0].lid, one[0].o.id);
+    if (obj) obj.invisMask = e.target.checked;
+    commit();
+  });
+  on('#objBlur', 'input', (e) => {
+    const v = Math.max(0, Math.min(30, Number(e.target.value) || 0));
+    $('#objBlurVal').textContent = v + ' px';
+    beginEditOnce();
+    for (const lid of selLayerIds()) C.ensureEditable(getLayer(lid), S.frame);
+    for (const s of S.sel) { const o = findEditable(s.lid, s.id); if (o) o.blur = v; }
+    commit();
+  });
   on('#opac', 'input', (e) => {
     const v = e.target.value / 100;
     beginEditOnce();
@@ -5519,6 +6579,20 @@ function bindProps() {
   on('#esizeR', 'input', (e) => setESize(+e.target.value)); on('#esize', 'input', (e) => { if (e.target.value !== '') setESize(+e.target.value); });
   window.__setESize = setESize;
   on('#tweenType', 'change', (e) => frameAction(e.target.value === 'none' ? 'notween' : e.target.value));
+  // V2.6: one undoable change per click, with mutually exclusive toggle directions.
+  const editMotionRotation = (direction, increment) => {
+    const layer = curLayer(), kf = layer && C.kfFor(layer, S.frame);
+    if (!kf || kf.tween !== 'motion' || !layer.kfs[layer.kfs.indexOf(kf) + 1]) return;
+    const rot = kf.rot || { dir: 'short', turns: 0 };
+    const dir = direction ? (rot.dir === direction ? 'short' : direction) : (rot.dir || 'short');
+    const turns = Math.max(0, Math.min(100, Math.floor(Number(rot.turns) || 0) + (increment || 0)));
+    if (dir === (rot.dir || 'short') && turns === (rot.turns || 0)) return;
+    pushUndo(); kf.rot = { dir, turns }; commit(); refreshProps();
+  };
+  on('#rotCW', 'click', () => editMotionRotation('cw', 0));
+  on('#rotCCW', 'click', () => editMotionRotation('ccw', 0));
+  on('#rotPlus', 'click', () => editMotionRotation(null, 1));
+  on('#rotMinus', 'click', () => editMotionRotation(null, -1));
   const easeEdit = () => {
     const l = curLayer(), kf = l && C.kfFor(l, S.frame);
     if (!kf) return;
@@ -5752,6 +6826,122 @@ function nudge(dx, dy) {
   commit();
 }
 
+/* KROGAN experimental boolean preview.
+   This uses the editor's existing polygon-clipping eraser geometry.
+   It is NOT the final exact Bézier segment reconstruction. */
+function kroganPathBoolean(op) {
+  const chosen = selEval();
+  if (chosen.length !== 2 || chosen.some(s => s.o.kind !== 'path' || !s.o.contours.some(c => c.closed && c.nodes.length >= 3))) {
+    toast('Path: select exactly two closed, filled path shapes.'); return;
+  }
+  if (chosen[0].lid !== chosen[1].lid) {
+    toast('Path: for now, put both shapes on the same layer.'); return;
+  }
+  const layer = getLayer(chosen[0].lid);
+  if (!layer || layer.locked || !layer.visible) { toast('Path: unlock and show the layer.'); return; }
+  const current = C.kfFor(layer, S.frame);
+  if (!current || !chosen.every(s => current.objs.some(o => o.id === s.id))) {
+    toast('Path: select shapes on an editable keyframe.'); return;
+  }
+  const selectedIds = new Set(chosen.map(s => s.id));
+  const originals = current.objs.filter(o => selectedIds.has(o.id));
+  const bottom = originals[0], top = originals[1];
+  if (!bottom || !top || bottom.fill == null || top.fill == null) {
+    toast('Path: both shapes must have a fill.'); return;
+  }
+  if (typeof polygonClipping === 'undefined' || typeof eFillGeom !== 'function') {
+    toast('Path: polygon clipping library not loaded.'); return;
+  }
+  try {
+    const a = eFillGeom(bottom, C.matOf(bottom.t));
+    const b = eFillGeom(top, C.matOf(top.t));
+    if (!a || !b) { toast('Path: shapes need closed filled contours.'); return; }
+    // Division: the upper path cuts the lower one into independent objects.
+    // Intersection: retain only the overlapping part (useful for clipping stripes).
+    const results = op === 'division'
+      ? [polygonClipping.difference(a,b), polygonClipping.intersection(a,b)]
+      : [(op === 'intersection' || op === 'intersection-bottom') ? polygonClipping.intersection(a,b)
+        : op === 'union' ? polygonClipping.union(a,b) : polygonClipping.difference(a,b)];
+    const inv = C.minv(C.matOf(bottom.t));
+    const pieces = [];
+    for (const result of results) {
+      if (!result) continue;
+      for (const poly of result) {
+        const contours = [];
+        for (const ring of poly) {
+          const points = ring.slice(0,-1);
+          if (points.length < 3) continue;
+          contours.push({closed:true, nodes:points.map(p => {
+            const xy=C.mapply(inv,p[0],p[1]); return C.node(xy[0],xy[1]);
+          })});
+        }
+        if (contours.length) pieces.push(contours);
+      }
+    }
+    if (!pieces.length) { toast('Path: result is empty; nothing changed.'); return; }
+    pushUndo();
+    const editable = C.ensureEditable(layer,S.frame);
+    const index = editable.objs.findIndex(o => o.id === bottom.id);
+    if (index < 0) { toast('Path: editable object missing.'); return; }
+    const isIntersection = op === 'intersection' || op === 'intersection-bottom';
+    const keepBottom = op === 'intersection-bottom';
+    const output = pieces.map((contours,i) => {
+      // Intersection inherits the TOP object's appearance, but retains the
+      // BOTTOM object's transform because polygon coordinates are bottom-local.
+      const obj = clone(bottom);
+      obj.id = uid();
+      obj.contours = contours;
+      obj.nz = true; // Preserve outer/inner winding and holes.
+      if (isIntersection) {
+        obj.fill = clone(top.fill);
+        obj.stroke = clone(top.stroke);
+        obj.sw = top.sw;
+        obj.op = top.op;
+      }
+      return obj;
+    });
+    // Optional mode keeps the complete original bottom object underneath.
+    // Both inputs are removed in normal mode; only the top is removed when
+    // keeping the bottom. Insert outputs immediately above the bottom object.
+    editable.objs = editable.objs.filter(o => o.id !== top.id && (keepBottom || o.id !== bottom.id));
+    const insertAt = keepBottom
+      ? editable.objs.findIndex(o => o.id === bottom.id) + 1
+      : Math.min(index,editable.objs.length);
+    editable.objs.splice(insertAt,0,...output);
+    S.sel = output.map(o => ({lid:layer.id,id:o.id}));
+    S.nodeSel=null;
+    commit();
+    toast('KROGAN '+op+': '+output.length+' piece(s). Simplify can reduce the resulting nodes.');
+  } catch (err) {
+    console.error('KROGAN path boolean:',err);
+    toast('Path operation failed: '+(err && err.message ? err.message : 'unknown error'));
+  }
+}
+
+
+/* KROGAN: reduce polygon-clipping nodes while reconstructing Bézier handles. */
+function kroganPathSimplify() {
+  const chosen=selEval().filter(s=>s.o.kind==='path');
+  if(!chosen.length){toast('Simplify: select a path first.');return;}
+  const editable=editableSel();
+  const matches=[];
+  for(const {l,kf,ids} of editable)for(const o of kf.objs){
+    if(ids.includes(o.id)&&o.kind==='path')matches.push({o,l});
+  }
+  if(!matches.length){toast('Simplify: select a path on an editable keyframe.');return;}
+  const changes=[];let total=0;
+  for(const {o} of matches){
+    const contours=o.contours.map(c=>C.kroganSimplifyContour(c));
+    const count=contours.reduce((sum,r)=>sum+r.removed,0);
+    if(count){changes.push({o,contours:contours.map(r=>r.contour)});total+=count;}
+  }
+  if(!total){toast('Simplify: no removable nodes.');return;}
+  pushUndo();
+  for(const {o,contours} of changes)o.contours=contours;
+  S.nodeSel=null;commit();
+  toast('KROGAN Simplify: removed '+total+' nodes. Ctrl+Z to undo.');
+}
+
 /* ---------- menus & modal ---------- */
 let menuEl = null, menuAnchor = null;
 function closeMenu() { if (menuEl) menuEl.remove(); menuEl = null; if (menuAnchor) menuAnchor.setAttribute('aria-expanded', 'false'); menuAnchor = null; }
@@ -5767,7 +6957,7 @@ function showMenu(anchor, items, pos) {
     b.firstChild.textContent = it.label;
     if (it.kbd) b.lastChild.textContent = it.kbd;
     b.disabled = !!it.disabled;
-    b.addEventListener('click', () => { closeMenu(); it.fn(); });
+    b.addEventListener('click', () => { if (!it.keepOpen) closeMenu(); it.fn(); });
     m.appendChild(b);
   }
   document.body.appendChild(m);
@@ -5826,6 +7016,7 @@ async function saveFile(name, data) {
 function saveProject() {
   exitAllSyms();
   const name = safeName(S.doc.name);
+  if (window.kroganSyncProjectPalette) window.kroganSyncProjectPalette();
   if (missingMedia().images + missingMedia().sounds) toast('Warning: some images or sounds are missing from this project (they couldn’t be restored after reload), so they will not be in the saved file.');
   saveFile(name + '.onionskyn.json', JSON.stringify({ app: 'Onionskyn', version: PROJECT_VERSION, appVersion: APP_VERSION, saved: new Date().toISOString(), doc: S.doc })).then((ok) => { if (ok) clearDirty(); });
 }
@@ -6877,7 +8068,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand', g: 'gradient' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -6921,7 +8112,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'F6') { e.preventDefault(); frameAction(e.shiftKey ? 'clearkey' : 'key'); return; }
   if (k === 'F7') { e.preventDefault(); frameAction('blank'); return; }
   if (k === 'Enter') { e.preventDefault(); if (S.pen) finishPen(false); else togglePlay(); return; }
-  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); if (S.tool === 'node' && S.nodeSel && deleteNode()) return; deleteSel(); return; }
+  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); if (S.tool === 'node' && S.nodeSel && deleteNode()) return; if (S.tool === 'gradient') { kroganGradDelete(); return; } deleteSel(); return; }
   if (k === ',' || k === '<') { e.preventDefault(); if (S.playing) stopPlay(); setFrame(e.shiftKey ? 0 : S.frame - 1); return; }
   if (k === '.' || k === '>') { e.preventDefault(); if (S.playing) stopPlay(); setFrame(e.shiftKey ? S.doc.frames - 1 : S.frame + 1); return; }
   if (k.startsWith('Arrow')) {
@@ -6982,21 +8173,51 @@ function buildSample() {
 }
 
 /* ---------- init ---------- */
+const KROGAN_THEMES = ['sepia', 'light', 'dark', 'cakewalk', 'orange', 'bubblegum', 'cyberpunk', 'acid', 'pirate', 'midnight', 'ocean', 'lava', 'forest', 'lavender', 'solar'];
+const KROGAN_THEME_LABELS = {sepia:'iPhone Sepia',light:'Original Light',dark:'Original Dark',cakewalk:'Studio Silver',orange:'Orange Workshop',bubblegum:'Bubblegum Pink',cyberpunk:'Cyberpunk Yellow',acid:'Acid Bass',pirate:'Pirate Terminal',midnight:'Midnight OLED',ocean:'Ocean Candy',lava:'Lava Krogan',forest:'Forest Slime',lavender:'Retro Lavender',solar:'Solar Lemon'};
+let kCurrentTheme = 'sepia';
 function applyTheme(mode) {
-  const root = document.documentElement;
-  if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode); else root.removeAttribute('data-theme');
-  $('#bTheme').title = 'Theme: ' + (mode === 'light' || mode === 'dark' ? mode : 'system');
+  const selected = KROGAN_THEMES.includes(mode) ? mode : 'sepia';
+  kCurrentTheme = selected;
+  document.documentElement.setAttribute('data-theme', selected);
+  $('#bTheme').title = 'Theme: ' + KROGAN_THEME_LABELS[selected] + ' (click for next theme)';
+  $('#bTheme').setAttribute('aria-label', 'Theme: ' + KROGAN_THEME_LABELS[selected]);
+  const menu = document.getElementById('kThemeMenu');
+  if (menu) menu.querySelectorAll('[data-k-theme]').forEach(el => el.setAttribute('aria-selected', String(el.dataset.kTheme === selected)));
   readTheme(); invalidate();
 }
 function init() {
   readTheme();
-  let theme = '';
-  try { theme = localStorage.getItem(LS_THEME) || ''; } catch (e) { /* ignore */ }
+  let theme = 'sepia';
+  try {
+    const saved = localStorage.getItem(LS_THEME);
+    theme = KROGAN_THEMES.includes(saved) ? saved : 'sepia';
+  } catch (e) { /* Storage unavailable: use sepia. */ }
+  const palette = $('#kThemePalette');
+  const menu = $('#kThemeMenu');
+  const labels = KROGAN_THEME_LABELS;
+  const groups = [ ['Original', ['sepia','light','dark','cakewalk','orange']], ['Theme Lab', KROGAN_THEMES.slice(5)] ];
+  for (const [heading, ids] of groups) {
+    const h = document.createElement('div'); h.className = 'k-theme-heading'; h.textContent = heading; menu.appendChild(h);
+    for (const id of ids) {
+      const opt = document.createElement('button'); opt.type = 'button'; opt.className = 'k-theme-opt';
+      opt.dataset.kTheme = id; opt.setAttribute('role','option');
+      const sw = document.createElement('span'); sw.className = 'k-theme-dot';
+      const swatches = {sepia:['#E9E0D1','#7665B2'],light:['#F3F5F8','#3F5BFF'],dark:['#1E222C','#7F95FF'],cakewalk:['#DCE0E3','#65879A'],orange:['#F1E1CF','#C36A27'],bubblegum:['#FFF2FA','#FF168A'],cyberpunk:['#191B28','#E5F000'],acid:['#252D22','#DFFF00'],pirate:['#09120B','#00F45A'],midnight:['#111117','#9A83FF'],ocean:['#EEFCFF','#009DAB'],lava:['#302027','#FF7536'],forest:['#F2FFF0','#3F9D43'],lavender:['#F9F3FF','#8A63D2'],solar:['#FFFCDF','#E79D00']};
+      sw.style.background = `linear-gradient(90deg,${swatches[id][0]} 50%,${swatches[id][1]} 50%)`;
+      const name = document.createElement('span'); name.textContent = labels[id];
+      opt.append(sw,name); opt.addEventListener('click', () => { setTheme(id); closeThemeMenu(); }); menu.appendChild(opt);
+    }
+  }
+  function setTheme(id) { theme = id; try { localStorage.setItem(LS_THEME,id); } catch(e) {} applyTheme(id); }
+  function closeThemeMenu() { menu.classList.remove('open'); palette.setAttribute('aria-expanded','false'); }
+  palette.addEventListener('click', e => { e.stopPropagation(); const open = menu.classList.toggle('open'); palette.setAttribute('aria-expanded',String(open)); });
+  document.addEventListener('pointerdown', e => { if (!menu.contains(e.target) && !palette.contains(e.target)) closeThemeMenu(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeThemeMenu(); });
   applyTheme(theme);
   $('#bTheme').addEventListener('click', () => {
-    theme = theme === '' ? 'light' : theme === 'light' ? 'dark' : '';
-    try { localStorage.setItem(LS_THEME, theme); } catch (e) { /* ignore */ }
-    applyTheme(theme);
+    const next = KROGAN_THEMES[(KROGAN_THEMES.indexOf(theme) + 1) % KROGAN_THEMES.length];
+    setTheme(next);
   });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); invalidate(); });
   buildTools(); bindProps(); bindEase(); bindTabs(); bindFluid(); bindAlign(); bindLib();
@@ -7052,6 +8273,20 @@ function init() {
   $('#pPrev').addEventListener('click', () => { stopPlay(); setFrame(S.frame - 1); });
   $('#pNext').addEventListener('click', () => { stopPlay(); setFrame(S.frame + 1); });
   $('#bUndo').addEventListener('click', undo); $('#bRedo').addEventListener('click', redo);
+  // KROGAN: experimental boolean operations, polygon-preview stage.
+  $('#mPath').addEventListener('click', () => {
+    if (menuAnchor === $('#mPath')) { closeMenu(); return; }
+    showMenu($('#mPath'), [
+      { label: 'Union (experimental)', fn: () => kroganPathBoolean('union') },
+      { label: 'Difference (experimental)', fn: () => kroganPathBoolean('difference') },
+      { label: 'Division (experimental)', fn: () => kroganPathBoolean('division') },
+      { label: 'Intersection (top color)', fn: () => kroganPathBoolean('intersection') },
+      { label: 'Intersection + bottom duplicate', fn: () => kroganPathBoolean('intersection-bottom') },
+      '-',
+      { label: 'Simplify (½ nodes)', fn: kroganPathSimplify, keepOpen: true }
+    ]);
+  });
+
   $('#zIn').addEventListener('click', () => zoomAt(stageW / 2, stageH / 2, 1.25));
   $('#zOut').addEventListener('click', () => zoomAt(stageW / 2, stageH / 2, 0.8));
   $('#zVal').addEventListener('click', fitView);
@@ -7086,5 +8321,129 @@ function init() {
   if (window.__FC_TEST) window.__FC = { renderFrameCanvas, snap, H, S, C, toggleMask, openExport, buildPlayer, brushOutline, fluidOutline, fbSet, gradPts, w2s, gradDown, refreshProps, setTab, alignSel, distribute, convertToSymbol, renderLibrary, frameAction, setFrame, setTool, importFLAFile, openFile, exportDialog, loadDoc, buildSample };
 }
 init();
+
+
+/* KROGAN Color Lab V2: separate user and document palettes. */
+(function kroganColorLab(){
+  const lab=document.getElementById('kColorLab');if(!lab)return;
+  const basic=['#FF8080','#FFFF80','#80FF80','#00FF80','#80FFFF','#8080FF','#C080FF','#FF80C0','#FF0000','#FFFF00','#80FF00','#00FF00','#00FFFF','#0080FF','#8000FF','#FF00FF','#804040','#FF8040','#00C000','#008080','#004080','#400080','#800080','#FF0080','#800000','#804000','#008000','#004040','#000080','#400040','#800040','#FF0080','#000000','#404040','#808080','#C0C0C0','#FFFFFF','#C0C080','#808040','#004040','#0080C0','#404080','#8000C0','#C0C0FF','#804040','#C08040','#808000','#008080'];
+  const $k=id=>document.getElementById(id),valid=x=>typeof x==='string'&&/^#[0-9a-f]{6}$/i.test(x),norm=x=>x.toUpperCase();
+  let target=null,selected='#FFFFFF',hue=0,sat=0,val=1,manual=Array(16).fill(null),lastDoc=null,drag=null;
+  try{const saved=JSON.parse(localStorage.getItem('os_krogan_colors_v6')||'null');if(Array.isArray(saved)){const seen=new Set();manual=saved.slice(0,16).map(x=>{if(!valid(x)||seen.has(norm(x)))return null;seen.add(norm(x));return norm(x)}).concat(Array(16).fill(null)).slice(0,16)}}catch(_){}
+  function persist(){try{localStorage.setItem('os_krogan_colors_v6',JSON.stringify(manual))}catch(_){}}
+  function usedColors(){const found=new Set(),seen=new WeakSet();let scanned=0;
+    function scan(v,depth){if(!v||depth>24||scanned++>160000||typeof v!=='object'||seen.has(v))return;seen.add(v);
+      if(Array.isArray(v)){for(const t of v)scan(t,depth+1);return;}
+      for(const [k,t] of Object.entries(v)){if(['fill','stroke','c','color','bg','fill2'].includes(k)&&valid(t))found.add(norm(t));if(t&&typeof t==='object'&&!['images','sounds','data','kroganProjectColors'].includes(k))scan(t,depth+1)}
+    }scan(S.doc,0);return [...found];
+  }
+  // Project slots retain their exact indices. null is a genuine empty slot.
+  function palette(){const doc=S.doc;if(!doc)return [];
+    if(lastDoc!==doc){lastDoc=doc;const raw=doc.kroganProjectColors;
+      doc.kroganProjectColors=Array.isArray(raw)&&raw.every(x=>x===null||valid(x))
+        ?raw.map(x=>x===null?null:norm(x)):[];
+    }
+    if(!Array.isArray(doc.kroganProjectColors))doc.kroganProjectColors=[];
+    return doc.kroganProjectColors;
+  }
+  // Collect only actual document colors; never collect a color just because
+  // the user is dragging the hue/saturation controls.
+  function syncUsed(){const p=palette();const present=new Set(p.filter(Boolean));
+    for(const c of usedColors())if(!present.has(c)){p.push(c);present.add(c)}
+    return p;
+  }
+  function remove(holder,idx){if(holder==='custom'){manual[idx]=null;persist()}
+    else if(holder==='project'){palette()[idx]=null}render()}
+  function insert(holder,idx,color,from){if(!valid(color)||holder==='basic')return;
+    const c=norm(color),arr=holder==='custom'?manual:palette();
+    if(from&&from.holder===holder&&from.idx===idx)return;
+    // One occurrence per section; moving a duplicate reuses its existing slot.
+    let sourceIdx=from&&from.holder===holder?from.idx:-1;
+    const duplicate=arr.indexOf(c);
+    if(duplicate>=0&&duplicate!==sourceIdx){if(sourceIdx>=0)arr[sourceIdx]=null;sourceIdx=duplicate}
+    const existing=arr[idx];
+    if(sourceIdx>=0&&sourceIdx<arr.length)arr[sourceIdx]=null;
+    if(existing===null||existing===undefined){arr[idx]=c}
+    else if(existing===c){arr[idx]=c}
+    else{
+      let gap=arr.findIndex((x,j)=>j>idx&&x===null);
+      if(gap<0){if(holder==='custom'){toast('Custom palette is full (16 colors).');if(sourceIdx>=0)arr[sourceIdx]=c;render();return}gap=arr.length;arr.push(null)}
+      for(let j=gap;j>idx;j--)arr[j]=arr[j-1];
+      arr[idx]=c;
+    }
+    if(from&&from.holder!==holder){const source=from.holder==='custom'?manual:palette();
+      if(source[from.idx]===c)source[from.idx]=null;
+    }
+    if(holder==='custom')persist();
+    if(from?.holder==='custom')persist();
+    render();
+  }
+  function swatch(color,holder,idx,used){const b=document.createElement('button');b.type='button';b.className='kswatch';b.style.background=color||'var(--cell)';b.title=(color||'Empty slot')+(holder==='project'&&!used?' (not used in project)':'');if(color&&norm(color)===norm(selected))b.classList.add('selected');if(holder==='custom')b.classList.add('kcustom');if(holder==='project'&&color&&!used)b.classList.add('kunused');
+    b.addEventListener('click',e=>{if(e.ctrlKey)return;if(color)apply(color);else if(holder==='custom')saveAt(idx)});
+    b.addEventListener('dblclick',e=>{if(e.ctrlKey&&holder!=='basic'){e.preventDefault();remove(holder,idx)}});
+    b.addEventListener('pointerdown',e=>{if(!e.ctrlKey||e.button!==0||!color||holder==='basic')return;drag={holder,idx,color,pointer:e.pointerId,startX:e.clientX,startY:e.clientY,active:false};});
+    b.addEventListener('pointermove',e=>{if(!drag||drag.pointer!==e.pointerId)return;if(Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>6)drag.active=true;});
+    return b;
+  }
+  function compactProject(){
+    const p=palette();
+    // Preserve order and the used/unused status, which is derived from document objects.
+    const kept=p.filter(c=>c!==null);
+    if(kept.length===p.length)return;
+    p.splice(0,p.length,...kept);
+    render();
+  }
+  function render(){const used=new Set(usedColors()),p=palette();$k('kBasic').replaceChildren(...basic.map((c,i)=>swatch(c,'basic',i,true)));$k('kCustom').replaceChildren(...manual.map((c,i)=>swatch(c,'custom',i,true)));
+    const project=$k('kProject');project.replaceChildren(...p.map((c,i)=>swatch(c,'project',i,used.has(c))));
+    // Show Compact only if there are genuine empty slots. It follows the final swatch.
+    if(p.some(c=>c===null)){
+      const btn=document.createElement('button');btn.type='button';btn.className='kcompact';btn.textContent='Compact';btn.title='Remove empty project slots without changing color order';
+      btn.addEventListener('click',compactProject);project.appendChild(btn);
+    }
+    $k('kPreview').style.background=selected;$k('kHex').value=selected;drawSpectrum()}
+  function rgbToHsv(hex){
+    const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+    let h=0;if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h=(h*60+360)%360}
+    return [h,mx?d/mx:0,mx];
+  }
+  function setSelected(color,commit=true){
+    if(!valid(color))return;
+    selected=norm(color);[hue,sat,val]=rgbToHsv(selected);
+    $k('kHue').value=String(Math.round(hue));$k('kPreview').style.background=selected;$k('kHex').value=selected;
+    if(commit&&target){
+      target.value=selected;
+      target.dispatchEvent(new Event('input',{bubbles:true}));
+      target.dispatchEvent(new Event('change',{bubbles:true}));
+      // A property-tab color picker can change a selected object, but the toolbar
+      // swatch must also change so the NEXT shape uses the same fill color.
+      if(target.id==='fillC'||target.id==='swFill'){
+        const toolbar=$k('swFill');if(toolbar&&toolbar!==target){toolbar.value=selected;toolbar.dispatchEvent(new Event('input',{bubbles:true}));}
+      }
+    }
+    render();
+  }
+  function apply(color){setSelected(color,true)}
+  function saveAt(idx){const c=norm(selected);if(manual.includes(c)){toast('Color already exists in Custom.');return}if(idx<0||idx>=16){toast('Custom palette is full.');return}manual[idx]=c;persist();render()}
+  window.kroganSyncProjectPalette=()=>syncUsed();
+  function close(){lab.classList.remove('on');target=null}
+  function hsv(h,s,v){const f=n=>{const k=(n+h/60)%6;return Math.round(255*(v-v*s*Math.max(Math.min(k,4-k,1),0)))};return '#'+[f(5),f(3),f(1)].map(n=>n.toString(16).padStart(2,'0')).join('').toUpperCase()}
+  function drawSpectrum(){const cv=$k('kSpectrum'),ctx=cv.getContext('2d'),w=cv.width,hh=cv.height,img=ctx.createImageData(w,hh);for(let y=0;y<hh;y++)for(let x=0;x<w;x++){const hex=hsv(hue,x/(w-1),1-y/(hh-1)),i=(y*w+x)*4;img.data[i]=parseInt(hex.slice(1,3),16);img.data[i+1]=parseInt(hex.slice(3,5),16);img.data[i+2]=parseInt(hex.slice(5,7),16);img.data[i+3]=255}ctx.putImageData(img,0,0)}
+  function open(input){syncUsed();target=input;selected=valid(input.value)?norm(input.value):'#FFFFFF';[hue,sat,val]=rgbToHsv(selected);$k('kHue').value=String(Math.round(hue));render();lab.classList.add('on');const r=input.getBoundingClientRect(),width=286;lab.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+'px';lab.style.top=Math.max(8,Math.min(r.bottom+5,innerHeight-lab.offsetHeight-8))+'px'}
+  let swatchPress=false;
+  document.addEventListener('pointerdown',e=>{const input=e.target.closest?.('input[type="color"]');if(input&&!lab.contains(input)){swatchPress=true;e.preventDefault();e.stopImmediatePropagation();open(input);return}swatchPress=false},true);
+  document.addEventListener('pointermove',e=>{if(drag&&drag.pointer===e.pointerId&&Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>6)drag.active=true},true);
+  document.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;if(!d.active)return;const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.kswatch');const parent=hit?.parentElement;const holder=parent?.id==='kCustom'?'custom':parent?.id==='kProject'?'project':null;if(holder){const idx=[...parent.children].indexOf(hit);insert(holder,idx,d.color,d)}e.preventDefault()},true);
+  document.addEventListener('click',e=>{const input=e.target.closest?.('input[type="color"]');if(input&&!lab.contains(input)){e.preventDefault();e.stopImmediatePropagation();if(!swatchPress)open(input);swatchPress=false;return}if(swatchPress){swatchPress=false;e.preventDefault();e.stopImmediatePropagation();return}if(lab.classList.contains('on')&&!lab.contains(e.target))close()},true);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&lab.classList.contains('on')){e.stopImmediatePropagation();close()}},true);
+  $k('kColorClose').addEventListener('click',close);
+  $k('kHue').addEventListener('input',e=>{hue=Number(e.target.value);setSelected(hsv(hue,sat,val),true)});
+  const spectrum=$k('kSpectrum');
+  function spectrumPick(e){const r=spectrum.getBoundingClientRect();sat=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));val=1-Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));setSelected(hsv(hue,sat,val),true)}
+  spectrum.addEventListener('pointerdown',e=>{spectrum.setPointerCapture(e.pointerId);spectrumPick(e)});
+  spectrum.addEventListener('pointermove',e=>{if(spectrum.hasPointerCapture(e.pointerId))spectrumPick(e)});
+  spectrum.addEventListener('pointerup',e=>{if(spectrum.hasPointerCapture(e.pointerId))spectrum.releasePointerCapture(e.pointerId)});
+  spectrum.addEventListener('pointercancel',e=>{if(spectrum.hasPointerCapture(e.pointerId))spectrum.releasePointerCapture(e.pointerId)});
+  $k('kApply').addEventListener('click',()=>apply($k('kHex').value));$k('kHex').addEventListener('keydown',e=>{if(e.key==='Enter')apply(e.target.value)});$k('kSave').addEventListener('click',()=>saveAt(manual.findIndex(x=>!x)));
+})();
 })();
 </script>
