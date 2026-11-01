@@ -13,12 +13,9 @@ Modified version of the original Onionskyn animation editor.
 
 **Warning:** These modifications are experimental and have not been thoroughly tested. Some changes may have broken existing features, including potentially essential functionality. Stability and compatibility are not guaranteed. Use at your own risk and keep backups of important projects.
 
-**Links:**
+**Link:**
 
 - Windows desktop release: https://github.com/Gap4456/Onionskyn/releases
-- HTML editor: https://github.com/Gap4456/Onionskyn/blob/main/index.html
-- HTML source directory: https://github.com/Gap4456/Onionskyn/tree/main/source
-- Complete repository: https://github.com/Gap4456/Onionskyn
 
 Made using Chat GPT
 Original project by Dylan Papp.
