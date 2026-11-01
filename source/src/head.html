@@ -19,6 +19,20 @@
     --danger: #FF7074; --shadow: 0 8px 28px rgba(0,0,0,.55); color-scheme: dark;
   }
 }
+/* KROGAN Sepia: warm, low-glare editor chrome. Stage artwork is unchanged. */
+:root[data-theme="sepia"] {
+  --bg: #D8D0C1; --panel: #E9E0D1; --panel2: #DED3C2;
+  --pasteboard: #C9BEAC; --line: #B7AA98; --line2: #C9BDAC;
+  --fg: #332E28; --mut: #6D6255; --accent: #7665B2;
+  --accent-fg: #FFFFFF; --accent-soft: #DCD3E9;
+  --playhead: #C65454; --motion: #C9C1E6; --shape: #B8D3B7;
+  --held: #D5CAB9; --cell: #F3EBDF; --cell5: #E8DDCE;
+  --key: #332E28; --danger: #B54D4D;
+  --shadow: 0 8px 28px rgba(60,45,30,.18);
+  color-scheme: light;
+  --c-kw: #7a3fd1; --c-str: #167a3a; --c-com: #7a8294;
+  --c-num: #c2410c; --c-bi: #0b63b8; --c-fn: #1d4ed8;
+}
 :root[data-theme="dark"] {
   --bg: #161921; --panel: #1E222C; --panel2: #262B37; --pasteboard: #10131A; --line: #323849; --line2: #2A3040;
   --fg: #E3E7F0; --mut: #8E97AC; --accent: #7F95FF; --accent-fg: #0E1220; --accent-soft: #2A3358;
@@ -129,8 +143,9 @@ input[type=checkbox] { accent-color: var(--accent); }
 .menu-pop kbd { font: 11px var(--f-mono); opacity: .65; }
 .menu-pop hr { border: 0; border-top: 1px solid var(--line2); margin: 4px 2px; }
 
-#crumb { position: absolute; left: 10px; top: 10px; z-index: 4; display: none; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px 3px 4px; box-shadow: var(--shadow); font-size: 12.5px; }
+#crumb { position: absolute; left: 10px; top: 56px; z-index: 4; display: none; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px 3px 4px; box-shadow: var(--shadow); font-size: 12.5px; }
 #crumb.on { display: flex; }
+@media (max-width: 860px) { #crumb { top: 96px; } }
 #crumb button { height: 24px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--line); background: var(--cell); }
 #crumb button:hover { border-color: var(--accent); }
 #prev { position: fixed; inset: 0; z-index: 60; background: rgba(14,16,24,.96); display: none; flex-direction: column; padding: 12px; gap: 8px; }
@@ -255,6 +270,131 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
   .tl-inner { grid-template-columns: 150px max-content; }
 }
 @media (prefers-reduced-motion: reduce) { #props { transition: none; } }
+
+/* KROGAN Color Lab — themed XP-style, one-click colour palette. */
+#kColorLab{position:fixed;z-index:90;width:min(286px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;display:none;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);padding:11px;font-size:12px}
+#kColorLab.on{display:block}#kColorLab .khead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}#kColorLab .khead button{border:0;background:transparent;font-size:19px;cursor:pointer}
+#kColorLab .kgrid{display:grid;grid-template-columns:repeat(8,24px);gap:5px;margin:5px 0 12px}#kColorLab .kswatch{width:24px;height:24px;min-width:0;border:1px solid #777;border-radius:5px;cursor:pointer;padding:0;position:relative}#kColorLab .kswatch:hover{outline:2px solid var(--accent)}#kColorLab .kswatch.selected{outline:2px solid var(--accent);outline-offset:1px}
+#kColorLab .kbottom{display:grid;grid-template-columns:1fr;gap:8px}#kColorLab .klabel{font-weight:600;margin:5px 0}#kColorLab .kcustom{height:24px}#kColorLab .kcontrol{display:flex;align-items:center;gap:6px;margin-top:6px}#kColorLab .kcontrol input{min-width:0;flex:1}#kColorLab .kcontrol button{padding:5px;border:1px solid var(--line);background:var(--cell);border-radius:4px}#kColorLab .kpreview{height:30px;border:1px solid var(--line);border-radius:3px;margin:6px 0}#kColorLab .kinfo{color:var(--mut);font-size:11px;margin-top:5px}#kColorLab .kspectrum{height:118px;width:100%;cursor:crosshair;display:block;border:1px solid var(--line);border-radius:3px;touch-action:none}#kColorLab input[type=range]{width:100%}
+#kNodeBar{display:none;align-items:center;gap:2px;white-space:nowrap}#kNodeBar.on{display:flex}
+#kSelectBar{display:none;align-items:center;gap:2px;white-space:nowrap}#kSelectBar.on{display:flex}#kSelectBar .tbtn{font-size:11px;font-weight:700;padding:0 7px}#kNodeBar .tbtn{font-size:11px;font-weight:700;padding:0 7px}
+
+#objBlurVal[hidden] { display:none !important; }
+
+/* KROGAN toolbar: two selectable layouts, no separator rows. */
+#tools { gap: 2px; }
+#tools .tool-layout-toggle { flex: none; width: 34px; min-height: 26px; margin-top: 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--cell); font: 700 10px var(--f-mono); cursor: pointer; }
+#tools .tool-layout-toggle:hover { border-color: var(--accent); }
+#tools .tool-layout-toggle { font-size: 0; }
+#tools .tool-layout-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+body.k-tools-double #app { grid-template-columns: 88px minmax(0,1fr) 248px; }
+body.k-tools-double #tools { display: grid; grid-template-columns: repeat(2, 34px); grid-auto-rows: 34px; align-content: start; justify-content: center; align-items: center; gap: 4px 6px; padding: 8px 5px; overflow-y: auto; }
+body.k-tools-double #tools .swatches { grid-column: 1 / -1; grid-row: auto; justify-self: start; margin: 0; }
+body.k-tools-double #tools .tool-layout-toggle { grid-column: 1 / -1; width: 74px; min-height: 26px; margin: 0; justify-self: center; }
+@media (max-width: 860px) {
+  body.k-tools-double #app { grid-template-columns: minmax(0,1fr); }
+  body.k-tools-double #tools { display: flex; flex-direction: row; justify-content: flex-start; padding: 4px 8px; overflow-x: auto; overflow-y: hidden; }
+}
+
+/* KROGAN V1.8: Project5-inspired cool silver/grey studio chrome (not an exact replica). */
+:root[data-theme="cakewalk"] {
+  --bg:#BFC5CA; --panel:#DCE0E3; --panel2:#C7CDD2;
+  --pasteboard:#AEB7BD; --line:#A4ADB5; --line2:#BCC3C9;
+  --fg:#27343D; --mut:#596974; --accent:#65879A;
+  --accent-fg:#FFFFFF; --accent-soft:#CAD9E1;
+  --playhead:#DB7947; --motion:#B4CEDB; --shape:#BBD5C8;
+  --held:#C5CCD2; --cell:#EEF0F1; --cell5:#DFE3E6;
+  --key:#27343D; --danger:#B75043;
+  --shadow:0 8px 28px rgba(30,45,55,.22);
+  color-scheme:light;
+  --c-kw:#6651A2; --c-str:#28734B; --c-com:#73808A;
+  --c-num:#B15D29; --c-bi:#286A91; --c-fn:#325F9E;
+}
+/* KROGAN V1.8: warm orange workshop chrome. Artwork colors remain unchanged. */
+:root[data-theme="orange"] {
+  --bg:#D9C4AC; --panel:#F1E1CF; --panel2:#E8CEB1;
+  --pasteboard:#CBB398; --line:#C5A582; --line2:#D9BFA4;
+  --fg:#3D2A1D; --mut:#775A42; --accent:#C36A27;
+  --accent-fg:#FFFFFF; --accent-soft:#F7CF9C;
+  --playhead:#C64638; --motion:#E7C5A5; --shape:#C7D7B4;
+  --held:#DDC2A5; --cell:#FFF2E3; --cell5:#F2DEC6;
+  --key:#3D2A1D; --danger:#B44234;
+  --shadow:0 8px 28px rgba(65,35,14,.22);
+  color-scheme:light;
+  --c-kw:#7C46A0; --c-str:#2F7444; --c-com:#97785C;
+  --c-num:#B54C1E; --c-bi:#226AA0; --c-fn:#885323;
+}
+/* KROGAN Color Lab V2: stable, square swatches and scrollable project bank. */
+#kColorLab #kProjectScroll{max-height:150px;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
+#kColorLab #kProjectScroll .kgrid{grid-template-columns:repeat(8,24px);margin-bottom:4px}
+/* V2.3: compact control and a visual boundary below project scroll. */
+#kColorLab #kProjectScroll{margin-bottom:8px;border-bottom:1px solid var(--line);padding-bottom:8px}
+#kColorLab .kcompact{grid-column:span 3;align-self:center;justify-self:start;min-height:24px;padding:2px 7px;border:1px solid var(--line);border-radius:5px;background:var(--cell);color:var(--fg);font-size:12px;cursor:pointer;white-space:nowrap}
+#kColorLab .kcompact:hover{border-color:var(--accent);background:var(--panel2)}
+/* V2.2: square swatches with four sharp corners. */
+#kColorLab .kswatch{border-radius:0;clip-path:none}
+#kColorLab .kswatch.selected{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+#kColorLab .kswatch:hover{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+#kColorLab .kspectrum{cursor:crosshair}
+#kColorLab .kswatch.kunused::after{content:"";position:absolute;right:1px;bottom:1px;width:11px;height:2px;background:#fff;transform:rotate(-45deg);box-shadow:0 1px 1px #111}
+#kColorLab .kswatch.kdrop{outline:2px dashed var(--accent);outline-offset:2px}
+#kColorLab .kswatch.kdrag{opacity:.35}
+#kColorLab .kinfo{line-height:1.35}
+
+/* KROGAN V2.8 Theme Lab: editor chrome only, not stage artwork. */
+:root[data-theme="bubblegum"] {
+  --bg: #FBE4F1; --panel: #FFF2FA; --panel2: #F5D2E9; --pasteboard: #EFC3DC; --line: #E5A5CA; --line2: #EAC2D9; --fg: #42233F; --mut: #855276; --accent: #FF168A; --accent-fg: #FFFFFF; --accent-soft: #FFD0E9; --playhead: #FF4D6D; --motion: #F8BADB; --shape: #B8C9FF; --held: #F0D1E3; --cell: #FFF7FB; --cell5: #FBE6F4;
+  --key: #42233F; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="cyberpunk"] {
+  --bg: #353414; --panel: #F1E94D; --panel2: #D4CC2B; --pasteboard: #262A46; --line: #8F891B; --line2: #B8AF29; --fg: #171B32; --mut: #4E4B1A; --accent: #262A46; --accent-fg: #FFFFFF; --accent-soft: #E4DC67; --playhead: #FF4DA6; --motion: #B4B844; --shape: #74C7D3; --held: #C3BD40; --cell: #FFF8A1; --cell5: #E8E068;
+  --key: #171B32; --danger: #C12F5A; --shadow: 0 8px 28px rgba(0,0,0,.25); color-scheme: light;
+}
+:root[data-theme="acid"] {
+  --bg: #444D18; --panel: #D8EA58; --panel2: #BED53D; --pasteboard: #64742B; --line: #8FA522; --line2: #A9BF3E; --fg: #1D2B0A; --mut: #4C631B; --accent: #426A00; --accent-fg: #FFFFFF; --accent-soft: #F0FF91; --playhead: #FF8B00; --motion: #B2D43C; --shape: #83C77B; --held: #B6CB56; --cell: #F4FFA5; --cell5: #DDEB77;
+  --key: #1D2B0A; --danger: #AF3E25; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="pirate"] {
+  --bg: #050A07; --panel: #09120B; --panel2: #102016; --pasteboard: #020503; --line: #174627; --line2: #10351C; --fg: #B5FFC9; --mut: #60D58C; --accent: #00F45A; --accent-fg: #001A08; --accent-soft: #103B1B; --playhead: #39FF7D; --motion: #174B27; --shape: #175536; --held: #193B23; --cell: #07110A; --cell5: #0C1B10;
+  --key: #B5FFC9; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: dark;
+}
+:root[data-theme="midnight"] {
+  --bg: #050509; --panel: #111117; --panel2: #1A1A24; --pasteboard: #020205; --line: #343442; --line2: #242435; --fg: #F5F5F8; --mut: #A0A0B6; --accent: #9A83FF; --accent-fg: #090612; --accent-soft: #292142; --playhead: #FF6B93; --motion: #303063; --shape: #235B50; --held: #2D2D3B; --cell: #0C0C13; --cell5: #151520;
+  --key: #F5F5F8; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: dark;
+}
+:root[data-theme="ocean"] {
+  --bg: #DDF8FC; --panel: #EEFCFF; --panel2: #C8EFF5; --pasteboard: #B2E4EB; --line: #91CCD9; --line2: #B7E3E9; --fg: #143F59; --mut: #47798C; --accent: #009DAB; --accent-fg: #FFFFFF; --accent-soft: #B6F4F5; --playhead: #FF7C80; --motion: #B8E7F9; --shape: #A2E6C9; --held: #C6E9EF; --cell: #F5FEFF; --cell5: #E2F6FA;
+  --key: #143F59; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="lava"] {
+  --bg: #21151B; --panel: #302027; --panel2: #39262A; --pasteboard: #140C11; --line: #604048; --line2: #483039; --fg: #FFE5D5; --mut: #BA968E; --accent: #FF7536; --accent-fg: #221009; --accent-soft: #623423; --playhead: #FF4242; --motion: #59302B; --shape: #31553C; --held: #46302D; --cell: #29191F; --cell5: #342127;
+  --key: #FFE5D5; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: dark;
+}
+:root[data-theme="forest"] {
+  --bg: #E5F5E4; --panel: #F2FFF0; --panel2: #D4EBD3; --pasteboard: #BBD7B7; --line: #9FC5A1; --line2: #C3DDC1; --fg: #1D432C; --mut: #54765B; --accent: #3F9D43; --accent-fg: #FFFFFF; --accent-soft: #C9F2B4; --playhead: #F67B62; --motion: #B7DBA8; --shape: #B4DFCE; --held: #C9DEC4; --cell: #F4FFF0; --cell5: #E2F3DF;
+  --key: #1D432C; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="lavender"] {
+  --bg: #F0E8FA; --panel: #F9F3FF; --panel2: #E4D8F5; --pasteboard: #D3C3E9; --line: #B8A8D6; --line2: #D7C9EB; --fg: #3F3159; --mut: #7E6A99; --accent: #8A63D2; --accent-fg: #FFFFFF; --accent-soft: #E3D4FF; --playhead: #F98FAD; --motion: #D6C4F8; --shape: #B8DEC8; --held: #E4D8F0; --cell: #FCF8FF; --cell5: #F0E8F8;
+  --key: #3F3159; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+:root[data-theme="solar"] {
+  --bg: #FFF6C7; --panel: #FFFCDF; --panel2: #F8EAA8; --pasteboard: #F4DF92; --line: #D6C46F; --line2: #F0DFAC; --fg: #544524; --mut: #8E7540; --accent: #E79D00; --accent-fg: #251A05; --accent-soft: #FFF0A0; --playhead: #FF705C; --motion: #F6DC84; --shape: #B1E5C8; --held: #E8DDAF; --cell: #FFFDEF; --cell5: #FFF4C7;
+  --key: #544524; --danger: #C34B5A; --shadow: 0 8px 28px rgba(0,0,0,.22); color-scheme: light;
+}
+/* Yellow-only refinement: empty timeline area matches surrounding panels. */
+:root[data-theme="cyberpunk"] .tl-scroll,
+:root[data-theme="acid"] .tl-scroll { background: var(--panel); }
+:root[data-theme="cyberpunk"] .tl-inner,
+:root[data-theme="acid"] .tl-inner { background: var(--panel); }
+
+#kThemeMenu{position:fixed;z-index:9999;right:10px;top:40px;width:254px;max-height:min(70vh,500px);overflow:auto;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);padding:8px;display:none}
+#kThemeMenu.open{display:block}
+#kThemeMenu .k-theme-opt{width:100%;display:flex;align-items:center;gap:10px;padding:7px 9px;border:1px solid transparent;background:transparent;color:var(--fg);text-align:left;border-radius:6px;cursor:pointer}
+#kThemeMenu .k-theme-opt:hover{background:var(--panel2)}
+#kThemeMenu .k-theme-opt[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft)}
+#kThemeMenu .k-theme-dot{width:27px;height:17px;flex:none;border-radius:4px;border:1px solid var(--line)}
+#kThemeMenu .k-theme-heading{font-size:11px;color:var(--mut);padding:8px 8px 3px;text-transform:uppercase;letter-spacing:.07em}
 </style>
 <!--JSZIP-->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -271,6 +411,21 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
     <span class="sep"></span>
     <button class="tbtn" id="bUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3L2 6l3 3"/><path d="M2 6h7a4 4 0 010 8H6"/></svg></button>
     <button class="tbtn" id="bRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l3 3-3 3"/><path d="M14 6H7a4 4 0 000 8h3"/></svg></button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="mbtn" id="mPath" title="Bézier path operations" aria-haspopup="true" aria-expanded="false">Path ▾</button>
+    <div id="kNodeBar" aria-label="Node editing operations">
+      <button class="tbtn" data-knode="corner" title="Make selected nodes corner (independent handles)">Corner</button>
+      <button class="tbtn" data-knode="straight" title="Straighten segments between selected adjacent nodes">Straight</button>
+      <button class="tbtn" data-knode="smooth" title="Make selected nodes smooth">Smooth</button>
+      <button class="tbtn" data-knode="symmetric" title="Make selected nodes symmetric">Symmetric</button>
+      <button class="tbtn" data-knode="auto" title="Auto-smooth selected nodes">Auto</button>
+    </div>
+    <div id="kSelectBar" aria-label="Selection transforms">
+      <button class="tbtn" data-ktransform="flipH" title="Flip selected objects horizontally">Flip H</button>
+      <button class="tbtn" data-ktransform="flipV" title="Flip selected objects vertically">Flip V</button>
+      <button class="tbtn" data-ktransform="rotateL" title="Rotate selected objects 90° counterclockwise">↶ 90°</button>
+      <button class="tbtn" data-ktransform="rotateR" title="Rotate selected objects 90° clockwise">↷ 90°</button>
+    </div>
     <div class="grow"></div>
     <button class="tbtn wide-only" id="zOut" title="Zoom out (-)" aria-label="Zoom out">−</button>
     <button class="tbtn zoomval wide-only" id="zVal" title="Fit stage (Shift+1)">100%</button>
@@ -280,8 +435,11 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
     <button class="tbtn" id="bTheme" title="Theme: system" aria-label="Theme">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="5.2"/><path d="M8 2.8v10.4" /><path d="M8 2.8a5.2 5.2 0 010 10.4" fill="currentColor"/></svg>
     </button>
+    <button class="tbtn" id="kThemePalette" type="button" title="Choose editor colour theme" aria-label="Choose editor colour theme" aria-haspopup="true" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 1.3-3.5 1.8 1.8 0 0 1 1.2-3.1H18a3 3 0 0 0 3-3A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/><circle cx="17.5" cy="11" r="1"/></svg></button>
     <button class="tbtn narrow-only" id="bProps" aria-label="Properties" aria-pressed="false">Props</button>
   </header>
+
+  <div id="kThemeMenu" role="listbox" aria-label="Editor themes"></div>
 
   <aside id="tools" role="toolbar" aria-label="Tools"></aside>
 
@@ -316,6 +474,9 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
       <div class="row"><span>Width</span><div class="ctl"><input type="number" id="sw" min="0" max="200" step="0.5"></div></div>
       <div class="row"><span>Cap / join</span><div class="ctl"><select id="cap" aria-label="Line cap"><option value="round">Round</option><option value="butt">Flat</option><option value="square">Square</option></select><select id="join" aria-label="Line join"><option value="round">Round</option><option value="miter">Miter</option><option value="bevel">Bevel</option></select></div></div>
       <div class="row"><span>Opacity</span><div class="ctl"><input type="range" id="opac" min="0" max="100"></div></div>
+       <div class="row"><span>Invisible</span><div class="ctl"><label class="chk" title="Turn this path into an invisibility mask for lower layers"><input type="checkbox" id="objInvis"> Invisibility Mask</label></div></div>
+       <div class="row"><span>Blur</span><div class="ctl"><input type="range" id="objBlur" min="0" max="30" step="0.5" value="0" aria-label="Gaussian blur in pixels"><output id="objBlurVal" hidden>0 px</output></div></div>
+       <p class="hint" style="margin:-3px 0 6px" title="High blur values may be hardware-intensive">⚠ High blur may slow down animation.</p>
     </div>
     <div class="sec">
       <h3>Position &amp; size</h3>
@@ -385,6 +546,19 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
         <div class="row" style="margin-top:6px"><span>Preset</span><div class="ctl"><select id="easePreset" aria-label="Easing preset"></select></div></div>
         <div class="bez"><label>x1<input type="number" id="bz0" step="0.01" min="0" max="1"></label><label>y1<input type="number" id="bz1" step="0.01" min="-1" max="2"></label><label>x2<input type="number" id="bz2" step="0.01" min="0" max="1"></label><label>y2<input type="number" id="bz3" step="0.01" min="-1" max="2"></label></div>
         <p class="hint" id="easeHint">Pick Custom curve, or drag a handle, to shape the speed of this tween.</p></div>
+      <div id="motionRotationBox" style="display:none;margin:12px 0 8px;padding:10px;border:1px solid var(--line);border-radius:7px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px">MOTION ROTATION</div>
+        <div class="mini" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <button id="rotCW" type="button" aria-pressed="false" title="Clockwise. Click again for shortest path">↻</button>
+          <button id="rotCCW" type="button" aria-pressed="false" title="Counterclockwise. Click again for shortest path">↺</button>
+          <button id="rotMinus" type="button" title="Remove one full rotation">X −</button>
+          <button id="rotPlus" type="button" title="Add one full rotation">X +</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px">
+          <span id="rotModeLabel">Shortest path</span><span id="rotTurnsLabel">Turns: 0</span>
+        </div>
+        <p class="hint" style="margin:6px 0 0">Settings belong to this Motion Tween span. Click the selected direction again for Shortest.</p>
+      </div>
       <p class="hint" id="tweenHint">Motion tweens move, scale, rotate and fade matching objects between keyframes. Shape tweens morph paths.</p>
     </div>
     <div class="sec">
@@ -442,14 +616,14 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
       <button class="tbtn" id="pLast" title="Last frame (Shift+.)" aria-label="Last frame"><svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
       <button class="tbtn" id="pLoop" title="Loop playback" aria-pressed="true">Loop</button>
       <button class="tbtn" id="pOnion" title="Onion skin" aria-pressed="false">Onion</button><button class="tbtn" id="pOnionOpt" title="Onion skin options" aria-label="Onion skin options" aria-haspopup="dialog" style="padding:0 6px;margin-left:-4px"><svg viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M3.5 10.5 8 5.5l4.5 5z"/></svg></button>
-      <span class="timecode" id="tcode"></span>
-      <span class="sep"></span>
-      <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>
       <button class="tbtn" data-fr="key" title="Insert keyframe (F6)">+ Key</button>
       <button class="tbtn" data-fr="blank" title="Insert blank keyframe (F7)">+ Blank</button>
+      <button class="tbtn" data-fr="frame" title="Insert frame (F5)">+ Frame</button>
       <button class="tbtn" data-fr="motion" title="Create motion tween">Tween</button>
       <button class="tbtn" data-fr="shape" title="Create shape tween">Shape</button>
       <button class="tbtn" data-fr="reverse" title="Reverse the selected frames (Shift+click to select a range; Shift+click the numbers to select all layers)">Reverse</button>
+      <span class="sep" aria-hidden="true"></span>
+      <span class="timecode" id="tcode"></span>
     </div>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl-inner">
@@ -469,6 +643,15 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
   </section>
 </div>
 
+
+<div id="kColorLab" role="dialog" aria-label="Onionskyn color palette">
+  <div class="khead"><strong>Color · Onionskyn</strong><button id="kColorClose" title="Close">×</button></div>
+  <div class="klabel">Basic colors</div><div class="kgrid" id="kBasic"></div>
+  <div class="klabel">Custom colors · 16 slots</div><div class="kgrid" id="kCustom"></div>
+  <div class="klabel">Project colors · unlimited</div><div id="kProjectScroll"><div class="kgrid" id="kProject"></div></div>
+  <div class="kbottom"><div><canvas id="kSpectrum" class="kspectrum" width="220" height="118"></canvas><div class="kcontrol"><span>Hue</span><input type="range" id="kHue" min="0" max="360" value="0"></div><div class="kinfo">Click a color to apply instantly.</div></div>
+  <div><div class="kpreview" id="kPreview"></div><div class="kcontrol"><span>HEX</span><input type="text" id="kHex" maxlength="7" spellcheck="false" value="#FFFFFF"></div><div class="kcontrol"><button id="kApply">Apply HEX</button><button id="kSave">Save custom</button></div><div class="kinfo">Ctrl+drag to reorder or move. Ctrl+double-click to remove. Diagonal mark = unused.</div></div></div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="modalBg"><div id="modal" role="dialog" aria-modal="true"><header id="mTitle"></header><div class="mbody" id="mBody"></div><footer id="mFoot"></footer></div></div>
 <input type="file" id="imgIn" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" multiple hidden>

@@ -112,7 +112,32 @@ function fselInfo() {
   return { a: Math.min(r.a, r.b), b: Math.min(Math.max(r.a, r.b), S.doc.frames - 1), layers: ls, all: r.all };
 }
 
-/* ---------- Copy Frames: pagaidām tikai kopēšana, bez ielīmēšanas ---------- */
+/* ---------- Paste Frames in Place: scene-to-symbol coordinates ---------- */
+function frameSpaceMatrix() {
+  let matrix = [1, 0, 0, 1, 0, 0]; // Main dokumenta koordinātu sākums
+  for (const entry of S.edit) { // Katram iegultajam simbolam atrodam instanci vecāka laika skalā
+    const matches = [];
+    for (const layer of entry.layers) {
+      if (layer.visible === false) continue;
+      for (const obj of C.evalLayerObjs(layer, entry.frame)) {
+        if (obj.kind === 'clip' && obj.sym === entry.sym) matches.push(obj);
+      }
+    }
+    if (matches.length !== 1) return null; // Vairākas instances: nevar droši noteikt, kuru rediģējam
+    const clip = matches[0];
+    const pivot = clip.pv || [0, 0];
+    const local = mmul(matOf(clip.t), [1, 0, 0, 1, -pivot[0], -pivot[1]]);
+    matrix = mmul(matrix, local); // Simbola lokālās koordinātas -> Main
+  }
+  return matrix;
+}
+function rebasePastedKeyframe(kf, transform) {
+  for (const obj of kf.objs || []) {
+    C.setObjMatrix(obj, mmul(transform, matOf(obj.t))); // Core funkcija pieejama caur C // Viena transformācija visam kadram
+  }
+}
+
+/* ---------- Copy Frames: kopē atlasītos kadrus ielīmēšanai ---------- */
 let copiedFrames = null; // Glabā nokopēto kadru diapazonu tikai programmas atmiņā
 function copySelectedFrames(layer, frame) {
   const selection = fselInfo(); // Nolasa Shift+klikšķis atlasīto diapazonu
@@ -120,35 +145,80 @@ function copySelectedFrames(layer, frame) {
   const a = useRange ? selection.a : frame; // Ja diapazons nav atlasīts, kopē vienu kadru
   const b = useRange ? selection.b : frame; // Nosaka kopēšanas pēdējo kadru
   copiedFrames = {
+    space: frameSpaceMatrix(), // Avota koordinātu sistēma attiecībā pret Main
+    path: S.edit.map(e => e.sym), // Pārbaude kopēšanai tajā pašā simbolā
     count: b - a + 1, // Saglabā kopējamo kadru skaitu
     start: a, // Saglabā sākotnējo pozīciju turpmākai ielīmēšanas izstrādei
     keyframes: clone(layer.kfs.filter((kf) => kf.f >= a && kf.f <= b)), // Neatkarīgas Keyframe kopijas
     preceding: clone(layer.kfs.filter((kf) => kf.f <= a).at(-1) || null), // Saturs, ko manto parastie Frame
     startObjs: clone(C.evalLayerObjs(layer, a)) // Precīzs sākuma kadra izskats arī Tween vidū
   };
-  toast('Copied ' + copiedFrames.count + ' frame(s). Paste Frames vēl nav ieviests.'); // Testa apstiprinājums
+  toast('Copied ' + copiedFrames.count + ' frame(s). Ready to paste.'); // Apstiprina kopēšanu
+}
+
+/* ---------- Symbol cycle guard: prevent a symbol from containing itself ---------- */
+function pasteWouldCreateSymbolCycle(source) {
+  if (!S.edit.length) return false; // Galvenajā laika skalā nav vecāksimbola
+  const target = S.edit[S.edit.length - 1].sym; // Pašlaik rediģētais simbols
+  const lib = S.doc.lib || {}; // Simbolu bibliotēka
+  const visited = new Set(); // Neapmeklē vienu simbolu bezgalīgi
+  function reachesTarget(name) {
+    if (name === target) return true; // Tieša vai netieša atsauce uz sevi
+    if (visited.has(name)) return false; // Šī atzara simbols jau pārbaudīts
+    visited.add(name);
+    const def = lib[name]; // Iegūst iegultā simbola saturu
+    if (!def || !def.layers) return false;
+    for (const l of def.layers) for (const k of l.kfs || []) {
+      for (const o of k.objs || []) if (containsCycle(o)) return true;
+    }
+    return false;
+  }
+  function containsCycle(o) {
+    if (!o || typeof o !== 'object') return false;
+    if (o.kind === 'clip' && o.sym && reachesTarget(o.sym)) return true;
+    for (const child of o.children || []) if (containsCycle(child)) return true;
+    for (const child of o.mask || []) if (containsCycle(child)) return true;
+    return false;
+  }
+  for (const k of source.keyframes || []) for (const o of k.objs || []) if (containsCycle(o)) return true;
+  for (const o of source.startObjs || []) if (containsCycle(o)) return true;
+  if (source.preceding) for (const o of source.preceding.objs || []) if (containsCycle(o)) return true;
+  return false;
 }
 
 /* ---------- Paste Frames: pārraksta kadru diapazonu bez nobīdes ---------- */
 function pasteSelectedFrames(layer, start) {
   if (!copiedFrames) { toast('Vispirms izmanto Copy Frames.'); return; } // Bez kopijas nav ko ielīmēt
   if (!layer || layer.locked) { toast('Slānis nav pieejams ielīmēšanai.'); return; } // Aizsargā bloķētu slāni
+  if (pasteWouldCreateSymbolCycle(copiedFrames)) { toast('Paste blocked: a symbol cannot contain itself. Copy frames from inside the symbol instead.'); return; } // Novērš bezgalīgu simbolu rekursiju
   const end = start + copiedFrames.count - 1; // Pēdējais pārrakstāmais kadrs
-  if (end >= S.doc.frames) { toast('Paste Frames: projekta beigās nepietiek kadru.'); return; } // Neapgriež kopiju
+  if (end >= 900) { toast('Paste Frames: maksimālais projekta garums ir 900 kadri.'); return; } // Dokumenta drošības limits
   const after = end + 1; // Pirmais kadrs, kuru nedrīkst mainīt
   const oldAfter = after < S.doc.frames ? clone(C.kfAt(layer, after) || C.kfFor(layer, after)) : null; // Saglabā nākamā posma stāvokli
   const oldAfterObjs = after < S.doc.frames ? clone(C.evalLayerObjs(layer, after)) : null; // Saglabā redzamo saturu pēc ielīmēšanas
   const originalBoundary = after < S.doc.frames ? clone(C.kfAt(layer, after)) : null; // Vai aiz diapazona jau ir Keyframe?
   const source = copiedFrames; // Izmanto iepriekš saglabāto neatkarīgo kopiju
+  const targetSpace = frameSpaceMatrix(); // Mērķa koordinātu sistēma
+  const sameSpace = JSON.stringify(source.path) === JSON.stringify(S.edit.map(e => e.sym));
+  if (!sameSpace && (!source.space || !targetSpace)) {
+    toast('Paste in Place: ambiguous symbol instance. Paste within the same symbol or use a unique instance.');
+    return; // Nesabojā kadrus ar minētu nobīdi
+  }
+  const placement = sameSpace ? null : mmul(minv(targetSpace), source.space); // Avots -> Main -> mērķis
   if (after < S.doc.frames && !originalBoundary && oldAfter.tween !== 'none') { toast('Paste Frames: robežu šķērso Tween. Vispirms izveido Keyframe aiz ielīmēšanas diapazona.'); return; } // Nepārveido ārējo Tween
   const first = clone(source.keyframes.find(k => k.f === source.start) || source.preceding); // Iegūst sākuma kadra saturu
   if (!first) { toast('Copy Frames: trūkst sākuma kadra datu.'); return; } // Drošības pārbaude
   pushUndo(); // Viena Undo darbība visam ielīmējumam
+  if (end >= S.doc.frames) S.doc.frames = end + 1; // Pagarina laika skalu, nepārbīdot citus kadrus
   const inserted = source.keyframes.filter(k => k.f > source.start).map(k => {
     const c = clone(k); c.f = start + (k.f - source.start); return c; // Saglabā relatīvo kadru attālumu
   });
   first.f = start; // Izveido atslēgkadru ielīmēšanas sākumā
   if (!source.keyframes.some(k => k.f === source.start)) { first.objs = clone(source.startObjs); first.tween = 'none'; } // Parastā Frame saturu nofiksē tieši kopēšanas brīdī
+  if (placement) { // Pārrēķina tikai kopijas, oriģinālie kadri paliek neskarti
+    rebasePastedKeyframe(first, placement);
+    for (const k of inserted) rebasePastedKeyframe(k, placement);
+  }
   layer.kfs = layer.kfs.filter(k => k.f < start || k.f > end); // Izņem tikai pārrakstāmos Keyframe
   layer.kfs.push(first, ...inserted); // Ieliek nokopētos Keyframe
   layer.kfs.sort((a,b) => a.f - b.f); // Atjauno hronoloģisku secību
@@ -163,7 +233,59 @@ function pasteSelectedFrames(layer, start) {
   S.fsel = null; // Notīra iepriekšējo diapazona atlasi
   S.frame = start; // Pārvieto kursoru uz ielīmēšanas sākumu
   pruneSel(); refreshAll(); // Atjauno redaktora attēlu un vēsturi
-  toast('Pasted ' + source.count + ' frame(s).'); // Paziņo rezultātu
+  toast('Pasted ' + source.count + ' frame(s) in place.'); // Paziņo rezultātu
+}
+
+/* ---------- Clear Selected Frames: iztukšo diapazonu bez kadru pārbīdes ---------- */
+function clearSelectedFrames(layer, frame) {
+  if (!layer || layer.locked) { toast('Layer is locked.'); return; } // Bloķētu slāni nemaina
+  const selection = fselInfo(); // Nolasa atlasītos kadrus
+  const useRange = selection && selection.layers.length === 1 && selection.layers[0].id === layer.id && frame >= selection.a && frame <= selection.b;
+  const a = useRange ? selection.a : frame; // Sākuma kadrs
+  const b = useRange ? selection.b : frame; // Beigu kadrs
+  const after = b + 1; // Pirmais kadrs aiz dzēšamā posma
+  const oldAfterKey = after < S.doc.frames ? C.kfAt(layer, after) : null; // Vai jau ir robežkadrs?
+  const oldAfterState = after < S.doc.frames ? clone(C.evalLayerObjs(layer, after)) : null; // Saglabā turpinājuma attēlu
+  const oldAfterSource = after < S.doc.frames ? C.kfFor(layer, after) : null; // Saglabā turpinājuma parametrus
+  if (after < S.doc.frames && !oldAfterKey && oldAfterSource && oldAfterSource.tween !== 'none') {
+    toast('Clear Frames: tween crosses the end. Add a keyframe after the selection first.'); // Neizmaina Tween ārpus atlases
+    return;
+  }
+  pushUndo(); // Visa darbība atsaucama ar Ctrl+Z
+  layer.kfs = layer.kfs.filter(k => k.f < a || k.f > b); // Izņem atlasītos atslēgkadrus
+  if (a === 0) {
+    const base = { f: 0, objs: [], tween: 'none', ease: {} }; // Pirmajam kadram jāpaliek
+    layer.kfs.push(base);
+  } else {
+    layer.kfs.push({ f: a, objs: [], tween: 'none', ease: {} }); // Tukšs sākuma atslēgkadrs
+  }
+  if (after < S.doc.frames && !oldAfterKey) {
+    const boundary = clone(oldAfterSource); // Atjauno turpinājumu aiz atlases
+    boundary.f = after; boundary.objs = oldAfterState;
+    layer.kfs.push(boundary);
+  }
+  layer.kfs.sort((x, y) => x.f - y.f); // Pareiza kadru secība
+  S.fsel = null; S.frame = a; // Notīra atlasi un pāriet uz sākumu
+  pruneSel(); refreshAll(); // Atjauno skatu
+  toast('Cleared ' + (b - a + 1) + ' frame(s).'); // Rezultāts
+}
+
+/* ---------- Cut Selected Frames: copy, then clear without shifting later frames ---------- */
+function cutSelectedFrames(layer, frame) {
+  if (!layer || layer.locked) { toast('Layer is locked.'); return; }
+  const selection = fselInfo();
+  const useRange = selection && selection.layers.length === 1 && selection.layers[0].id === layer.id && frame >= selection.a && frame <= selection.b;
+  const b = useRange ? selection.b : frame;
+  const after = b + 1;
+  // Validate before copying: a crossing Tween cannot be cleared without altering following frames.
+  const boundary = after < S.doc.frames ? C.kfAt(layer, after) : null;
+  const source = after < S.doc.frames ? C.kfFor(layer, after) : null;
+  if (after < S.doc.frames && !boundary && source && source.tween !== 'none') {
+    toast('Cut Frames: tween crosses the end. Add a keyframe after the selection first.');
+    return;
+  }
+  copySelectedFrames(layer, frame); // Preserve full selected frame data in clipboard.
+  clearSelectedFrames(layer, frame); // Existing clear operation has one Undo and never shifts frames.
 }
 
 /* ---------- frame actions ---------- */
@@ -178,8 +300,8 @@ function frameAction(kind) {
 		S.frame = f + 1;             // Pārvieto sarkano kursoru uz nākamo kadru
 	break;                       // Beidz šo switch atzaru
     case 'rmframe': C.removeFrames(l, f, 1, d); S.frame = clamp(S.frame, 0, d.frames - 1); break;
-    case 'key': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } } else { C.insertKeyframe(l, f, false); } break;
-    case 'blank': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) fail = 'Cannot insert blank keyframe: no next frame available.'; else if (C.kfAt(l, f + 1)) fail = 'Cannot insert blank keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } } else { C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); } break;
+    case 'key': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) { C.insertFrames(l, f, 1, d); C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } else if (C.kfAt(l, f + 1)) fail = 'Cannot insert keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, false); S.frame = f + 1; } } else { C.insertKeyframe(l, f, false); } break;
+    case 'blank': if (C.kfAt(l, f)) { if (f + 1 >= d.frames) { C.insertFrames(l, f, 1, d); C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } else if (C.kfAt(l, f + 1)) fail = 'Cannot insert blank keyframe: next frame is occupied by a Keyframe or Blank Keyframe.'; else { C.insertKeyframe(l, f + 1, true); S.frame = f + 1; S.sel = S.sel.filter((s) => s.lid !== l.id); } } else { C.insertKeyframe(l, f, true); S.sel = S.sel.filter((s) => s.lid !== l.id); } break;
     case 'clearkey': if (!C.clearKeyframe(l, f)) fail = 'Select a keyframe (other than the first) to clear.'; break;
     case 'motion': case 'shape': {
       const r = C.setTweenAt(d, l, f, kind);
@@ -280,6 +402,10 @@ function drawTimeline() {
   const ctx = tctx;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = CSSV.cell; ctx.fillRect(0, 0, W, Hc);
+  // Yellow themes: the 24px canvas overhang must match the surrounding timeline panel.
+  if (["cyberpunk", "acid"].includes(document.documentElement.dataset.theme)) {
+    ctx.fillStyle = CSSV.panel; ctx.fillRect(n * CW, 0, W - n * CW, Hc);
+  }
   for (let f = 4; f < n; f += 5) { ctx.fillStyle = CSSV.cell5; ctx.fillRect(f * CW, 0, CW, Hc); }
   ctx.strokeStyle = CSSV.line2; ctx.lineWidth = 1;
   ctx.beginPath();
@@ -407,7 +533,9 @@ tlC.addEventListener('contextmenu', (e) => {
   setFrame(c.f);
   showMenu(null, [
     { label: 'Copy Frames', fn: () => l && copySelectedFrames(l, c.f), disabled: !l || l.locked },
+    { label: 'Cut Selected Frames', fn: () => l && cutSelectedFrames(l, c.f), disabled: !l || l.locked },
     { label: 'Paste Frames', fn: () => l && pasteSelectedFrames(l, c.f), disabled: !l || l.locked || !copiedFrames },
+    { label: 'Clear Selected Frames', fn: () => l && clearSelectedFrames(l, c.f), disabled: !l || l.locked },
     '-',
     { label: 'Insert frame', kbd: 'F5', fn: () => frameAction('frame') },
     { label: 'Insert keyframe', kbd: 'F6', fn: () => frameAction('key') },
@@ -532,12 +660,32 @@ function refreshProps() {
   setVal($('#sw'), src ? src.sw : st.sw); setVal($('#cap'), src ? src.cap || 'round' : st.cap); setVal($('#join'), src ? src.join || 'round' : st.join);
   setVal($('#opac'), one ? Math.round(C.nz(one.o.op, 1) * 100) : 100);
   $('#opac').disabled = !sels.length;
+  const blurValue = one ? Math.max(0, Math.min(30, Number(one.o.blur) || 0)) : 0;
+  setVal($('#objBlur'), blurValue); $('#objBlurVal').textContent = blurValue + ' px';
+  $('#objBlur').disabled = !sels.length;
+  $('#objInvis').checked = !!(one && one.o.invisMask);
+  $('#objInvis').disabled = !one || one.o.kind !== 'path';
   $$('[data-act]').forEach((b) => { b.disabled = !sels.length; });
   refreshTransformFields();
   setVal($('#radius'), st.radius); setVal($('#smooth'), st.smooth);
   setVal($('#bsize'), st.bsize); setVal($('#bsizeR'), Math.min(200, st.bsize)); setVal($('#esize'), st.esize || 20); setVal($('#esizeR'), Math.min(200, st.esize || 20)); setVal($('#bshape'), st.bshape); $('#bpress').checked = !!st.bpress; $('#bmerge').checked = st.bmerge !== false; $('#bgap').value = st.bgap || 'small'; $('#ball').checked = !!st.ball; setVal($('#bangle'), st.bangle); setVal($('#bangleR'), st.bangle); setVal($('#bcolor'), st.bcolor); if (window.__angOff) window.__angOff(); fbSync();
   const l = curLayer(), kf = l && C.kfFor(l, S.frame), nx = kf && l.kfs[l.kfs.indexOf(kf) + 1];
   $('#tweenType').value = kf ? kf.tween : 'none';
+  // V2.6: display controls only for a real Motion Tween span.
+  { const active = !!(kf && kf.tween === 'motion' && nx);
+    const box = $('#motionRotationBox'); box.style.display = active ? '' : 'none';
+    const rot = active && kf.rot || {}, dir = rot.dir || 'short', turns = Math.max(0, Math.min(100, Math.floor(Number(rot.turns) || 0)));
+    for (const [id, value] of [['rotCW', 'cw'], ['rotCCW', 'ccw']]) {
+      const btn = $('#' + id), pressed = active && dir === value;
+      btn.setAttribute('aria-pressed', String(pressed));
+      btn.style.background = pressed ? 'var(--accent, #6755ed)' : '';
+      btn.style.color = pressed ? '#fff' : '';
+    }
+    $('#rotModeLabel').textContent = dir === 'cw' ? 'Clockwise' : dir === 'ccw' ? 'Counterclockwise' : 'Shortest path';
+    $('#rotTurnsLabel').textContent = 'Turns: ' + turns;
+    $('#rotMinus').disabled = !active || turns === 0;
+    $('#rotPlus').disabled = !active || turns >= 100;
+  }
   $('#easeType').value = kf && kf.ease ? kf.ease.type : 'linear'; setVal($('#easeAmt'), kf && kf.ease ? kf.ease.amt : 50);
   drawEaseCurve();
   $('#tweenInfo').textContent = kf ? 'span ' + fnum(kf.f) + ' to ' + (nx ? fnum(nx.f) : 'end') : '';
@@ -673,6 +821,23 @@ function bindProps() {
   on('#join', 'change', (e) => { const v = e.target.value; styleEdit({ join: v }, (p) => { p.join = v; }); });
   on('#swFill', 'input', (e) => { const c = e.target.value; styleEdit({ fill: c, fillOn: true }, (p) => { p.fill = c; if (p.fa == null) p.fa = 1; }); refreshProps(); });
   on('#swStroke', 'input', (e) => { const c = e.target.value; styleEdit({ stroke: c, strokeOn: true }, (p) => { p.stroke = c; if (!(p.sw > 0)) p.sw = S.style.sw || 3; }); refreshProps(); });
+  on('#objInvis', 'change', (e) => {
+    const one = selEval();
+    if (one.length !== 1 || one[0].o.kind !== 'path') return;
+    beginEditOnce();
+    C.ensureEditable(getLayer(one[0].lid), S.frame);
+    const obj = findEditable(one[0].lid, one[0].o.id);
+    if (obj) obj.invisMask = e.target.checked;
+    commit();
+  });
+  on('#objBlur', 'input', (e) => {
+    const v = Math.max(0, Math.min(30, Number(e.target.value) || 0));
+    $('#objBlurVal').textContent = v + ' px';
+    beginEditOnce();
+    for (const lid of selLayerIds()) C.ensureEditable(getLayer(lid), S.frame);
+    for (const s of S.sel) { const o = findEditable(s.lid, s.id); if (o) o.blur = v; }
+    commit();
+  });
   on('#opac', 'input', (e) => {
     const v = e.target.value / 100;
     beginEditOnce();
@@ -727,6 +892,20 @@ function bindProps() {
   on('#esizeR', 'input', (e) => setESize(+e.target.value)); on('#esize', 'input', (e) => { if (e.target.value !== '') setESize(+e.target.value); });
   window.__setESize = setESize;
   on('#tweenType', 'change', (e) => frameAction(e.target.value === 'none' ? 'notween' : e.target.value));
+  // V2.6: one undoable change per click, with mutually exclusive toggle directions.
+  const editMotionRotation = (direction, increment) => {
+    const layer = curLayer(), kf = layer && C.kfFor(layer, S.frame);
+    if (!kf || kf.tween !== 'motion' || !layer.kfs[layer.kfs.indexOf(kf) + 1]) return;
+    const rot = kf.rot || { dir: 'short', turns: 0 };
+    const dir = direction ? (rot.dir === direction ? 'short' : direction) : (rot.dir || 'short');
+    const turns = Math.max(0, Math.min(100, Math.floor(Number(rot.turns) || 0) + (increment || 0)));
+    if (dir === (rot.dir || 'short') && turns === (rot.turns || 0)) return;
+    pushUndo(); kf.rot = { dir, turns }; commit(); refreshProps();
+  };
+  on('#rotCW', 'click', () => editMotionRotation('cw', 0));
+  on('#rotCCW', 'click', () => editMotionRotation('ccw', 0));
+  on('#rotPlus', 'click', () => editMotionRotation(null, 1));
+  on('#rotMinus', 'click', () => editMotionRotation(null, -1));
   const easeEdit = () => {
     const l = curLayer(), kf = l && C.kfFor(l, S.frame);
     if (!kf) return;
@@ -960,6 +1139,122 @@ function nudge(dx, dy) {
   commit();
 }
 
+/* KROGAN experimental boolean preview.
+   This uses the editor's existing polygon-clipping eraser geometry.
+   It is NOT the final exact Bézier segment reconstruction. */
+function kroganPathBoolean(op) {
+  const chosen = selEval();
+  if (chosen.length !== 2 || chosen.some(s => s.o.kind !== 'path' || !s.o.contours.some(c => c.closed && c.nodes.length >= 3))) {
+    toast('Path: select exactly two closed, filled path shapes.'); return;
+  }
+  if (chosen[0].lid !== chosen[1].lid) {
+    toast('Path: for now, put both shapes on the same layer.'); return;
+  }
+  const layer = getLayer(chosen[0].lid);
+  if (!layer || layer.locked || !layer.visible) { toast('Path: unlock and show the layer.'); return; }
+  const current = C.kfFor(layer, S.frame);
+  if (!current || !chosen.every(s => current.objs.some(o => o.id === s.id))) {
+    toast('Path: select shapes on an editable keyframe.'); return;
+  }
+  const selectedIds = new Set(chosen.map(s => s.id));
+  const originals = current.objs.filter(o => selectedIds.has(o.id));
+  const bottom = originals[0], top = originals[1];
+  if (!bottom || !top || bottom.fill == null || top.fill == null) {
+    toast('Path: both shapes must have a fill.'); return;
+  }
+  if (typeof polygonClipping === 'undefined' || typeof eFillGeom !== 'function') {
+    toast('Path: polygon clipping library not loaded.'); return;
+  }
+  try {
+    const a = eFillGeom(bottom, C.matOf(bottom.t));
+    const b = eFillGeom(top, C.matOf(top.t));
+    if (!a || !b) { toast('Path: shapes need closed filled contours.'); return; }
+    // Division: the upper path cuts the lower one into independent objects.
+    // Intersection: retain only the overlapping part (useful for clipping stripes).
+    const results = op === 'division'
+      ? [polygonClipping.difference(a,b), polygonClipping.intersection(a,b)]
+      : [(op === 'intersection' || op === 'intersection-bottom') ? polygonClipping.intersection(a,b)
+        : op === 'union' ? polygonClipping.union(a,b) : polygonClipping.difference(a,b)];
+    const inv = C.minv(C.matOf(bottom.t));
+    const pieces = [];
+    for (const result of results) {
+      if (!result) continue;
+      for (const poly of result) {
+        const contours = [];
+        for (const ring of poly) {
+          const points = ring.slice(0,-1);
+          if (points.length < 3) continue;
+          contours.push({closed:true, nodes:points.map(p => {
+            const xy=C.mapply(inv,p[0],p[1]); return C.node(xy[0],xy[1]);
+          })});
+        }
+        if (contours.length) pieces.push(contours);
+      }
+    }
+    if (!pieces.length) { toast('Path: result is empty; nothing changed.'); return; }
+    pushUndo();
+    const editable = C.ensureEditable(layer,S.frame);
+    const index = editable.objs.findIndex(o => o.id === bottom.id);
+    if (index < 0) { toast('Path: editable object missing.'); return; }
+    const isIntersection = op === 'intersection' || op === 'intersection-bottom';
+    const keepBottom = op === 'intersection-bottom';
+    const output = pieces.map((contours,i) => {
+      // Intersection inherits the TOP object's appearance, but retains the
+      // BOTTOM object's transform because polygon coordinates are bottom-local.
+      const obj = clone(bottom);
+      obj.id = uid();
+      obj.contours = contours;
+      obj.nz = true; // Preserve outer/inner winding and holes.
+      if (isIntersection) {
+        obj.fill = clone(top.fill);
+        obj.stroke = clone(top.stroke);
+        obj.sw = top.sw;
+        obj.op = top.op;
+      }
+      return obj;
+    });
+    // Optional mode keeps the complete original bottom object underneath.
+    // Both inputs are removed in normal mode; only the top is removed when
+    // keeping the bottom. Insert outputs immediately above the bottom object.
+    editable.objs = editable.objs.filter(o => o.id !== top.id && (keepBottom || o.id !== bottom.id));
+    const insertAt = keepBottom
+      ? editable.objs.findIndex(o => o.id === bottom.id) + 1
+      : Math.min(index,editable.objs.length);
+    editable.objs.splice(insertAt,0,...output);
+    S.sel = output.map(o => ({lid:layer.id,id:o.id}));
+    S.nodeSel=null;
+    commit();
+    toast('KROGAN '+op+': '+output.length+' piece(s). Simplify can reduce the resulting nodes.');
+  } catch (err) {
+    console.error('KROGAN path boolean:',err);
+    toast('Path operation failed: '+(err && err.message ? err.message : 'unknown error'));
+  }
+}
+
+
+/* KROGAN: reduce polygon-clipping nodes while reconstructing Bézier handles. */
+function kroganPathSimplify() {
+  const chosen=selEval().filter(s=>s.o.kind==='path');
+  if(!chosen.length){toast('Simplify: select a path first.');return;}
+  const editable=editableSel();
+  const matches=[];
+  for(const {l,kf,ids} of editable)for(const o of kf.objs){
+    if(ids.includes(o.id)&&o.kind==='path')matches.push({o,l});
+  }
+  if(!matches.length){toast('Simplify: select a path on an editable keyframe.');return;}
+  const changes=[];let total=0;
+  for(const {o} of matches){
+    const contours=o.contours.map(c=>C.kroganSimplifyContour(c));
+    const count=contours.reduce((sum,r)=>sum+r.removed,0);
+    if(count){changes.push({o,contours:contours.map(r=>r.contour)});total+=count;}
+  }
+  if(!total){toast('Simplify: no removable nodes.');return;}
+  pushUndo();
+  for(const {o,contours} of changes)o.contours=contours;
+  S.nodeSel=null;commit();
+  toast('KROGAN Simplify: removed '+total+' nodes. Ctrl+Z to undo.');
+}
+
 /* ---------- menus & modal ---------- */
 let menuEl = null, menuAnchor = null;
 function closeMenu() { if (menuEl) menuEl.remove(); menuEl = null; if (menuAnchor) menuAnchor.setAttribute('aria-expanded', 'false'); menuAnchor = null; }
@@ -975,7 +1270,7 @@ function showMenu(anchor, items, pos) {
     b.firstChild.textContent = it.label;
     if (it.kbd) b.lastChild.textContent = it.kbd;
     b.disabled = !!it.disabled;
-    b.addEventListener('click', () => { closeMenu(); it.fn(); });
+    b.addEventListener('click', () => { if (!it.keepOpen) closeMenu(); it.fn(); });
     m.appendChild(b);
   }
   document.body.appendChild(m);
@@ -1034,6 +1329,7 @@ async function saveFile(name, data) {
 function saveProject() {
   exitAllSyms();
   const name = safeName(S.doc.name);
+  if (window.kroganSyncProjectPalette) window.kroganSyncProjectPalette();
   if (missingMedia().images + missingMedia().sounds) toast('Warning: some images or sounds are missing from this project (they couldn’t be restored after reload), so they will not be in the saved file.');
   saveFile(name + '.onionskyn.json', JSON.stringify({ app: 'Onionskyn', version: PROJECT_VERSION, appVersion: APP_VERSION, saved: new Date().toISOString(), doc: S.doc })).then((ok) => { if (ok) clearDirty(); });
 }
@@ -2085,7 +2381,7 @@ function showReport() {
 }
 
 /* ---------- keyboard ---------- */
-const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand' };
+const KEYTOOL = { t: 'text', v: 'select', a: 'node', p: 'pen', y: 'pencil', b: 'brush', e: 'eraser', j: 'bone', f: 'fluid', l: 'line', r: 'rect', o: 'ellipse', k: 'bucket', i: 'dropper', h: 'hand', g: 'gradient' };
 window.addEventListener('keydown', (e) => {
   const t = e.target, tag = (t.tagName || '').toLowerCase();
   const typing = (tag === 'input' && ['text', 'number'].includes(t.type)) || tag === 'select' || tag === 'textarea';
@@ -2129,7 +2425,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'F6') { e.preventDefault(); frameAction(e.shiftKey ? 'clearkey' : 'key'); return; }
   if (k === 'F7') { e.preventDefault(); frameAction('blank'); return; }
   if (k === 'Enter') { e.preventDefault(); if (S.pen) finishPen(false); else togglePlay(); return; }
-  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); if (S.tool === 'node' && S.nodeSel && deleteNode()) return; deleteSel(); return; }
+  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); if (S.tool === 'node' && S.nodeSel && deleteNode()) return; if (S.tool === 'gradient') { kroganGradDelete(); return; } deleteSel(); return; }
   if (k === ',' || k === '<') { e.preventDefault(); if (S.playing) stopPlay(); setFrame(e.shiftKey ? 0 : S.frame - 1); return; }
   if (k === '.' || k === '>') { e.preventDefault(); if (S.playing) stopPlay(); setFrame(e.shiftKey ? S.doc.frames - 1 : S.frame + 1); return; }
   if (k.startsWith('Arrow')) {
@@ -2190,21 +2486,51 @@ function buildSample() {
 }
 
 /* ---------- init ---------- */
+const KROGAN_THEMES = ['sepia', 'light', 'dark', 'cakewalk', 'orange', 'bubblegum', 'cyberpunk', 'acid', 'pirate', 'midnight', 'ocean', 'lava', 'forest', 'lavender', 'solar'];
+const KROGAN_THEME_LABELS = {sepia:'iPhone Sepia',light:'Original Light',dark:'Original Dark',cakewalk:'Studio Silver',orange:'Orange Workshop',bubblegum:'Bubblegum Pink',cyberpunk:'Cyberpunk Yellow',acid:'Acid Bass',pirate:'Pirate Terminal',midnight:'Midnight OLED',ocean:'Ocean Candy',lava:'Lava Krogan',forest:'Forest Slime',lavender:'Retro Lavender',solar:'Solar Lemon'};
+let kCurrentTheme = 'sepia';
 function applyTheme(mode) {
-  const root = document.documentElement;
-  if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode); else root.removeAttribute('data-theme');
-  $('#bTheme').title = 'Theme: ' + (mode === 'light' || mode === 'dark' ? mode : 'system');
+  const selected = KROGAN_THEMES.includes(mode) ? mode : 'sepia';
+  kCurrentTheme = selected;
+  document.documentElement.setAttribute('data-theme', selected);
+  $('#bTheme').title = 'Theme: ' + KROGAN_THEME_LABELS[selected] + ' (click for next theme)';
+  $('#bTheme').setAttribute('aria-label', 'Theme: ' + KROGAN_THEME_LABELS[selected]);
+  const menu = document.getElementById('kThemeMenu');
+  if (menu) menu.querySelectorAll('[data-k-theme]').forEach(el => el.setAttribute('aria-selected', String(el.dataset.kTheme === selected)));
   readTheme(); invalidate();
 }
 function init() {
   readTheme();
-  let theme = '';
-  try { theme = localStorage.getItem(LS_THEME) || ''; } catch (e) { /* ignore */ }
+  let theme = 'sepia';
+  try {
+    const saved = localStorage.getItem(LS_THEME);
+    theme = KROGAN_THEMES.includes(saved) ? saved : 'sepia';
+  } catch (e) { /* Storage unavailable: use sepia. */ }
+  const palette = $('#kThemePalette');
+  const menu = $('#kThemeMenu');
+  const labels = KROGAN_THEME_LABELS;
+  const groups = [ ['Original', ['sepia','light','dark','cakewalk','orange']], ['Theme Lab', KROGAN_THEMES.slice(5)] ];
+  for (const [heading, ids] of groups) {
+    const h = document.createElement('div'); h.className = 'k-theme-heading'; h.textContent = heading; menu.appendChild(h);
+    for (const id of ids) {
+      const opt = document.createElement('button'); opt.type = 'button'; opt.className = 'k-theme-opt';
+      opt.dataset.kTheme = id; opt.setAttribute('role','option');
+      const sw = document.createElement('span'); sw.className = 'k-theme-dot';
+      const swatches = {sepia:['#E9E0D1','#7665B2'],light:['#F3F5F8','#3F5BFF'],dark:['#1E222C','#7F95FF'],cakewalk:['#DCE0E3','#65879A'],orange:['#F1E1CF','#C36A27'],bubblegum:['#FFF2FA','#FF168A'],cyberpunk:['#191B28','#E5F000'],acid:['#252D22','#DFFF00'],pirate:['#09120B','#00F45A'],midnight:['#111117','#9A83FF'],ocean:['#EEFCFF','#009DAB'],lava:['#302027','#FF7536'],forest:['#F2FFF0','#3F9D43'],lavender:['#F9F3FF','#8A63D2'],solar:['#FFFCDF','#E79D00']};
+      sw.style.background = `linear-gradient(90deg,${swatches[id][0]} 50%,${swatches[id][1]} 50%)`;
+      const name = document.createElement('span'); name.textContent = labels[id];
+      opt.append(sw,name); opt.addEventListener('click', () => { setTheme(id); closeThemeMenu(); }); menu.appendChild(opt);
+    }
+  }
+  function setTheme(id) { theme = id; try { localStorage.setItem(LS_THEME,id); } catch(e) {} applyTheme(id); }
+  function closeThemeMenu() { menu.classList.remove('open'); palette.setAttribute('aria-expanded','false'); }
+  palette.addEventListener('click', e => { e.stopPropagation(); const open = menu.classList.toggle('open'); palette.setAttribute('aria-expanded',String(open)); });
+  document.addEventListener('pointerdown', e => { if (!menu.contains(e.target) && !palette.contains(e.target)) closeThemeMenu(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeThemeMenu(); });
   applyTheme(theme);
   $('#bTheme').addEventListener('click', () => {
-    theme = theme === '' ? 'light' : theme === 'light' ? 'dark' : '';
-    try { localStorage.setItem(LS_THEME, theme); } catch (e) { /* ignore */ }
-    applyTheme(theme);
+    const next = KROGAN_THEMES[(KROGAN_THEMES.indexOf(theme) + 1) % KROGAN_THEMES.length];
+    setTheme(next);
   });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); invalidate(); });
   buildTools(); bindProps(); bindEase(); bindTabs(); bindFluid(); bindAlign(); bindLib();
@@ -2260,6 +2586,20 @@ function init() {
   $('#pPrev').addEventListener('click', () => { stopPlay(); setFrame(S.frame - 1); });
   $('#pNext').addEventListener('click', () => { stopPlay(); setFrame(S.frame + 1); });
   $('#bUndo').addEventListener('click', undo); $('#bRedo').addEventListener('click', redo);
+  // KROGAN: experimental boolean operations, polygon-preview stage.
+  $('#mPath').addEventListener('click', () => {
+    if (menuAnchor === $('#mPath')) { closeMenu(); return; }
+    showMenu($('#mPath'), [
+      { label: 'Union (experimental)', fn: () => kroganPathBoolean('union') },
+      { label: 'Difference (experimental)', fn: () => kroganPathBoolean('difference') },
+      { label: 'Division (experimental)', fn: () => kroganPathBoolean('division') },
+      { label: 'Intersection (top color)', fn: () => kroganPathBoolean('intersection') },
+      { label: 'Intersection + bottom duplicate', fn: () => kroganPathBoolean('intersection-bottom') },
+      '-',
+      { label: 'Simplify (½ nodes)', fn: kroganPathSimplify, keepOpen: true }
+    ]);
+  });
+
   $('#zIn').addEventListener('click', () => zoomAt(stageW / 2, stageH / 2, 1.25));
   $('#zOut').addEventListener('click', () => zoomAt(stageW / 2, stageH / 2, 0.8));
   $('#zVal').addEventListener('click', fitView);
@@ -2294,3 +2634,127 @@ function init() {
   if (window.__FC_TEST) window.__FC = { renderFrameCanvas, snap, H, S, C, toggleMask, openExport, buildPlayer, brushOutline, fluidOutline, fbSet, gradPts, w2s, gradDown, refreshProps, setTab, alignSel, distribute, convertToSymbol, renderLibrary, frameAction, setFrame, setTool, importFLAFile, openFile, exportDialog, loadDoc, buildSample };
 }
 init();
+
+
+/* KROGAN Color Lab V2: separate user and document palettes. */
+(function kroganColorLab(){
+  const lab=document.getElementById('kColorLab');if(!lab)return;
+  const basic=['#FF8080','#FFFF80','#80FF80','#00FF80','#80FFFF','#8080FF','#C080FF','#FF80C0','#FF0000','#FFFF00','#80FF00','#00FF00','#00FFFF','#0080FF','#8000FF','#FF00FF','#804040','#FF8040','#00C000','#008080','#004080','#400080','#800080','#FF0080','#800000','#804000','#008000','#004040','#000080','#400040','#800040','#FF0080','#000000','#404040','#808080','#C0C0C0','#FFFFFF','#C0C080','#808040','#004040','#0080C0','#404080','#8000C0','#C0C0FF','#804040','#C08040','#808000','#008080'];
+  const $k=id=>document.getElementById(id),valid=x=>typeof x==='string'&&/^#[0-9a-f]{6}$/i.test(x),norm=x=>x.toUpperCase();
+  let target=null,selected='#FFFFFF',hue=0,sat=0,val=1,manual=Array(16).fill(null),lastDoc=null,drag=null;
+  try{const saved=JSON.parse(localStorage.getItem('os_krogan_colors_v6')||'null');if(Array.isArray(saved)){const seen=new Set();manual=saved.slice(0,16).map(x=>{if(!valid(x)||seen.has(norm(x)))return null;seen.add(norm(x));return norm(x)}).concat(Array(16).fill(null)).slice(0,16)}}catch(_){}
+  function persist(){try{localStorage.setItem('os_krogan_colors_v6',JSON.stringify(manual))}catch(_){}}
+  function usedColors(){const found=new Set(),seen=new WeakSet();let scanned=0;
+    function scan(v,depth){if(!v||depth>24||scanned++>160000||typeof v!=='object'||seen.has(v))return;seen.add(v);
+      if(Array.isArray(v)){for(const t of v)scan(t,depth+1);return;}
+      for(const [k,t] of Object.entries(v)){if(['fill','stroke','c','color','bg','fill2'].includes(k)&&valid(t))found.add(norm(t));if(t&&typeof t==='object'&&!['images','sounds','data','kroganProjectColors'].includes(k))scan(t,depth+1)}
+    }scan(S.doc,0);return [...found];
+  }
+  // Project slots retain their exact indices. null is a genuine empty slot.
+  function palette(){const doc=S.doc;if(!doc)return [];
+    if(lastDoc!==doc){lastDoc=doc;const raw=doc.kroganProjectColors;
+      doc.kroganProjectColors=Array.isArray(raw)&&raw.every(x=>x===null||valid(x))
+        ?raw.map(x=>x===null?null:norm(x)):[];
+    }
+    if(!Array.isArray(doc.kroganProjectColors))doc.kroganProjectColors=[];
+    return doc.kroganProjectColors;
+  }
+  // Collect only actual document colors; never collect a color just because
+  // the user is dragging the hue/saturation controls.
+  function syncUsed(){const p=palette();const present=new Set(p.filter(Boolean));
+    for(const c of usedColors())if(!present.has(c)){p.push(c);present.add(c)}
+    return p;
+  }
+  function remove(holder,idx){if(holder==='custom'){manual[idx]=null;persist()}
+    else if(holder==='project'){palette()[idx]=null}render()}
+  function insert(holder,idx,color,from){if(!valid(color)||holder==='basic')return;
+    const c=norm(color),arr=holder==='custom'?manual:palette();
+    if(from&&from.holder===holder&&from.idx===idx)return;
+    // One occurrence per section; moving a duplicate reuses its existing slot.
+    let sourceIdx=from&&from.holder===holder?from.idx:-1;
+    const duplicate=arr.indexOf(c);
+    if(duplicate>=0&&duplicate!==sourceIdx){if(sourceIdx>=0)arr[sourceIdx]=null;sourceIdx=duplicate}
+    const existing=arr[idx];
+    if(sourceIdx>=0&&sourceIdx<arr.length)arr[sourceIdx]=null;
+    if(existing===null||existing===undefined){arr[idx]=c}
+    else if(existing===c){arr[idx]=c}
+    else{
+      let gap=arr.findIndex((x,j)=>j>idx&&x===null);
+      if(gap<0){if(holder==='custom'){toast('Custom palette is full (16 colors).');if(sourceIdx>=0)arr[sourceIdx]=c;render();return}gap=arr.length;arr.push(null)}
+      for(let j=gap;j>idx;j--)arr[j]=arr[j-1];
+      arr[idx]=c;
+    }
+    if(from&&from.holder!==holder){const source=from.holder==='custom'?manual:palette();
+      if(source[from.idx]===c)source[from.idx]=null;
+    }
+    if(holder==='custom')persist();
+    if(from?.holder==='custom')persist();
+    render();
+  }
+  function swatch(color,holder,idx,used){const b=document.createElement('button');b.type='button';b.className='kswatch';b.style.background=color||'var(--cell)';b.title=(color||'Empty slot')+(holder==='project'&&!used?' (not used in project)':'');if(color&&norm(color)===norm(selected))b.classList.add('selected');if(holder==='custom')b.classList.add('kcustom');if(holder==='project'&&color&&!used)b.classList.add('kunused');
+    b.addEventListener('click',e=>{if(e.ctrlKey)return;if(color)apply(color);else if(holder==='custom')saveAt(idx)});
+    b.addEventListener('dblclick',e=>{if(e.ctrlKey&&holder!=='basic'){e.preventDefault();remove(holder,idx)}});
+    b.addEventListener('pointerdown',e=>{if(!e.ctrlKey||e.button!==0||!color||holder==='basic')return;drag={holder,idx,color,pointer:e.pointerId,startX:e.clientX,startY:e.clientY,active:false};});
+    b.addEventListener('pointermove',e=>{if(!drag||drag.pointer!==e.pointerId)return;if(Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>6)drag.active=true;});
+    return b;
+  }
+  function compactProject(){
+    const p=palette();
+    // Preserve order and the used/unused status, which is derived from document objects.
+    const kept=p.filter(c=>c!==null);
+    if(kept.length===p.length)return;
+    p.splice(0,p.length,...kept);
+    render();
+  }
+  function render(){const used=new Set(usedColors()),p=palette();$k('kBasic').replaceChildren(...basic.map((c,i)=>swatch(c,'basic',i,true)));$k('kCustom').replaceChildren(...manual.map((c,i)=>swatch(c,'custom',i,true)));
+    const project=$k('kProject');project.replaceChildren(...p.map((c,i)=>swatch(c,'project',i,used.has(c))));
+    // Show Compact only if there are genuine empty slots. It follows the final swatch.
+    if(p.some(c=>c===null)){
+      const btn=document.createElement('button');btn.type='button';btn.className='kcompact';btn.textContent='Compact';btn.title='Remove empty project slots without changing color order';
+      btn.addEventListener('click',compactProject);project.appendChild(btn);
+    }
+    $k('kPreview').style.background=selected;$k('kHex').value=selected;drawSpectrum()}
+  function rgbToHsv(hex){
+    const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+    let h=0;if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h=(h*60+360)%360}
+    return [h,mx?d/mx:0,mx];
+  }
+  function setSelected(color,commit=true){
+    if(!valid(color))return;
+    selected=norm(color);[hue,sat,val]=rgbToHsv(selected);
+    $k('kHue').value=String(Math.round(hue));$k('kPreview').style.background=selected;$k('kHex').value=selected;
+    if(commit&&target){
+      target.value=selected;
+      target.dispatchEvent(new Event('input',{bubbles:true}));
+      target.dispatchEvent(new Event('change',{bubbles:true}));
+      // A property-tab color picker can change a selected object, but the toolbar
+      // swatch must also change so the NEXT shape uses the same fill color.
+      if(target.id==='fillC'||target.id==='swFill'){
+        const toolbar=$k('swFill');if(toolbar&&toolbar!==target){toolbar.value=selected;toolbar.dispatchEvent(new Event('input',{bubbles:true}));}
+      }
+    }
+    render();
+  }
+  function apply(color){setSelected(color,true)}
+  function saveAt(idx){const c=norm(selected);if(manual.includes(c)){toast('Color already exists in Custom.');return}if(idx<0||idx>=16){toast('Custom palette is full.');return}manual[idx]=c;persist();render()}
+  window.kroganSyncProjectPalette=()=>syncUsed();
+  function close(){lab.classList.remove('on');target=null}
+  function hsv(h,s,v){const f=n=>{const k=(n+h/60)%6;return Math.round(255*(v-v*s*Math.max(Math.min(k,4-k,1),0)))};return '#'+[f(5),f(3),f(1)].map(n=>n.toString(16).padStart(2,'0')).join('').toUpperCase()}
+  function drawSpectrum(){const cv=$k('kSpectrum'),ctx=cv.getContext('2d'),w=cv.width,hh=cv.height,img=ctx.createImageData(w,hh);for(let y=0;y<hh;y++)for(let x=0;x<w;x++){const hex=hsv(hue,x/(w-1),1-y/(hh-1)),i=(y*w+x)*4;img.data[i]=parseInt(hex.slice(1,3),16);img.data[i+1]=parseInt(hex.slice(3,5),16);img.data[i+2]=parseInt(hex.slice(5,7),16);img.data[i+3]=255}ctx.putImageData(img,0,0)}
+  function open(input){syncUsed();target=input;selected=valid(input.value)?norm(input.value):'#FFFFFF';[hue,sat,val]=rgbToHsv(selected);$k('kHue').value=String(Math.round(hue));render();lab.classList.add('on');const r=input.getBoundingClientRect(),width=286;lab.style.left=Math.max(8,Math.min(r.left,innerWidth-width-8))+'px';lab.style.top=Math.max(8,Math.min(r.bottom+5,innerHeight-lab.offsetHeight-8))+'px'}
+  let swatchPress=false;
+  document.addEventListener('pointerdown',e=>{const input=e.target.closest?.('input[type="color"]');if(input&&!lab.contains(input)){swatchPress=true;e.preventDefault();e.stopImmediatePropagation();open(input);return}swatchPress=false},true);
+  document.addEventListener('pointermove',e=>{if(drag&&drag.pointer===e.pointerId&&Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>6)drag.active=true},true);
+  document.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;if(!d.active)return;const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.kswatch');const parent=hit?.parentElement;const holder=parent?.id==='kCustom'?'custom':parent?.id==='kProject'?'project':null;if(holder){const idx=[...parent.children].indexOf(hit);insert(holder,idx,d.color,d)}e.preventDefault()},true);
+  document.addEventListener('click',e=>{const input=e.target.closest?.('input[type="color"]');if(input&&!lab.contains(input)){e.preventDefault();e.stopImmediatePropagation();if(!swatchPress)open(input);swatchPress=false;return}if(swatchPress){swatchPress=false;e.preventDefault();e.stopImmediatePropagation();return}if(lab.classList.contains('on')&&!lab.contains(e.target))close()},true);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&lab.classList.contains('on')){e.stopImmediatePropagation();close()}},true);
+  $k('kColorClose').addEventListener('click',close);
+  $k('kHue').addEventListener('input',e=>{hue=Number(e.target.value);setSelected(hsv(hue,sat,val),true)});
+  const spectrum=$k('kSpectrum');
+  function spectrumPick(e){const r=spectrum.getBoundingClientRect();sat=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));val=1-Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));setSelected(hsv(hue,sat,val),true)}
+  spectrum.addEventListener('pointerdown',e=>{spectrum.setPointerCapture(e.pointerId);spectrumPick(e)});
+  spectrum.addEventListener('pointermove',e=>{if(spectrum.hasPointerCapture(e.pointerId))spectrumPick(e)});
+  spectrum.addEventListener('pointerup',e=>{if(spectrum.hasPointerCapture(e.pointerId))spectrum.releasePointerCapture(e.pointerId)});
+  spectrum.addEventListener('pointercancel',e=>{if(spectrum.hasPointerCapture(e.pointerId))spectrum.releasePointerCapture(e.pointerId)});
+  $k('kApply').addEventListener('click',()=>apply($k('kHex').value));$k('kHex').addEventListener('keydown',e=>{if(e.key==='Enter')apply(e.target.value)});$k('kSave').addEventListener('click',()=>saveAt(manual.findIndex(x=>!x)));
+})();

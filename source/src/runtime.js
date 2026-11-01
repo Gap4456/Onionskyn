@@ -482,6 +482,8 @@ function create(doc, cv, opt) {
       const prev = ctx; ctx = c;
       try {
         for (const o of e.objs) {
+          // Invisibility mask geometry is consumed by Core.drawUnits; never paint it visibly.
+          if (o.invisMask && o.kind === 'path') continue;
           const k = isInst(o) ? inst.kids.get(e.layer.id + '|' + o.id) : null;
           if (k) drawKid(k, o); else Core.drawObj(ctx, o, {});
         }

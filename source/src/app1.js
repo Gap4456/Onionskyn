@@ -231,6 +231,14 @@ function renderStage() {
     for (let k = S.onion.a; k >= 1; k--) if (S.frame + k < d.frames) drawFrameObjs(ctx, S.frame + k, { tint: { c: '#2FB36B', a: 0.34 / k } });
   }
   drawFrameObjs(ctx, S.frame, { ghosts: !S.playing });
+  if (!S.playing) {
+    for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) {
+      if (layer.visible === false) continue;
+      for (const o of objs) if (o.invisMask && o.kind === 'path') {
+        drawObj(ctx, Object.assign({}, o, { invisMask: false, fill: '#688fe9', fa: 0.25, grad: null, stroke: '#4169b4', sa: 0.8, sw: 1, blur: 0 }), {});
+      }
+    }
+  }
   if (!S.playing && !(S.drawGhostOff)) {
     for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) if (layer.mask && layer.visible !== false) for (const o of objs) drawObj(ctx, o, { tint: { c: CSSV.accent, a: layer.id === S.layerId ? 0.4 : 0.22 } });
   }
@@ -242,7 +250,50 @@ function renderStage() {
     ctx.strokeStyle = CSSV.accent; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(S.view.px - 7, S.view.py); ctx.lineTo(S.view.px + 7, S.view.py); ctx.moveTo(S.view.px, S.view.py - 7); ctx.lineTo(S.view.px, S.view.py + 7); ctx.stroke();
   }
-  if (!S.playing) drawOverlay(ctx);
+  if (!S.playing) { drawOverlay(ctx); kroganDrawGhostPlaceholders(ctx); }
+  else kroganGhostTargets = [];
+}
+
+/* KROGAN V2.4: editor-only rescue markers for symbol instances whose current
+   internal frame contains no artwork. No document data, tween, or export changes. */
+let kroganGhostTargets = [];
+function kroganGhostAt(sx, sy) {
+  return kroganGhostTargets.find(g => sx >= g.x && sx <= g.x + 24 && sy >= g.y && sy <= g.y + 24) || null;
+}
+function kroganDrawGhostPlaceholders(ctx) {
+  kroganGhostTargets = [];
+  if (S.playing || S.edit.length || !S.doc || !S.doc.lib) return;
+  const candidates = [];
+  for (const { layer, objs } of C.evalDoc(S.doc, S.frame)) {
+    if (layer.visible === false || layer.locked) continue;
+    for (const o of objs) {
+      if (o.kind !== 'clip') continue;
+      const lib = S.doc.lib[o.sym];
+      if (!lib || !Array.isArray(lib.layers)) continue;
+      const frame = o._f || 0;
+      // A blank symbol frame must have no drawable objects in visible layers.
+      const empty = lib.layers.every(l => l.visible === false || C.evalLayerObjs(l, frame).length === 0);
+      if (empty) candidates.push({ sym: o.sym, name: o.name || o.sym });
+    }
+  }
+  if (!candidates.length) return;
+  // Fixed screen pixels, independent of zoom and original object dimensions.
+  const x = Math.max(4, Math.round(S.view.px - 32));
+  const top = Math.max(4, Math.round(S.view.py));
+  const rows = Math.max(1, Math.floor((stage.clientHeight - top - 4) / 29));
+  ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  candidates.forEach((g, i) => {
+    const col = Math.floor(i / rows), row = i % rows;
+    const gx = x - col * 29, gy = top + row * 29;
+    if (gx < 0 || gy + 24 > stage.clientHeight) return;
+    kroganGhostTargets.push({ ...g, x: gx, y: gy });
+    ctx.fillStyle = 'rgba(125,108,190,0.20)'; ctx.fillRect(gx, gy, 24, 24);
+    ctx.strokeStyle = 'rgba(104,83,177,0.85)'; ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]); ctx.strokeRect(gx + .5, gy + .5, 23, 23); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(104,83,177,0.8)';
+    ctx.fillRect(gx + 10, gy + 10, 4, 4);
+  });
+  ctx.restore();
 }
 
 /* ---------- handles & overlay ---------- */
@@ -282,7 +333,7 @@ function drawOverlay(ctx) {
   }
   const one = sels.length === 1 ? sels[0] : null;
   if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
-  if (one && S.tool === 'select' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
+  if (one && (S.tool === 'select' || S.tool === 'gradient') && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
     const rot = hs.find((h) => h.id === 'rot'), nh = hs.find((h) => h.id === 'n');

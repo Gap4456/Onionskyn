@@ -178,11 +178,64 @@ function maskedDraw(ctx, drawMembers, drawMask) {
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(a, 0, 0); ctx.restore();
   } finally { _md--; }
 }
+// KROGAN Invisibility Mask V1.3: erase only earlier objects in the SAME layer.
+// Composite each layer unit separately so higher artwork remains untouched.
+function invisMaskShape(o) {
+  return Object.assign({}, o, { invisMask: false, fill: '#ffffff', fa: 1,
+    grad: null, stroke: null, sw: 0, op: 1 });
+}
 function drawUnits(ctx, entries, opt, drawLayer) {
-  drawLayer = drawLayer || ((c, e, isMask) => { for (const o of e.objs) drawObj(c, o, isMask ? {} : opt); });
-  for (const u of groupEntries(entries)) {
-    if (!u.mask) drawLayer(ctx, u.e, false);
-    else maskedDraw(ctx, (c) => { for (const m of u.members) drawLayer(c, m, false); }, (c) => drawLayer(c, u.mask, true));
+  drawLayer = drawLayer || ((c, e, isMask) => { for (const o of e.objs) if (!o.invisMask) drawObj(c, o, isMask ? {} : opt); });
+  const units = groupEntries(entries);
+  const masks = [];
+  entries.forEach((e, li) => {
+    if (e.layer.visible === false) return;
+    e.objs.forEach((o, oi) => { if (o.invisMask && o.kind === 'path') masks.push({ o, li, oi }); });
+  });
+  if (!masks.length) {
+    for (const u of units) {
+      if (!u.mask) drawLayer(ctx, u.e, false);
+      else maskedDraw(ctx, c => { for (const m of u.members) drawLayer(c, m, false); }, c => drawLayer(c, u.mask, true));
+    }
+    return;
+  }
+  // Render each object independently. This also supports a mask and artwork
+  // on the SAME layer: later objects are above earlier objects.
+  const w = ctx.canvas.width, h = ctx.canvas.height, T = ctx.getTransform();
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+  const tc = tmp.getContext('2d');
+  const cut = document.createElement('canvas'); cut.width = w; cut.height = h;
+  const cc = cut.getContext('2d');
+  function paint(draw, li, oi) {
+    tc.setTransform(1,0,0,1,0,0); tc.globalAlpha = 1;
+    tc.globalCompositeOperation = 'source-over'; tc.filter = 'none'; tc.clearRect(0,0,w,h);
+    tc.setTransform(T); draw(tc);
+    const above = masks.filter(m => m.li === li && m.oi > oi);
+    if (above.length) {
+      cc.setTransform(1,0,0,1,0,0); cc.globalAlpha = 1;
+      cc.globalCompositeOperation = 'source-over'; cc.filter = 'none'; cc.clearRect(0,0,w,h);
+      cc.setTransform(T);
+      for (const m of above) drawObj(cc, invisMaskShape(m.o), {});
+      tc.setTransform(1,0,0,1,0,0); tc.globalAlpha = 1;
+      tc.globalCompositeOperation = 'destination-out'; tc.filter = 'none';
+      tc.drawImage(cut,0,0);
+    }
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(tmp,0,0); ctx.restore();
+  }
+  for (const u of units) {
+    if (!u.mask) {
+      const li = entries.indexOf(u.e);
+      u.e.objs.forEach((o, oi) => {
+        if (o.invisMask && o.kind === 'path') return;
+        paint(c => drawLayer(c, Object.assign({}, u.e, { objs: [o] }), false), li, oi);
+      });
+    } else {
+      const li = Math.max(...u.members.map(m => entries.indexOf(m)));
+      paint(c => maskedDraw(c,
+        mc => { for (const m of u.members) drawLayer(mc, m, false); },
+        mc => drawLayer(mc, u.mask, true)), li, Number.MAX_SAFE_INTEGER);
+    }
   }
 }
 function entriesToObjs(entries) {
@@ -477,7 +530,27 @@ function morphContours(A, B, p) {
 }
 
 /* ---------- timeline evaluation ---------- */
-function lerpT(a, b, p) { return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), sx: lerp(a.sx, b.sx, p), sy: lerp(a.sy, b.sy, p), r: lerp(a.r, b.r, p) }; }
+// V2.5: Tween rotation follows the shortest angular path (degrees).
+// Preserve the original direction for exact 180-degree ties.
+function lerpAngleShortest(a, b, p) {
+  const raw = b - a;
+  let delta = ((raw % 360) + 540) % 360 - 180;
+  if (delta === -180 && raw > 0) delta = 180;
+  return a + delta * p;
+}
+// V2.6: direction and extra complete turns are per Motion Tween keyframe.
+function lerpAngleTween(a, b, p, rot) {
+  if (!rot) return lerpAngleShortest(a, b, p);
+  const mode = rot.dir === 'cw' || rot.dir === 'ccw' ? rot.dir : 'short';
+  const turns = Math.max(0, Math.min(100, Math.floor(Number(rot.turns) || 0)));
+  const raw = b - a;
+  let delta = ((raw % 360) + 360) % 360; // clockwise, 0..359
+  if (mode === 'ccw') delta = delta === 0 ? 0 : delta - 360;
+  if (mode === 'short') delta = lerpAngleShortest(a, b, 1) - a;
+  const sign = mode === 'ccw' ? -1 : mode === 'cw' ? 1 : delta < 0 ? -1 : 1;
+  return a + (delta + sign * turns * 360) * p;
+}
+function lerpT(a, b, p, rot) { return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), sx: lerp(a.sx, b.sx, p), sy: lerp(a.sy, b.sy, p), r: lerpAngleTween(a.r, b.r, p, rot) }; }
 function lerpPaint(o, a, b, p) {
   for (const k of ['fill', 'stroke']) {
     const ak = k === 'fill' ? 'fa' : 'sa';
@@ -591,9 +664,9 @@ function bindValid(b) {
   const num = (v) => typeof v === 'number' && isFinite(v) && Math.abs(v) < 1e7;
   return !!b && typeof b.to === 'string' && b.to.length < 80 && (b.bone === 0 || b.bone === 1) && num(b.lx) && num(b.ly) && num(b.lr);
 }
-function lerpObj(a, b, p, mode) {
+function lerpObj(a, b, p, mode, rot) {
   const o = Object.assign({}, a);
-  o.t = lerpT(a.t, b.t, p);
+  o.t = lerpT(a.t, b.t, p, mode === 'motion' ? rot : null);
     // Labojam kustību tikai tad, ja abiem atslēgkadriem ir pielāgots pivot.
   if (Array.isArray(a.pivot) && a.pivot.length === 2 &&
       Array.isArray(b.pivot) && b.pivot.length === 2) {
@@ -622,6 +695,7 @@ function lerpObj(a, b, p, mode) {
     o.t.y += targetY - actualPivot[1];
   }
   o.op = lerp(nz(a.op, 1), nz(b.op, 1), p);
+  o.blur = lerp(nz(a.blur, 0), nz(b.blur, 0), p);
   if (a.bind && b.bind && a.bind.to === b.bind.to && a.bind.bone === b.bind.bone) o.bind = { to: a.bind.to, bone: a.bind.bone, lx: lerp(a.bind.lx, b.bind.lx, p), ly: lerp(a.bind.ly, b.bind.ly, p), lr: lerp(a.bind.lr, b.bind.lr, p) };
   if (a.kind === 'text' && b.kind === 'text') { lerpPaint(o, a, b, p); return o; }
   if (a.kind === 'path' && b.kind === 'path') {
@@ -688,7 +762,7 @@ function evalLayerRaw(layer, t) {
     const p = (t - kf.f) / (next.f - kf.f);
     const e = ease(kf.ease && kf.ease.type, kf.ease && kf.ease.amt, p, kf.ease && kf.ease.p);
     const pairs = tweenPairs(kf, next);
-    return withClips(layer, i, t, kf.objs.map((a) => { const b = pairs.get(a); return b ? lerpObj(a, b, e, kf.tween) : a; }));
+    return withClips(layer, i, t, kf.objs.map((a) => { const b = pairs.get(a); return b ? lerpObj(a, b, e, kf.tween, kf.rot) : a; }));
   }
   return withClips(layer, i, t, kf.objs);
 }
@@ -707,7 +781,7 @@ function ensureEditable(layer, f) {
   if (i < 0) { const k = mkKf(f); layer.kfs.push(k); sortKfs(layer); return k; }
   const kf = layer.kfs[i], next = layer.kfs[i + 1];
   if (kf.f !== f && kf.tween !== 'none' && next) {
-    const k = { f, objs: clone(evalLayerObjs(layer, f)), tween: kf.tween, ease: Object.assign({}, kf.ease, kf.ease && kf.ease.p ? { p: kf.ease.p.slice() } : {}) };
+    const k = { f, objs: clone(evalLayerObjs(layer, f)), tween: kf.tween, rot: kf.rot ? { ...kf.rot } : undefined, ease: Object.assign({}, kf.ease, kf.ease && kf.ease.p ? { p: kf.ease.p.slice() } : {}) };
     layer.kfs.splice(i + 1, 0, k);
     return k;
   }
@@ -720,7 +794,7 @@ function insertKeyframe(layer, f, blank) {
   const k = mkKf(f, blank ? [] : clone(evalLayerObjs(layer, f)));
   if (cur && cur.tween !== 'none' && !blank) {
     const next = layer.kfs[layer.kfs.indexOf(cur) + 1];
-    if (next) { k.tween = cur.tween; k.ease = Object.assign({}, cur.ease, cur.ease && cur.ease.p ? { p: cur.ease.p.slice() } : {}); }
+    if (next) { k.tween = cur.tween; k.rot = cur.rot ? { ...cur.rot } : undefined; k.ease = Object.assign({}, cur.ease, cur.ease && cur.ease.p ? { p: cur.ease.p.slice() } : {}); }
   }
   layer.kfs.push(k); sortKfs(layer);
   return k;
@@ -858,6 +932,36 @@ function drawObj(ctx, o, opt) {
 function drawObjRaw(ctx, o, opt, noOp) {
   opt = opt || {};
   ctx.save();
+  const blur = Math.max(0, Math.min(30, Number(o.blur) || 0));
+  // KROGAN V1.1: render gradient paths into a transparent object-sized layer first.
+  // Blurring the finished layer (not the giant gradient fillRect) preserves soft outer edges.
+  if (blur > 0 && o.kind === 'path' && o.fill && o.grad && 'filter' in ctx) {
+    const r = deviceRect(ctx, o);
+    if (r && r.w > 0 && r.h > 0) {
+      const T = ctx.getTransform();
+      const scale = Math.max(Math.hypot(T.a, T.b), Math.hypot(T.c, T.d), 1);
+      const radius = blur * scale;
+      const pad = Math.ceil(radius * 3 + 4);
+      const x = Math.floor(r.x - pad), y = Math.floor(r.y - pad);
+      const w = Math.ceil(r.w + pad * 2), h = Math.ceil(r.h + pad * 2);
+      // Limit temporary allocations if a transformed object becomes enormous.
+      if (w > 0 && h > 0 && w * h <= 24000000) {
+        const layer = document.createElement('canvas');
+        layer.width = w; layer.height = h;
+        const lc = layer.getContext('2d');
+        if (lc) {
+          lc.setTransform(T.a, T.b, T.c, T.d, T.e - x, T.f - y);
+          drawObjRaw(lc, Object.assign({}, o, { blur: 0 }), opt, noOp);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.filter = 'blur(' + radius + 'px)';
+          ctx.drawImage(layer, x, y);
+          ctx.restore();
+          return;
+        }
+      }
+    }
+  }
+  if (blur > 0 && 'filter' in ctx) ctx.filter = 'blur(' + blur + 'px)';
   const m = matOf(o.t);
   ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
   if (!noOp) ctx.globalAlpha *= nz(o.op, 1);
@@ -939,24 +1043,50 @@ function svgMasked(maskObjs, inner) {
 }
 function layersSVG(entries) {
   let body = '';
+  const masks = [];
+  entries.forEach((e, li) => {
+    if (e.layer.visible === false) return;
+    e.objs.forEach((o, oi) => { if (o.invisMask && o.kind === 'path') masks.push({ o, li, oi }); });
+  });
+  function applyMasks(inner, li, oi) {
+    if (!inner) return '';
+    const above = masks.filter(m => m.li === li && m.oi > oi);
+    if (!above.length) return inner;
+    const id = 'invis' + (++_gid);
+    const shapes = above.map(m => objSVG(Object.assign({}, invisMaskShape(m.o), { fill: '#000000' }))).join('');
+    return '<defs><mask id="' + id + '" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" style="mask-type:luminance" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="white"/>' + shapes + '</mask></defs><g mask="url(#' + id + ')">' + inner + '</g>';
+  }
   for (const u of groupEntries(entries)) {
-    if (!u.mask) { for (const o of u.e.objs) body += objSVG(o); continue; }
-    let inner = ''; for (const m of u.members) for (const o of m.objs) inner += objSVG(o);
-    body += svgMasked(u.mask.objs, inner);
+    if (!u.mask) {
+      const li = entries.indexOf(u.e);
+      u.e.objs.forEach((o, oi) => {
+        if (!o.invisMask) body += applyMasks(objSVG(o), li, oi);
+      });
+    } else {
+      let contents = '';
+      for (const m of u.members) contents += m.objs.filter(o => !o.invisMask).map(objSVG).join('');
+      const li = Math.max(...u.members.map(m => entries.indexOf(m)));
+      body += applyMasks(svgMasked(u.mask.objs, contents), li, Number.MAX_SAFE_INTEGER);
+    }
   }
   return body;
 }
 function objSVG(o) {
   const m = matOf(o.t), tr = 'matrix(' + m.map((n) => +n.toFixed(5)).join(' ') + ')', op = nz(o.op, 1);
   const opa = op < 1 ? ' opacity="' + +op.toFixed(3) + '"' : '';
-  if (o.kind === 'group') { const inner = o.children.map(objSVG).join(''); return '<g transform="' + tr + '"' + opa + '>' + (o.mask ? svgMasked(o.mask, inner) : inner) + '</g>'; }
+  const blur = Math.max(0, Math.min(30, Number(o.blur) || 0));
+  const blurId = blur > 0 ? 'blur' + (++_gid) : '';
+  const blurDef = blurId ? '<defs><filter id="' + blurId + '" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="' + blur + '"/></filter></defs>' : '';
+  const blurAttr = blurId ? ' filter="url(#' + blurId + ')"' : '';
+  const wrapBlur = (svg) => blurId ? blurDef + '<g' + blurAttr + '>' + svg + '</g>' : svg;
+  if (o.kind === 'group') { const inner = o.children.map(objSVG).join(''); return wrapBlur('<g transform="' + tr + '"' + opa + '>' + (o.mask ? svgMasked(o.mask, inner) : inner) + '</g>'); }
   if (o.kind === 'clip') {
     const pv = o.pv ? '<g transform="translate(' + -o.pv[0] + ' ' + -o.pv[1] + ')">' : '<g>';
-    return '<g transform="' + tr + '"' + opa + '>' + pv + kidsOf(o).map(objSVG).join('') + '</g></g>';
+    return wrapBlur('<g transform="' + tr + '"' + opa + '>' + pv + kidsOf(o).map(objSVG).join('') + '</g></g>');
   }
   if (o.kind === 'image') {
     const rec = _images[o.img];
-    return rec && rec.b64 ? '<image transform="' + tr + '" width="' + +(o.w || 0).toFixed(2) + '" height="' + +(o.h || 0).toFixed(2) + '" preserveAspectRatio="none"' + opa + ' xlink:href="data:' + rec.mime + ';base64,' + rec.b64 + '"/>' : '';
+    return rec && rec.b64 ? wrapBlur('<image transform="' + tr + '" width="' + +(o.w || 0).toFixed(2) + '" height="' + +(o.h || 0).toFixed(2) + '" preserveAspectRatio="none"' + opa + ' xlink:href="data:' + rec.mime + ';base64,' + rec.b64 + '"/>') : '';
   }
   if (o.kind === 'text') {
     const lay = layoutText(o);
@@ -970,7 +1100,7 @@ function objSVG(o) {
         x += sg.w;
       }
     }
-    return out + '</g>';
+    return wrapBlur(out + '</g>');
   }
   let defs = '', fillAttr;
   if (o.fill && o.grad) {
@@ -983,7 +1113,7 @@ function objSVG(o) {
     fillAttr = 'fill="url(#' + id + ')" fill-rule="' + (o.nz ? 'nonzero' : 'evenodd') + '"';
   } else fillAttr = o.fill ? 'fill="' + esc(o.fill) + '" fill-opacity="' + +nz(o.fa, 1).toFixed(3) + '" fill-rule="' + (o.nz ? 'nonzero' : 'evenodd') + '"' : 'fill="none"';
   const stroke = o.stroke && o.sw > 0 ? ' stroke="' + esc(o.stroke) + '" stroke-opacity="' + +nz(o.sa, 1).toFixed(3) + '" stroke-width="' + +o.sw.toFixed(3) + '" stroke-linecap="' + (o.cap || 'round') + '" stroke-linejoin="' + (o.join || 'round') + '"' : '';
-  return defs + '<path transform="' + tr + '" d="' + pathD(o.contours) + '" ' + fillAttr + stroke + opa + '/>';
+  return wrapBlur(defs + '<path transform="' + tr + '" d="' + pathD(o.contours) + '" ' + fillAttr + stroke + opa + '/>');
 }
 function frameSVG(doc, t) {
   _gid = 0;
@@ -1743,7 +1873,190 @@ function as1Prepare(src, inner) {
   return fns.join('\n') + (fns.length ? '\n' : '') + out;
 }
 
+
+/* KROGAN Simplify: fit a cubic across two existing cubic segments.
+   Removes nodes with the least visual deviation first; retains true cubic handles. */
+function kroganSimplifyContour(contour) {
+  // Iterative cubic refitting: after EVERY deletion, recalculate the neighboring curve.
+  // Unlike the previous batch approach, adjacent deletions are safe and two-node loops work.
+  const nodes = contour.nodes.map(p => ({...p}));
+  const closed = !!contour.closed, minimum = closed ? 2 : 2;
+  const original = nodes.length;
+  if (original <= minimum) return {contour:{...contour,nodes},removed:0};
+  const target = Math.min(Math.floor(original / 2), original - minimum);
+  const xs = nodes.map(p=>p.x), ys = nodes.map(p=>p.y);
+  const diagonal = Math.hypot(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)) || 1;
+  const cubic = (p0,p1,p2,p3,t) => {
+    const u=1-t;return {x:u*u*u*p0.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t*t*t*p3.x,
+      y:u*u*u*p0.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t*t*t*p3.y};
+  };
+  const cp=(a,b)=>[{x:a.x,y:a.y},{x:a.x+(a.ox||0),y:a.y+(a.oy||0)},
+    {x:b.x+(b.ix||0),y:b.y+(b.iy||0)},{x:b.x,y:b.y}];
+  function candidate(i) {
+    const n=nodes.length, a=nodes[(i-1+n)%n],m=nodes[i],b=nodes[(i+1)%n];
+    const first=cp(a,m),second=cp(m,b), samples=[];
+    for(let j=0;j<=24;j++){
+      const t=j/24;
+      const pt=t<=.5?cubic(...first,t*2):cubic(...second,(t-.5)*2);
+      samples.push(pt);
+    }
+    // Chord-length parameterization avoids distorting a long arc into a short one.
+    let total=0;const lengths=[0];
+    for(let j=1;j<samples.length;j++){
+      total+=Math.hypot(samples[j].x-samples[j-1].x,samples[j].y-samples[j-1].y);
+      lengths.push(total);
+    }
+    if(total<1e-8)return null;
+    let aa=0,ab=0,bb=0,rx=0,ry=0,sx=0,sy=0;
+    for(let j=1;j<samples.length-1;j++){
+      const t=lengths[j]/total,u=1-t,A=3*u*u*t,B=3*u*t*t,p=samples[j];
+      const x=p.x-(u*u*u*a.x+t*t*t*b.x),y=p.y-(u*u*u*a.y+t*t*t*b.y);
+      aa+=A*A;ab+=A*B;bb+=B*B;rx+=A*x;ry+=A*y;sx+=B*x;sy+=B*y;
+    }
+    const det=aa*bb-ab*ab;if(Math.abs(det)<1e-12)return null;
+    const p1={x:(rx*bb-sx*ab)/det,y:(ry*bb-sy*ab)/det};
+    const p2={x:(sx*aa-rx*ab)/det,y:(sy*aa-ry*ab)/det};
+    let error=0;
+    for(let j=0;j<samples.length;j++){
+      const q=cubic({x:a.x,y:a.y},p1,p2,{x:b.x,y:b.y},lengths[j]/total);
+      error=Math.max(error,Math.hypot(q.x-samples[j].x,q.y-samples[j].y));
+    }
+    // Avoid collapsing actual corners until the user has simplified repeatedly.
+    const vin={x:-(m.ix||0),y:-(m.iy||0)},vout={x:m.ox||0,y:m.oy||0};
+    const norm=Math.hypot(vin.x,vin.y)*Math.hypot(vout.x,vout.y);
+    const cosine=norm>1e-9?(vin.x*vout.x+vin.y*vout.y)/norm:1;
+    const corner=(1-Math.max(-1,Math.min(1,cosine)))*diagonal*.012;
+    return {i,error,score:error+corner,p1,p2};
+  }
+  let removed=0;
+  while(removed<target && nodes.length>minimum){
+    let best=null;
+    for(let i=closed?0:1;i<(closed?nodes.length:nodes.length-1);i++){
+      const c=candidate(i);if(c && (!best||c.score<best.score))best=c;
+    }
+    if(!best)break;
+    // Limit shape drift; repeated clicks allow progressive simplification.
+    const tolerance=diagonal*.018;
+    if(best.error>tolerance)break;
+    const n=nodes.length, a=nodes[(best.i-1+n)%n],b=nodes[(best.i+1)%n];
+    a.ox=best.p1.x-a.x;a.oy=best.p1.y-a.y;
+    b.ix=best.p2.x-b.x;b.iy=best.p2.y-b.y;
+    nodes.splice(best.i,1);removed++;
+  }
+  return {contour:{...contour,nodes},removed};
+}
+
+/* KROGAN Bézier intersection engine — isolated from existing drawing and tween logic. */
+const KroganBezier = (() => {
+/* KROGAN step 1: independent cubic Bézier intersection solver.
+   Coordinates are in pixels. No application state is modified. */
+'use strict';
+function point(a,b,c,d,t) {const s=1-t;return {x:s*s*s*a.x+3*s*s*t*b.x+3*s*t*t*c.x+t*t*t*d.x,y:s*s*s*a.y+3*s*s*t*b.y+3*s*t*t*c.y+t*t*t*d.y};}
+function derivative(c,t){const s=1-t;return {x:3*(s*s*(c[1].x-c[0].x)+2*s*t*(c[2].x-c[1].x)+t*t*(c[3].x-c[2].x)),y:3*(s*s*(c[1].y-c[0].y)+2*s*t*(c[2].y-c[1].y)+t*t*(c[3].y-c[2].y))};}
+function evalC(c,t){return point(...c,t);}
+function split(c){const mix=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});const a=mix(c[0],c[1]),b=mix(c[1],c[2]),d=mix(c[2],c[3]),e=mix(a,b),f=mix(b,d),g=mix(e,f);return [[c[0],a,e,g],[g,f,d,c[3]]];}
+function bounds(c){return {minx:Math.min(...c.map(p=>p.x)),maxx:Math.max(...c.map(p=>p.x)),miny:Math.min(...c.map(p=>p.y)),maxy:Math.max(...c.map(p=>p.y))};}
+function overlap(a,b,eps){return a.maxx+eps>=b.minx&&b.maxx+eps>=a.minx&&a.maxy+eps>=b.miny&&b.maxy+eps>=a.miny;}
+function refine(a,b,t,u){for(let k=0;k<16;k++){const p=evalC(a,t),q=evalC(b,u),v=derivative(a,t),w=derivative(b,u),dx=q.x-p.x,dy=q.y-p.y,det=v.y*w.x-v.x*w.y;if(Math.abs(det)<1e-13)break;const dt=(-dx*w.y+dy*w.x)/det,du=(v.x*dy-v.y*dx)/det;t=Math.max(0,Math.min(1,t+dt));u=Math.max(0,Math.min(1,u+du));if(Math.max(Math.abs(dt),Math.abs(du))<1e-12)break;}const p=evalC(a,t),q=evalC(b,u);return {t,u,x:(p.x+q.x)/2,y:(p.y+q.y)/2,error:Math.hypot(p.x-q.x,p.y-q.y)};}
+function intersections(a,b,{tolerance=1e-5,maxDepth=40}={}){
+ if(!Array.isArray(a)||!Array.isArray(b)||a.length!==4||b.length!==4||![...a,...b].every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)))throw new TypeError('Expected two cubic curves of four finite {x,y} points');
+ const found=[],stack=[{a,b,ta:0,tb:1,ua:0,ub:1,depth:0}];
+ while(stack.length){const n=stack.pop(),ba=bounds(n.a),bb=bounds(n.b);if(!overlap(ba,bb,tolerance))continue;
+ const sa=Math.max(ba.maxx-ba.minx,ba.maxy-ba.miny),sb=Math.max(bb.maxx-bb.minx,bb.maxy-bb.miny);
+ if((sa<=tolerance&&sb<=tolerance)||n.depth>=maxDepth){const r=refine(a,b,(n.ta+n.tb)/2,(n.ua+n.ub)/2);if(r.error<=tolerance*2&&!found.some(z=>Math.hypot(z.x-r.x,z.y-r.y)<tolerance*3))found.push(r);continue;}
+ if(sa>=sb){const [l,r]=split(n.a),mid=(n.ta+n.tb)/2;stack.push({...n,a:r,ta:mid,depth:n.depth+1},{...n,a:l,tb:mid,depth:n.depth+1});}
+ else{const [l,r]=split(n.b),mid=(n.ua+n.ub)/2;stack.push({...n,b:r,ua:mid,depth:n.depth+1},{...n,b:l,ub:mid,depth:n.depth+1});}
+ }
+ return found.sort((p,q)=>p.t-q.t);
+}
+function fromOnionskynNodes(start,end){return [{x:start.x,y:start.y},{x:start.x+(start.ox||0),y:start.y+(start.oy||0)},{x:end.x+(end.ix||0),y:end.y+(end.iy||0)},{x:end.x,y:end.y}];}
+/* Split one original segment at sorted, unique t-values, without polygonizing.
+   Each new node carries the exact de Casteljau handles. Original nodes are copied. */
+function splitAtParameters(start, end, parameters, epsilon=1e-8) {
+  if (!Array.isArray(parameters) || parameters.some(t => !Number.isFinite(t)))
+    throw new TypeError('Expected finite Bézier parameters');
+  const ts = [...parameters].filter(t => t > epsilon && t < 1-epsilon).sort((a,b)=>a-b);
+  const unique = ts.filter((t,i)=>i===0 || t-ts[i-1]>epsilon);
+  let a={...start}, b={...end}, previous=0;
+  const result=[];
+  for (const t of unique) {
+    const local=(t-previous)/(1-previous);
+    const [left, middle, right]=splitSeg(a,b,local);
+    result.push(left);
+    a=middle; b=right; previous=t;
+  }
+  result.push(a,b);
+  return result;
+}
+/* Insert intersection nodes into a contour, retaining its closed/open state.
+   cuts: [{segment: 0-based index, t: parameter}, ...].
+   Only interior intersections require inserted nodes. */
+function splitContourAtParameters(contour,cuts,epsilon=1e-8) {
+  if (!contour || !Array.isArray(contour.nodes) || !Array.isArray(cuts))
+    throw new TypeError('Expected contour and cuts array');
+  const n=contour.nodes, count=contour.closed?n.length:Math.max(0,n.length-1);
+  const grouped=new Map();
+  for(const cut of cuts){
+    if(!Number.isInteger(cut.segment)||cut.segment<0||cut.segment>=count)
+      throw new RangeError('Invalid contour segment index');
+    if(!grouped.has(cut.segment))grouped.set(cut.segment,[]);
+    grouped.get(cut.segment).push(cut.t);
+  }
+  if(!count)return {...contour,nodes:n.map(v=>({...v}))};
+  const output=[];
+  let lastEnd=null;
+  for(let i=0;i<count;i++){
+    const parts=splitAtParameters(n[i],n[(i+1)%n.length],grouped.get(i)||[],epsilon);
+    if(i===0)output.push(parts[0]);
+    else output[output.length-1]=parts[0];
+    output.push(...parts.slice(1));
+    lastEnd=parts[parts.length-1];
+  }
+  if(contour.closed){
+    const first=output[0], closing=output.pop();
+    first.ix=closing.ix;first.iy=closing.iy;
+  }
+  return {...contour,nodes:output};
+}
+/* STEP 4: classify exact Bézier segments against another closed contour.
+   Only the point-in-shape test is approximated; geometry and handles remain untouched.
+   Boundary/tangency and coincident edges require separate Boolean handling. */
+function pointInContour(pt, contour, steps=48) {
+  if (!contour || !contour.closed || !Array.isArray(contour.nodes) || contour.nodes.length < 2)
+    return false;
+  let inside=false;
+  const nodes=contour.nodes;
+  for(let i=0;i<nodes.length;i++){
+    const curve=fromOnionskynNodes(nodes[i],nodes[(i+1)%nodes.length]);
+    let prev=curve[0];
+    for(let k=1;k<=steps;k++){
+      const next=evalC(curve,k/steps);
+      if ((prev.y>pt.y)!==(next.y>pt.y)) {
+        const x=prev.x+(pt.y-prev.y)*(next.x-prev.x)/(next.y-prev.y);
+        if(x>pt.x) inside=!inside;
+      }
+      prev=next;
+    }
+  }
+  return inside;
+}
+function classifySegments(contour, other) {
+  if (!contour || !Array.isArray(contour.nodes)) throw new TypeError('Expected contour');
+  const nodes=contour.nodes, count=contour.closed?nodes.length:Math.max(0,nodes.length-1);
+  const result=[];
+  for(let i=0;i<count;i++){
+    const start=nodes[i],end=nodes[(i+1)%nodes.length];
+    const midpoint=evalC(fromOnionskynNodes(start,end),0.5);
+    result.push({segment:i,inside:pointInContour(midpoint,other),midpoint});
+  }
+  return result;
+}
+
+return { intersections, fromOnionskynNodes, split, evalC, splitAtParameters, splitContourAtParameters, pointInContour, classifySegments };
+})();
+
 root.FCCore = {
+  KroganBezier, kroganSimplifyContour,
   uid, clamp, lerp, clone, nz, hexToRgb, rgbToHex, lerpHex, rgba,
   newT, matOf, mmul, minv, mapply, decompose, node, tracePath, pathD, bezPt, splitSeg, contoursBounds, localBounds, worldCorners, worldBounds,
   recenter, applyMatrixToNodes, setObjMatrix, ellipseContour, rectContour, mkPath, mkLayer, mkKf, mkDoc, normalizeDoc,

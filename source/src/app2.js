@@ -13,32 +13,56 @@ const TOOLS = [
   { id: 'rect', k: 'R', n: 'Rectangle (Shift = square, Alt = from centre)', svg: '<rect x="3.5" y="5.5" width="13" height="9" rx="1"/>', cur: 'crosshair' },
   { id: 'ellipse', k: 'O', n: 'Ellipse (Shift = circle, Alt = from centre)', svg: '<ellipse cx="10" cy="10" rx="7" ry="5.5"/>', cur: 'crosshair' },
   { sep: 1 },
-  { id: 'text', k: 'T', n: 'Text (click to type; double-click text to edit)', svg: '<path d="M4.5 5V3.5h11V5M10 3.5v13M7.5 16.5h5"/>', cur: 'text' },
+  { id: 'text', k: 'T', n: 'Text (click to type; double-click text to edit)', svg: '<path d="M3.5 16.5L9.2 3.5h1.6l5.7 13M5.6 12h8.8"/>', cur: 'text' },
   { id: 'bucket', k: 'K', n: 'Paint bucket (Alt = stroke)', svg: '<path d="M4 10l5.5-5.5 6 6-5.5 5.5z"/><path d="M16.5 12.5c0 1.5 1.2 1.9 1.2 3.1a1.2 1.2 0 01-2.4 0c0-1.2 1.2-1.6 1.2-3.1z"/>', cur: 'cell' },
   { id: 'dropper', k: 'I', n: 'Eyedropper (Alt = stroke)', svg: '<path d="M12.5 3.5l4 4-2 2-4-4z"/><path d="M10.5 5.5L4.5 11.5 4 15.5l4-.5 6-6"/>', cur: 'copy' },
+  { id: 'gradient', k: 'G', n: 'Gradient (drag across a filled path; double-click line to add stop)', svg: '<rect x="3" y="5" width="14" height="10" rx="1"/><path d="M5 12L15 8M5 15V5"/>', cur: 'crosshair' },
   { id: 'hand', k: 'H', n: 'Hand (or hold Space)', svg: '<path d="M7 9.5V5a1.2 1.2 0 012.4 0v3.5V4a1.2 1.2 0 012.4 0v4.5V5a1.2 1.2 0 012.4 0v6.2c0 3-2 5-5 5-2.6 0-3.8-1.5-4.8-3.4L4 10.6a1.2 1.2 0 012-.8z"/>', cur: 'grab' }
 ];
 function buildTools() {
   const box = $('#tools');
   for (const t of TOOLS) {
-    if (t.sep) { const s = document.createElement('div'); s.className = 'toolsep'; box.appendChild(s); continue; }
+    if (t.sep) continue; // KROGAN: no divider rows in either layout
     const b = document.createElement('button');
     b.className = 'tool'; b.dataset.tool = t.id; b.title = t.n + ' (' + t.k + ')'; b.setAttribute('aria-label', t.n); b.setAttribute('aria-pressed', 'false');
     b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true">' + t.svg + '</svg><kbd>' + t.k + '</kbd>';
     b.addEventListener('click', () => setTool(t.id));
     box.appendChild(b);
   }
-  const s = document.createElement('div'); s.className = 'toolsep'; box.appendChild(s);
   const sw = document.createElement('div');
   sw.className = 'swatches';
   sw.innerHTML = '<input type="color" id="swStroke" title="Stroke colour" aria-label="Stroke colour"><input type="color" id="swFill" title="Fill colour" aria-label="Fill colour">';
+  const layout = document.createElement('button');
+  layout.type = 'button';
+  layout.id = 'kToolLayout';
+  layout.className = 'tool-layout-toggle';
+  layout.title = 'Switch between one-column and two-column toolbars';
+  layout.setAttribute('aria-label', 'Toggle toolbar columns');
+  layout.textContent = '';
+  box.appendChild(layout);
   box.appendChild(sw);
+  let compact = false;
+  try { compact = localStorage.getItem('kroganToolColumns') === '2'; } catch (_) {}
+  const syncLayout = () => {
+    document.body.classList.toggle('k-tools-double', compact);
+    layout.setAttribute('aria-pressed', String(compact));
+    layout.title = compact ? 'Use one toolbar column' : 'Use two toolbar columns';
+  };
+  layout.addEventListener('click', () => {
+    compact = !compact;
+    syncLayout();
+    try { localStorage.setItem('kroganToolColumns', compact ? '2' : '1'); } catch (_) {}
+  });
+  syncLayout();
 }
 function setTool(id) {
   if (S.pen && id !== 'pen') finishPen(false);
   endTextEdit(true);
   S.bone = null;
   S.tool = id; S.draw = null; S.nodeSel = id === 'node' ? S.nodeSel : null;
+  if (id !== 'node') S.kNodeSelection = [];
+  document.getElementById('kNodeBar')?.classList.toggle('on', id === 'node');
+  document.getElementById('kSelectBar')?.classList.toggle('on', id === 'select');
   $$('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
   const t = TOOLS.find((x) => x.id === id);
   stage.style.cursor = t ? t.cur : 'default';
@@ -144,6 +168,7 @@ stage.addEventListener('contextmenu', (e) => e.preventDefault());
 stage.addEventListener('wheel', (e) => {
   e.preventDefault();
   const p = stagePt(e);
+  if (S.tool === 'node' && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && kNodeWheel(e.deltaY)) return;
   if (e.ctrlKey || e.metaKey || e.altKey) zoomAt(p.sx, p.sy, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025)));
   else { S.view.px -= e.deltaX; S.view.py -= e.deltaY; S.autoFit = false; invalidate(); }
 }, { passive: false });
@@ -168,6 +193,7 @@ function movePinch() {
 function onDown(e) {
   if (S.playing) stopPlay();
   const p = stagePt(e);
+  if (e.button === 0 && kroganGhostAt(p.sx, p.sy)) return; // Ghost marker: no drawing or selection behind it.
   if (e.button === 1 || S.space || S.tool === 'hand') {
     S.drag = { type: 'pan', sx: p.sx, sy: p.sy, px: S.view.px, py: S.view.py };
     stage.style.cursor = 'grabbing';
@@ -178,6 +204,7 @@ function onDown(e) {
   switch (S.tool) {
     case 'select': selDown(e, p); break;
     case 'node': nodeDown(e, p); break;
+    case 'gradient': kroganGradDown(e, p); break;
     case 'pen': penDown(e, p); break;
     case 'pencil': if (canDraw()) S.draw = { type: 'pencil', pts: [p.w] }; break;
     case 'brush': if (canDraw()) S.draw = { type: 'brush', pts: [brushPt(p.w, e)] }; break;
@@ -206,7 +233,9 @@ function onMove(e) {
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
     else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
+    else if (d.type === 'curve-bend') kCurveDrag(p.w);
     else if (d.type === 'grad') gradDrag(p.w);
+    else if (d.type === 'kgrad-create') kroganGradMove(p.w);
     else if (d.type === 'rig') rigDrag(p.w);
     return;
   }
@@ -218,6 +247,7 @@ function onMove(e) {
   }
   if (S.bone) invalidate();
   if (S.pen) { penMove(p.w); return; }
+  if (S.tool === 'gradient' && !S.space) { stage.style.cursor = 'crosshair'; }
   if (S.tool === 'select' && !S.space) {
     const one = singleSel();
     let cur = 'default';
@@ -239,7 +269,7 @@ function onUp(e) {
     C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
-    if ((d.type === 'node' || d.type === 'grad' || d.type === 'rig') && d.started) { commit(); }
+    if ((d.type === 'node' || d.type === 'curve-bend' || d.type === 'grad' || d.type === 'rig' || d.type === 'kgrad-create') && d.started) { commit(); }
     // Saglabājam arī pabeigtu pivot pārvietošanu.
     if ((d.type === 'move' || d.type === 'scale' ||
 	d.type === 'rotate' || d.type === 'pivot') && d.started) commit();
@@ -259,6 +289,8 @@ function onUp(e) {
 }
 function onDbl(e) {
   const p = stagePt(e);
+  const rescue = kroganGhostAt(p.sx, p.sy);
+  if (rescue) { e.preventDefault(); enterSym(rescue.sym); return; }
     // Ctrl + dubultklikšķis uz pivot atgriež to figūras centrā.
   if (S.tool === 'select' && e.ctrlKey) {
 
@@ -293,6 +325,7 @@ function onDbl(e) {
   }
   if (S.tool === 'pen' && S.pen) { finishPen(false); return; }
   if (S.tool === 'node') nodeDbl(p);
+  if (S.tool === 'gradient') { kroganGradDouble(p); return; }
   if (S.tool === 'select') {
     const h = hitAt(p.w.x, p.w.y, 5);
     if (h && h.o.kind === 'text') startTextEdit(null, { lid: h.lid, id: h.id });
@@ -879,6 +912,185 @@ function drawPenPreview(ctx) {
   ctx.restore();
 }
 
+/* KROGAN node selection and Inkscape-style path operations. */
+function kNodeFromKey(key) { const [ci,ni] = key.split(':').map(Number); return {ci,ni}; }
+function kNodeKeys() {
+  const one = singleSel();
+  if (!one || one.o.kind !== 'path') return [];
+  const keys = (S.kNodeSelection || []).filter(k => { const {ci,ni}=kNodeFromKey(k); return !!one.o.contours[ci]?.nodes[ni]; });
+  if (!keys.length && S.nodeSel) keys.push(S.nodeSel.ci + ':' + S.nodeSel.ni);
+  return keys;
+}
+function kNodeWheel(dy) {
+  const one = singleSel();
+  if (!one || one.o.kind !== 'path') return false;
+  const keys = kNodeKeys();
+  if (!keys.length) return false;
+  if (dy < 0) {
+    // Move forward from the last ADDED node, not the currently drawn handle.
+    const last = kNodeFromKey(keys[keys.length - 1]);
+    const c = one.o.contours[last.ci];
+    if (!c || !c.nodes.length) return true;
+    for (let step = 1; step <= c.nodes.length; step++) {
+      const ni = (last.ni + step) % c.nodes.length;
+      const key = last.ci + ':' + ni;
+      if (!keys.includes(key)) { keys.push(key); break; }
+    }
+  } else if (keys.length > 1) {
+    keys.pop();
+  }
+  S.kNodeSelection = keys;
+  S.nodeSel = kNodeFromKey(keys[keys.length - 1]);
+  invalidate();
+  return true;
+}
+// The original renderer highlights only S.nodeSel. Overlay the other
+// selected anchors without modifying the original drawing implementation.
+const kOriginalDrawOverlay = drawOverlay;
+drawOverlay = function(ctx) {
+  kOriginalDrawOverlay(ctx);
+  if (S.tool !== 'node') return;
+  const one = singleSel();
+  if (!one || one.o.kind !== 'path') return;
+  const keys = kNodeKeys();
+  kDrawTrueContours(ctx, one.o);
+  if (keys.length < 2) return;
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = CSSV.accent;
+  ctx.fillStyle = CSSV.accent;
+  for (const key of keys) {
+    const {ci, ni} = kNodeFromKey(key);
+    const n = one.o.contours[ci]?.nodes[ni];
+    if (!n) continue;
+    const p = nodeScreen(one.o, n, 'anchor');
+    ctx.fillRect(p[0] - 3.5, p[1] - 3.5, 7, 7);
+    ctx.strokeRect(p[0] - 4.5, p[1] - 4.5, 9, 9);
+  }
+  ctx.restore();
+};
+function kNodeOperation(op) {
+  const one=singleSel(); if (!one || one.o.kind!=='path' || getLayer(one.lid).locked) return;
+  const keys=kNodeKeys(); if (!keys.length) { toast('Select a node first'); return; }
+  pushUndo(); C.ensureEditable(getLayer(one.lid),S.frame);
+  const o=findEditable(one.lid,one.id); if (!o) return;
+  const selected=new Set(keys);
+  if (op==='straight') {
+    let count=0;
+    o.contours.forEach((c,ci)=>{ const len=c.nodes.length;
+      for(let i=0;i<(c.closed?len:len-1);i++){
+        const j=(i+1)%len;
+        if(!selected.has(ci+':'+i)||!selected.has(ci+':'+j))continue;
+        const a=c.nodes[i],b=c.nodes[j];
+        a.ox=a.oy=b.ix=b.iy=0; a.s=b.s=false; count++;
+      }
+    });
+    if(!count) toast('Select two adjacent nodes to straighten their segment');
+  } else {
+    keys.forEach(key=>{
+      const {ci,ni}=kNodeFromKey(key),c=o.contours[ci],n=c?.nodes[ni]; if(!n)return;
+      if(op==='corner'){n.s=false;return;}
+      const [prev,next]=nodeNeighbors(c,ni);
+      let dx=next.x-prev.x,dy=next.y-prev.y;
+      let mag=Math.hypot(dx,dy);
+      if(mag<1e-6){dx=1;dy=0;mag=1;}
+      dx/=mag;dy/=mag;
+      const li=Math.hypot(n.ix,n.iy)||Math.hypot(n.x-prev.x,n.y-prev.y)/3;
+      const lo=Math.hypot(n.ox,n.oy)||Math.hypot(next.x-n.x,next.y-n.y)/3;
+      const L=op==='symmetric'?(li+lo)/2:0;
+      n.ix=-dx*(L||li);n.iy=-dy*(L||li);
+      n.ox=dx*(L||lo);n.oy=dy*(L||lo);n.s=true;
+    });
+  }
+  commit(); invalidate();
+}
+function kNodeInitToolbar(){
+  document.querySelectorAll('#kNodeBar [data-knode]').forEach(b=>b.addEventListener('click',()=>kNodeOperation(b.dataset.knode)));
+  document.getElementById('kNodeBar')?.classList.toggle('on',S.tool==='node');
+  document.getElementById('kSelectBar')?.classList.toggle('on',S.tool==='select');
+  document.querySelectorAll('#kSelectBar [data-ktransform]').forEach(b => b.addEventListener('click', () => kroganSelectionTransform(b.dataset.ktransform)));
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',kNodeInitToolbar);else kNodeInitToolbar();
+
+
+/* KROGAN V4: segment hit testing, direct Bézier bending and blur-proof guide. */
+function kCurveHit(o, sx, sy) {
+  let best=null, min=9; // Screen pixels: same tolerance at every zoom.
+  o.contours.forEach((c,ci)=>{
+    const len=c.nodes.length, count=c.closed?len:len-1;
+    for(let ni=0;ni<count;ni++) {
+      const a=c.nodes[ni], b=c.nodes[(ni+1)%len];
+      // Sample the actual cubic, not the blurred/stroked raster.
+      for(let j=0;j<=80;j++) {
+        const t=j/80, xy=C.bezPt(a,b,t);
+        const world=mapply(matOf(o.t),xy[0],xy[1]);
+        const screen=w2s(world[0],world[1]);
+        const dist=Math.hypot(screen[0]-sx,screen[1]-sy);
+        if(dist<min){min=dist;best={ci,ni,t};}
+      }
+    }
+  });
+  return best;
+}
+/* Inkscape-inspired direct curve dragging. Source: Inkscape curve-drag-point.cpp (GPL-2.0-or-later). */
+function kCurveDrag(w) {
+  const d=S.drag;
+  if(!d.started) {
+    if(Math.hypot(w.x-d.start.x,w.y-d.start.y)*S.view.z<2)return;
+    pushUndo(); C.ensureEditable(getLayer(d.lid),S.frame);
+    const o=findEditable(d.lid,d.id);
+    if(!o){S.drag=null;return;}
+    d.o=o;d.inv=minv(matOf(o.t));
+    const c=o.contours[d.ci],a=c?.nodes[d.ni],b=c?.nodes[(d.ni+1)%c.nodes.length];
+    if(!a||!b){S.drag=null;return;}
+    d.a=a;d.b=b;
+    d.original={ax:a.ox,ay:a.oy,bx:b.ix,by:b.iy};
+    d.p0=mapply(d.inv,d.start.x,d.start.y);
+    // Straight segment: open its cubic handles at 1/3 of the chord, like Inkscape.
+    if(Math.hypot(a.ox,a.oy)<1e-8 && Math.hypot(b.ix,b.iy)<1e-8) {
+      a.ox=(b.x-a.x)/3;a.oy=(b.y-a.y)/3;
+      b.ix=(a.x-b.x)/3;b.iy=(a.y-b.y)/3;
+      d.original={ax:a.ox,ay:a.oy,bx:b.ix,by:b.iy};
+    }
+    d.basePoint=C.bezPt(a,b,d.t);
+    d.started=true;
+  }
+  const xy=mapply(d.inv,w.x,w.y);
+  const dx=xy[0]-d.p0[0],dy=xy[1]-d.p0[1];
+  // Inkscape's cubic weight gives more control to the nearby handle.
+  // The hit tester samples t at 1/80 increments, so endpoint t=0/1 is excluded.
+  const t=Math.max(1/80,Math.min(79/80,d.t)),u=1-t;
+  let weight;
+  if(t<=1/6)weight=0;
+  else if(t<=.5)weight=Math.pow((6*t-1)/2,3)/2;
+  else if(t<=5/6)weight=(1-Math.pow((6*u-1)/2,3))/2+.5;
+  else weight=1;
+  const k0=(1-weight)/(3*t*u*u),k1=weight/(3*t*t*u);
+  d.a.ox=d.original.ax+k0*dx;d.a.oy=d.original.ay+k0*dy;
+  d.b.ix=d.original.bx+k1*dx;d.b.iy=d.original.by+k1*dy;
+  // Avoid automatically re-aligning the opposite handles during this segment edit.
+  d.a.s=false;d.b.s=false;
+  invalidate();
+}
+
+function kDrawTrueContours(ctx,o) {
+  ctx.save();ctx.lineWidth=1.15;ctx.strokeStyle=CSSV.accent;
+  ctx.setLineDash([4,4]);
+  o.contours.forEach(c=>{
+    const len=c.nodes.length,count=c.closed?len:len-1;
+    if(!count)return;
+    ctx.beginPath();
+    const start=nodeScreen(o,c.nodes[0],'anchor');ctx.moveTo(start[0],start[1]);
+    for(let i=0;i<count;i++){
+      const a=c.nodes[i],b=c.nodes[(i+1)%len];
+      const out=nodeScreen(o,a,'out'),inn=nodeScreen(o,b,'in'),end=nodeScreen(o,b,'anchor');
+      ctx.bezierCurveTo(out[0],out[1],inn[0],inn[1],end[0],end[1]);
+    }
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 /* ---------- node edit tool ---------- */
 function nodeDown(e, p) {
   const one = singleSel();
@@ -886,16 +1098,42 @@ function nodeDown(e, p) {
   if (one && one.o.kind === 'path' && !getLayer(one.lid).locked) {
     const hit = hitNodePart(one.o, p.sx, p.sy);
     if (hit) {
+      if (e.shiftKey && hit.part === 'anchor') {
+        const key = hit.ci + ':' + hit.ni;
+        if (!S.kNodeSelection?.length && S.nodeSel)
+          S.kNodeSelection = [S.nodeSel.ci + ':' + S.nodeSel.ni];
+        S.kNodeSelection ||= [];
+        const at = S.kNodeSelection.indexOf(key);
+        if (at < 0) S.kNodeSelection.push(key); else S.kNodeSelection.splice(at, 1);
+        S.nodeSel = S.kNodeSelection.length ? kNodeFromKey(S.kNodeSelection.at(-1)) : null;
+        refreshProps(); invalidate(); return;
+      }
+      // Keep multi-selection when grabbing an already selected anchor.
+      // Clicking an unselected anchor without Shift starts a new selection.
+      const key = hit.ci + ':' + hit.ni;
+      const existing = kNodeKeys();
+      const moveGroup = hit.part === 'anchor' && existing.length > 1 && existing.includes(key);
+      if (!moveGroup) S.kNodeSelection = [key];
       S.nodeSel = { ci: hit.ci, ni: hit.ni };
-      S.drag = { type: 'node', part: hit.part, ci: hit.ci, ni: hit.ni, lid: one.lid, id: one.id, start: p.w, started: false };
+      S.drag = { type: 'node', part: hit.part, ci: hit.ci, ni: hit.ni, lid: one.lid, id: one.id, start: p.w, started: false,
+        groupKeys: moveGroup ? [...existing] : null };
       refreshProps(); return;
+    }
+  }
+  // KROGAN: grab the actual mathematical segment, even if blur hides it.
+  if (one && one.o.kind === 'path' && !getLayer(one.lid).locked && !e.shiftKey) {
+    const curve = kCurveHit(one.o, p.sx, p.sy);
+    if (curve) {
+      S.drag = {type:'curve-bend', lid:one.lid, id:one.id,
+        ci:curve.ci, ni:curve.ni, t:curve.t, start:p.w, started:false};
+      return;
     }
   }
   const h = hitAt(p.w.x, p.w.y, 6);
   if (h && h.o.kind === 'path') { S.sel = [{ lid: h.lid, id: h.id }]; selectLayer(h.lid, true); }
   else if (h) toast('Ungroup (Ctrl+Shift+G) to edit nodes inside a group.');
   else S.sel = [];
-  S.nodeSel = null; refreshProps();
+  S.nodeSel = null; S.kNodeSelection = []; refreshProps();
 }
 function hitNodePart(o, sx, sy) {
   const near = (a) => Math.hypot(a[0] - sx, a[1] - sy) <= 9;
@@ -919,12 +1157,25 @@ function nodeDrag(w, e) {
     d.o = o; d.inv = minv(matOf(o.t));
     const n = o.contours[d.ci].nodes[d.ni];
     d.n = n; d.n0 = Object.assign({}, n);
+    // Snapshot each selected anchor at drag start, so the group moves as one.
+    if (d.part === 'anchor' && d.groupKeys?.length > 1) {
+      d.groupNodes = d.groupKeys.map(key => {
+        const {ci, ni} = kNodeFromKey(key);
+        const anchor = o.contours[ci]?.nodes[ni];
+        return anchor ? {anchor, x:anchor.x, y:anchor.y} : null;
+      }).filter(Boolean);
+    }
     if (!n.ix && !n.iy && !n.ox && !n.oy && d.part !== 'anchor') n.s = true;
     d.p0 = mapply(d.inv, d.start.x, d.start.y);
     d.started = true;
   }
   const pl = mapply(d.inv, w.x, w.y), n = d.n;
-  if (d.part === 'anchor') { n.x = d.n0.x + pl[0] - d.p0[0]; n.y = d.n0.y + pl[1] - d.p0[1]; }
+  if (d.part === 'anchor') {
+    const dx = pl[0] - d.p0[0], dy = pl[1] - d.p0[1];
+    if (d.groupNodes?.length) {
+      for (const item of d.groupNodes) { item.anchor.x = item.x + dx; item.anchor.y = item.y + dy; }
+    } else { n.x = d.n0.x + dx; n.y = d.n0.y + dy; }
+  }
   else {
     const hx = pl[0] - n.x, hy = pl[1] - n.y;
     const mine = d.part === 'out' ? 'o' : 'i', other = d.part === 'out' ? 'i' : 'o';
@@ -1112,6 +1363,73 @@ function gradDrag(w) {
   invalidate(); if (window.gsSync) window.gsSync();
 }
 
+
+/* KROGAN Gradient V1: single straight fill axis, no stroke changes. */
+let kGradSelected = null;
+function kroganGradDown(e,p) {
+  const current = singleSel();
+  if (current && !getLayer(current.lid).locked && gradEditing(current.o)) {
+    const handle = gradHit(current.o,p.sx,p.sy);
+    if (handle) {
+      kGradSelected = {lid:current.lid,id:current.id,part:handle.id,i:handle.i};
+      gradDown(e,p,current);
+      return;
+    }
+  }
+  const hit = hitAt(p.w.x,p.w.y,5);
+  if (!hit || hit.o.kind !== 'path' || getLayer(hit.lid).locked) return;
+  S.sel=[{lid:hit.lid,id:hit.id}]; selectLayer(hit.lid,true);
+  const obj = hit.o;
+  if (!obj.fill && !obj.grad) { toast('Gradient needs a filled path.'); refreshProps(); return; }
+  pushUndo(); C.ensureEditable(getLayer(hit.lid),S.frame);
+  const o=findEditable(hit.lid,hit.id);
+  if (!o) return;
+  const base=o.grad?.stops?.[0]?.c || o.fill || S.style.fill || '#FFFFFF';
+  const inv=minv(matOf(o.t));
+  const a=mapply(inv,p.w.x,p.w.y);
+  const b=[a[0]+0.01,a[1]];
+  o.grad={type:'linear',stops:[{o:0,c:base,a:1},{o:1,c:base,a:0}],m:[(b[0]-a[0])/(2*GR),0,0,(b[0]-a[0])/(2*GR),(a[0]+b[0])/2,a[1]]};
+  o.fill=base;
+  S.drag={type:'kgrad-create',lid:hit.lid,id:hit.id,start:a,inv,started:true};
+  kGradSelected={lid:hit.lid,id:hit.id,part:'b'};
+  refreshProps(); invalidate();
+}
+function kroganGradMove(w) {
+  const d=S.drag;if(!d||d.type!=='kgrad-create')return;
+  const o=findEditable(d.lid,d.id);if(!o||!o.grad)return;
+  const b=mapply(d.inv,w.x,w.y),a=d.start;
+  let dx=b[0]-a[0],dy=b[1]-a[1];
+  if(Math.hypot(dx,dy)<0.1){dx=0.1;dy=0;}
+  o.grad.m=[dx/(2*GR),dy/(2*GR),-dy/(2*GR),dx/(2*GR),(a[0]+b[0])/2,(a[1]+b[1])/2];
+  invalidate();
+}
+function kroganGradDouble(p) {
+  const one=singleSel();if(!one||!gradEditing(one.o)||getLayer(one.lid).locked)return;
+  const g=one.o.grad;if(g.type!=='linear')return;
+  const pts=gradPts(one.o),A=pts.find(q=>q.id==='a'),B=pts.find(q=>q.id==='b');
+  const a=w2s(A.x,A.y),b=w2s(B.x,B.y),dx=b[0]-a[0],dy=b[1]-a[1],len=dx*dx+dy*dy;
+  if(len<1)return;
+  const t=((p.sx-a[0])*dx+(p.sy-a[1])*dy)/len;
+  if(t<=0.005||t>=0.995||Math.hypot(a[0]+dx*t-p.sx,a[1]+dy*t-p.sy)>8)return;
+  pushUndo();C.ensureEditable(getLayer(one.lid),S.frame);
+  const o=findEditable(one.lid,one.id);if(!o?.grad)return;
+  const col=gradColorAt(o.grad.stops,t);
+  o.grad.stops.push({o:t,c:col.c,a:col.a});o.grad.stops.sort((x,y)=>x.o-y.o);
+  kGradSelected={lid:one.lid,id:one.id,part:'s',i:o.grad.stops.findIndex(x=>x.o===t)};
+  commit();refreshProps();
+}
+function kroganGradDelete() {
+  const q=kGradSelected,one=singleSel();
+  if(!q||!one||one.id!==q.id||one.lid!==q.lid||!one.o.grad)return false;
+  pushUndo();C.ensureEditable(getLayer(q.lid),S.frame);
+  const o=findEditable(q.lid,q.id);if(!o?.grad)return false;
+  const stops=o.grad.stops;
+  if(q.part==='s'&&stops.length>2&&stops[q.i])stops.splice(q.i,1);
+  else if(q.part==='a')stops[0].a=0;
+  else if(q.part==='b')stops[stops.length-1].a=0;
+  else return false;
+  kGradSelected=null;commit();refreshProps();return true;
+}
 /* ---------- bucket & eyedropper ---------- */
 /* ---------- region fill (Flash-style paint bucket on enclosed space) ---------- */
 const GAPS = { none: 0, small: 2, medium: 5, large: 10 };
@@ -1537,4 +1855,32 @@ function rigEdit(fn) {
   beginEditOnce(); C.ensureEditable(getLayer(one.lid), S.frame);
   const o = findEditable(one.lid, one.id); if (!o || !o.rig) return;
   fn(o.rig); C.rigBuild(o); syncBinds(one.lid); commit();
+}
+
+/* KROGAN V1.7 — context-sensitive selection transforms. Preserve the world
+   position of each object's own pivot when mirroring or rotating. */
+function kroganSelectionTransform(action) {
+  if (S.tool !== 'select' || !S.sel.length) return;
+  const targets = S.sel.filter(q => findEval(q.lid, q.id));
+  if (!targets.length) return;
+  pushUndo();
+  for (const lid of new Set(targets.map(q => q.lid))) C.ensureEditable(getLayer(lid), S.frame);
+  for (const q of targets) {
+    const o = findEditable(q.lid, q.id);
+    if (!o || !o.t) continue;
+    const b = localBounds(o);
+    const pivot = Array.isArray(o.pivot) && o.pivot.length === 2 ? o.pivot :
+      b ? [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2] : [0, 0];
+    const oldPos = mapply(matOf(o.t), pivot[0], pivot[1]);
+    if (action === 'flipH') o.t.sx *= -1;
+    else if (action === 'flipV') o.t.sy *= -1;
+    else if (action === 'rotateL') o.t.r -= 90;
+    else if (action === 'rotateR') o.t.r += 90;
+    else continue;
+    const newPos = mapply(matOf(o.t), pivot[0], pivot[1]);
+    o.t.x += oldPos[0] - newPos[0];
+    o.t.y += oldPos[1] - newPos[1];
+    if (o.bind) C.freeBind.add(o.id);
+  }
+  commit();
 }
