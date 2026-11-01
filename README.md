@@ -18,4 +18,7 @@ Modified version of the original Onionskyn animation editor.
 - Windows desktop release: https://github.com/Gap4456/Onionskyn/releases
 
 Made using Chat GPT
+
+
+
 Original project by Dylan Papp.
