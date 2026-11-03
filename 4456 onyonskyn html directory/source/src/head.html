@@ -117,7 +117,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .timecode { font: 12px var(--f-mono); padding: 0 8px; white-space: nowrap; color: var(--fg); }
 .timecode b { font-weight: 500; }
 .tl-scroll { flex: 1; overflow: auto; position: relative; min-height: 0; background: var(--cell); }
-.tl-inner { display: grid; grid-template-columns: 196px max-content; grid-template-rows: 24px max-content; width: max-content; min-width: 100%; }
+.tl-inner { display: grid; grid-template-columns: 240px max-content; grid-template-rows: 24px max-content; width: max-content; min-width: 100%; }
 .tl-corner { position: sticky; left: 0; top: 0; z-index: 5; background: var(--panel); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 2px; padding: 0 4px; }
 .tl-corner .tbtn { height: 22px; min-width: 22px; padding: 0 4px; }
 .tl-corner svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -267,10 +267,13 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
   .narrow-only { display: inline-flex; }
   .wide-only { display: none !important; }
   .brand span { display: none; }
-  .tl-inner { grid-template-columns: 150px max-content; }
+  .tl-inner { grid-template-columns: 240px max-content; }
 }
 @media (prefers-reduced-motion: reduce) { #props { transition: none; } }
 
+/* KROGAN: global layer controls align with the eye and lock in each row. */
+.tl-corner .k-all-layer { width:22px; min-width:22px; height:22px; padding:4px; flex:none; }
+.tl-corner .k-all-layer svg { width:14px; height:14px; }
 /* KROGAN Color Lab — themed XP-style, one-click colour palette. */
 #kColorLab{position:fixed;z-index:90;width:min(286px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;display:none;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);padding:11px;font-size:12px}
 #kColorLab.on{display:block}#kColorLab .khead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}#kColorLab .khead button{border:0;background:transparent;font-size:19px;cursor:pointer}
@@ -634,6 +637,9 @@ body.k-tools-double #tools .tool-layout-toggle { grid-column: 1 / -1; width: 74p
           <button class="tbtn" id="lUp" title="Move layer up" aria-label="Move layer up"><svg viewBox="0 0 16 16"><path d="M4 10l4-4 4 4"/></svg></button>
           <button class="tbtn" id="lDown" title="Move layer down" aria-label="Move layer down"><svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
           <button class="tbtn" id="lDel" title="Delete layer" aria-label="Delete layer"><svg viewBox="0 0 16 16"><path d="M3.5 5h9M6 5V3.5h4V5M5 5l.6 8h4.8l.6-8"/></svg></button>
+          <span class="grow"></span>
+          <button class="tbtn k-all-layer" id="lVisAll" type="button" title="Hide all layers" aria-label="Show or hide all layers"></button>
+          <button class="tbtn k-all-layer" id="lLockAll" type="button" title="Lock all layers" aria-label="Lock or unlock all layers"></button>
         </div>
         <canvas id="tlRuler"></canvas>
         <div class="tl-layers" id="tlLayers"></div>

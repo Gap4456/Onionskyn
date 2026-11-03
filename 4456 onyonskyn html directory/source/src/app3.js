@@ -33,6 +33,31 @@ const EYE = '<svg viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 
 const EYE_OFF = '<svg viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" opacity=".35"/><path d="M3 13L13 3"/></svg>';
 const LOCK = '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>';
 const UNLOCK = '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2" opacity=".35"/><path d="M5.5 7V5a2.5 2.5 0 014.7-1.2" opacity=".6"/></svg>';
+// Global controls apply one uniform state to every layer in the current timeline.
+function refreshAllLayerButtons() {
+  const ls = layers();
+  const allVisible = ls.every(l => l.visible !== false);
+  const allLocked = ls.length > 0 && ls.every(l => !!l.locked);
+  const vis = $('#lVisAll'), lock = $('#lLockAll');
+  if (vis) { vis.innerHTML = allVisible ? EYE : EYE_OFF; vis.title = allVisible ? 'Hide all layers' : 'Show all layers'; vis.setAttribute('aria-pressed', String(!allVisible)); }
+  if (lock) { lock.innerHTML = allLocked ? LOCK : UNLOCK; lock.title = allLocked ? 'Unlock all layers' : 'Lock all layers'; lock.setAttribute('aria-pressed', String(allLocked)); }
+}
+function setAllLayerVisibility() {
+  const ls = layers(); if (!ls.length) return;
+  const show = !ls.every(l => l.visible !== false);
+  pushUndo(); ls.forEach(l => { l.visible = show; });
+  if (!show) pruneSel();
+  buildLayerList(); commit();
+}
+function setAllLayerLocks() {
+  const ls = layers(); if (!ls.length) return;
+  const lock = !ls.every(l => !!l.locked);
+  pushUndo(); ls.forEach(l => { l.locked = lock; });
+  if (lock) pruneSel();
+  buildLayerList(); commit();
+}
+$('#lVisAll').addEventListener('click', setAllLayerVisibility);
+$('#lLockAll').addEventListener('click', setAllLayerLocks);
 function buildLayerList() {
   const box = $('#tlLayers');
   box.textContent = '';
@@ -55,6 +80,7 @@ function buildLayerList() {
     nm.addEventListener('dblclick', () => renameLayer(l, nm));
     box.appendChild(row);
   }
+  refreshAllLayerButtons();
 }
 function renameLayer(l, el) {
   const inp = document.createElement('input');
@@ -760,13 +786,20 @@ function bindProps() {
     const ty = e.target.value;
     styleEdit({ fillType: ty }, (p) => {
       if (p.kind !== 'path') return;
-      if (ty === 'solid') { delete p.grad; return; }
+      if (ty === 'solid') { if (p.grad) p.kSavedGradient = JSON.parse(JSON.stringify(p.grad)); delete p.grad; return; }
       if (!p.fill) { p.fill = S.style.fill; p.fa = 1; }
-      const c2 = $('#fill2').value || '#FFFFFF', old = p.grad;
-      const g = makeGrad(ty, p.contours, p.fill, c2);
-      if (!g) return;
-      if (old && old.stops && old.stops.length > 2) { g.stops = old.stops.map((x) => Object.assign({}, x)); }
-      p.grad = g;
+      const c2 = $('#fill2').value || '#FFFFFF', old = p.grad || p.kSavedGradient;
+      // Restore the prior gradient when switching Solid -> Linear/Radial.
+      // Keep the stops and placement, changing only the requested type.
+      if (old && old.m && old.stops) {
+        p.grad = JSON.parse(JSON.stringify(old));
+        p.grad.type = ty;
+      } else {
+        const g = makeGrad(ty, p.contours, p.fill, c2);
+        if (!g) return;
+        p.grad = g;
+      }
+      p.kSavedGradient = JSON.parse(JSON.stringify(p.grad));
     });
     refreshProps();
   });
@@ -1350,7 +1383,13 @@ function updateCrumb() {
 }
 function enterSym(sym) {
   if (S.playing) stopPlay();
+  // Remember the parent timeline viewport before switching to the symbol.
+  const parentTimelineLeft = tlScroll.scrollLeft;
+  const parentTimelineTop = tlScroll.scrollTop;
   if (!enterSymRaw(sym)) { toast('That symbol is not in the library.'); return; }
+  const parentEntry = S.edit[S.edit.length - 1];
+  parentEntry.timelineLeft = parentTimelineLeft;
+  parentEntry.timelineTop = parentTimelineTop;
   S.frame = 0; S.layerId = layers()[layers().length - 1].id; S.sel = []; S.nodeSel = null; S.pen = null; S.draw = null;
   buildLayerList(); fitView(); refreshAll(); updateCrumb();
   if (S.doc.frames === 1 && !enterSym.hinted) { enterSym.hinted = true; toast('This symbol has 1 frame. Press F5 (or + Frame) to add frames, then F6 for keyframes, to animate it.'); }
@@ -1361,6 +1400,19 @@ function exitSym() {
   const e = exitSymRaw();
   S.frame = clamp(e.frame, 0, S.doc.frames - 1); S.layerId = getLayer(e.layerId) ? e.layerId : layers()[layers().length - 1].id; S.sel = []; S.nodeSel = null;
   buildLayerList(); fitView(); refreshAll(); updateCrumb();
+  // Restore the parent level and place its saved playhead near the viewport center.
+  // The saved horizontal scroll is a fallback when the timeline is too short to center.
+  requestAnimationFrame(() => {
+    const rulerWidth = $('#tlLayers').offsetWidth;
+    const available = Math.max(0, tlScroll.clientWidth - rulerWidth);
+    const playheadX = rulerWidth + (S.frame + 0.5) * CW;
+    const centeredLeft = playheadX - rulerWidth - available / 2;
+    const maxLeft = Math.max(0, tlScroll.scrollWidth - tlScroll.clientWidth);
+    tlScroll.scrollLeft = Math.max(0, Math.min(maxLeft, centeredLeft));
+    // Keep the saved viewport for short timelines where centering is impossible.
+    if (maxLeft === 0) tlScroll.scrollLeft = e.timelineLeft || 0;
+    tlScroll.scrollTop = e.timelineTop || 0;
+  });
 }
 function exitAllSyms() { while (S.edit.length) exitSym(); }
 function newDoc() {

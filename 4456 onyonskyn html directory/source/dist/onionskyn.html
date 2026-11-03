@@ -119,7 +119,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .timecode { font: 12px var(--f-mono); padding: 0 8px; white-space: nowrap; color: var(--fg); }
 .timecode b { font-weight: 500; }
 .tl-scroll { flex: 1; overflow: auto; position: relative; min-height: 0; background: var(--cell); }
-.tl-inner { display: grid; grid-template-columns: 196px max-content; grid-template-rows: 24px max-content; width: max-content; min-width: 100%; }
+.tl-inner { display: grid; grid-template-columns: 240px max-content; grid-template-rows: 24px max-content; width: max-content; min-width: 100%; }
 .tl-corner { position: sticky; left: 0; top: 0; z-index: 5; background: var(--panel); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 2px; padding: 0 4px; }
 .tl-corner .tbtn { height: 22px; min-width: 22px; padding: 0 4px; }
 .tl-corner svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -269,10 +269,13 @@ small.mut { color: var(--mut); font-size: 11px; margin: 0 2px 0 6px; }
   .narrow-only { display: inline-flex; }
   .wide-only { display: none !important; }
   .brand span { display: none; }
-  .tl-inner { grid-template-columns: 150px max-content; }
+  .tl-inner { grid-template-columns: 240px max-content; }
 }
 @media (prefers-reduced-motion: reduce) { #props { transition: none; } }
 
+/* KROGAN: global layer controls align with the eye and lock in each row. */
+.tl-corner .k-all-layer { width:22px; min-width:22px; height:22px; padding:4px; flex:none; }
+.tl-corner .k-all-layer svg { width:14px; height:14px; }
 /* KROGAN Color Lab — themed XP-style, one-click colour palette. */
 #kColorLab{position:fixed;z-index:90;width:min(286px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;display:none;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);padding:11px;font-size:12px}
 #kColorLab.on{display:block}#kColorLab .khead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}#kColorLab .khead button{border:0;background:transparent;font-size:19px;cursor:pointer}
@@ -676,6 +679,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           <button class="tbtn" id="lUp" title="Move layer up" aria-label="Move layer up"><svg viewBox="0 0 16 16"><path d="M4 10l4-4 4 4"/></svg></button>
           <button class="tbtn" id="lDown" title="Move layer down" aria-label="Move layer down"><svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
           <button class="tbtn" id="lDel" title="Delete layer" aria-label="Delete layer"><svg viewBox="0 0 16 16"><path d="M3.5 5h9M6 5V3.5h4V5M5 5l.6 8h4.8l.6-8"/></svg></button>
+          <span class="grow"></span>
+          <button class="tbtn k-all-layer" id="lVisAll" type="button" title="Hide all layers" aria-label="Show or hide all layers"></button>
+          <button class="tbtn k-all-layer" id="lLockAll" type="button" title="Lock all layers" aria-label="Lock or unlock all layers"></button>
         </div>
         <canvas id="tlRuler"></canvas>
         <div class="tl-layers" id="tlLayers"></div>
@@ -3724,7 +3730,7 @@ function drawOverlay(ctx) {
   }
   const one = sels.length === 1 ? sels[0] : null;
   if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
-  if (one && (S.tool === 'select' || S.tool === 'gradient') && gradEditing(one.o)) drawGradHandles(ctx, one.o);
+  if (one && S.tool === 'gradient' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
     const rot = hs.find((h) => h.id === 'rot'), nh = hs.find((h) => h.id === 'n');
@@ -3777,7 +3783,7 @@ function drawOverlay(ctx) {
             if (!(w === 'in' ? n.ix || n.iy : n.ox || n.oy)) continue;
             const a = nodeScreen(one.o, n, 'anchor'), b = nodeScreen(one.o, n, w);
             ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
-            ctx.beginPath(); ctx.arc(b[0], b[1], 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(b[0], b[1], 5.33, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           }
         }
         const p = nodeScreen(one.o, n, 'anchor');
@@ -3787,7 +3793,7 @@ function drawOverlay(ctx) {
     });
   }
   const d = S.drag;
-  if (d && d.type === 'marquee') {
+  if (d && (d.type === 'marquee' || d.type === 'node-marquee')) {
     const a = w2s(d.start.x, d.start.y), b = w2s(d.cur.x, d.cur.y);
     ctx.save(); ctx.fillStyle = acc; ctx.globalAlpha = 0.12;
     ctx.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); ctx.restore();
@@ -4032,7 +4038,7 @@ function onMove(e) {
 	else
     if (d.type === 'move') moveDrag(p.w, e);
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
-    else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
+    else if (d.type === 'marquee' || d.type === 'node-marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
     else if (d.type === 'curve-bend') kCurveDrag(p.w);
     else if (d.type === 'grad') gradDrag(p.w);
@@ -4053,9 +4059,7 @@ function onMove(e) {
     const one = singleSel();
     let cur = 'default';
     if (one && !getLayer(one.lid).locked && rigEditing(one.o) && rigHit(one.o, p.sx, p.sy)) cur = 'pointer';
-    else if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
-      cur = gradHit(one.o, p.sx, p.sy) ? 'pointer' : hitAt(p.w.x, p.w.y, 5) ? 'move' : 'default';
-    } else if (one && !getLayer(one.lid).locked) {
+    else if (one && !getLayer(one.lid).locked) {
       const h = hitHandle(getHandles(one.o), p.sx, p.sy);
       if (h) cur = h.id === 'rot' ? 'grab' : (h.id === 'n' || h.id === 's') ? 'ns-resize' : (h.id === 'e' || h.id === 'w') ? 'ew-resize' : (h.id === 'nw' || h.id === 'se') ? 'nwse-resize' : 'nesw-resize';
       else if (hitAt(p.w.x, p.w.y, 5)) cur = 'move';
@@ -4070,6 +4074,7 @@ function onUp(e) {
     C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
+    if (d.type === 'node-marquee') kNodeMarqueeUp(d);
     if ((d.type === 'node' || d.type === 'curve-bend' || d.type === 'grad' || d.type === 'rig' || d.type === 'kgrad-create') && d.started) { commit(); }
     // Saglabājam arī pabeigtu pivot pārvietošanu.
     if ((d.type === 'move' || d.type === 'scale' ||
@@ -4205,7 +4210,7 @@ function selDown(e, p) {
   const w = p.w, one = singleSel();
 	// Ja nospiests uz pivot, sākam pārvietot tikai krustiņu.
 	if (one && !getLayer(one.lid).locked &&
-    !gradEditing(one.o) && !rigEditing(one.o) &&
+    !rigEditing(one.o) &&
     pivotHit(one.o, p.sx, p.sy)) {
 
 	// Atceramies atlasīto figūru un sākuma punktu.
@@ -4220,8 +4225,7 @@ function selDown(e, p) {
   return; // Beidzam selDown(), lai nesāktos figūras pārvietošana.
 }
   if (one && !getLayer(one.lid).locked && rigEditing(one.o)) { const part = rigHit(one.o, p.sx, p.sy); if (part) { S.drag = { type: 'rig', part, lid: one.lid, id: one.id, start: p.w, started: false }; return; } }
-  if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
-  if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
+  if (one && !getLayer(one.lid).locked) {
     const h = hitHandle(getHandles(one.o), p.sx, p.sy);
     if (h) { S.drag = { type: h.id === 'rot' ? 'rotate' : 'scale', h, start: w, started: false, lid: one.lid, id: one.id }; return; }
   }
@@ -4930,6 +4934,11 @@ function nodeDown(e, p) {
       return;
     }
   }
+  // Dragging empty space in Node mode selects enclosed anchors only.
+  if (one && one.o.kind === 'path' && !getLayer(one.lid).locked && !hitAt(p.w.x, p.w.y, 6)) {
+    S.drag = {type:'node-marquee', start:p.w, cur:p.w, lid:one.lid, id:one.id, base:e.shiftKey ? kNodeKeys().slice() : []};
+    return;
+  }
   const h = hitAt(p.w.x, p.w.y, 6);
   if (h && h.o.kind === 'path') { S.sel = [{ lid: h.lid, id: h.id }]; selectLayer(h.lid, true); }
   else if (h) toast('Ungroup (Ctrl+Shift+G) to edit nodes inside a group.');
@@ -4937,17 +4946,44 @@ function nodeDown(e, p) {
   S.nodeSel = null; S.kNodeSelection = []; refreshProps();
 }
 function hitNodePart(o, sx, sy) {
-  const near = (a) => Math.hypot(a[0] - sx, a[1] - sy) <= 9;
+  const near = (a, r) => Math.hypot(a[0] - sx, a[1] - sy) <= r;
+  // Anchor ALWAYS wins, even if a large handle sits directly on it.
+  for (let ci = 0; ci < o.contours.length; ci++)
+    for (let ni = 0; ni < o.contours[ci].nodes.length; ni++)
+      if (near(nodeScreen(o, o.contours[ci].nodes[ni], 'anchor'), 9))
+        return {ci, ni, part:'anchor'};
+  // Handles are editable only for the currently selected node.
   if (S.nodeSel) {
-    const n = o.contours[S.nodeSel.ci] && o.contours[S.nodeSel.ci].nodes[S.nodeSel.ni];
+    const {ci, ni} = S.nodeSel;
+    const n = o.contours[ci]?.nodes[ni];
     if (n) {
-      if ((n.ox || n.oy) && near(nodeScreen(o, n, 'out'))) return { ci: S.nodeSel.ci, ni: S.nodeSel.ni, part: 'out' };
-      if ((n.ix || n.iy) && near(nodeScreen(o, n, 'in'))) return { ci: S.nodeSel.ci, ni: S.nodeSel.ni, part: 'in' };
+      if ((n.ox || n.oy) && near(nodeScreen(o, n, 'out'), 10)) return {ci, ni, part:'out'};
+      if ((n.ix || n.iy) && near(nodeScreen(o, n, 'in'), 10)) return {ci, ni, part:'in'};
     }
   }
-  for (let ci = 0; ci < o.contours.length; ci++) for (let ni = 0; ni < o.contours[ci].nodes.length; ni++) if (near(nodeScreen(o, o.contours[ci].nodes[ni], 'anchor'))) return { ci, ni, part: 'anchor' };
   return null;
 }
+function kNodeMarqueeUp(d) {
+  const one=singleSel();
+  if (!one || one.o.kind!=='path' || one.id!==d.id || one.lid!==d.lid) return;
+  const a=w2s(d.start.x,d.start.y), b=w2s(d.cur.x,d.cur.y);
+  const x0=Math.min(a[0],b[0]), x1=Math.max(a[0],b[0]);
+  const y0=Math.min(a[1],b[1]), y1=Math.max(a[1],b[1]);
+  if (x1-x0<3 && y1-y0<3) {
+    if (!d.base.length) { S.sel=[]; S.nodeSel=null; S.kNodeSelection=[]; refreshProps(); invalidate(); }
+    return;
+  }
+  const keys=d.base.slice(), radius=5; // entire 8px node square plus border
+  one.o.contours.forEach((c,ci)=>c.nodes.forEach((n,ni)=>{
+    const [x,y]=nodeScreen(one.o,n,'anchor');
+    const key=ci+':'+ni;
+    if (x-radius>=x0 && x+radius<=x1 && y-radius>=y0 && y+radius<=y1 && !keys.includes(key)) keys.push(key);
+  }));
+  S.kNodeSelection=keys;
+  S.nodeSel=keys.length?kNodeFromKey(keys[keys.length-1]):null;
+  refreshProps(); invalidate();
+}
+
 function nodeDrag(w, e) {
   const d = S.drag;
   if (!d.started) {
@@ -5011,20 +5047,9 @@ function nodeDbl(p) {
     commit(); return;
   }
   if (hit) return;
-  const m = minv(matOf(one.o.t)), lp = mapply(m, p.w.x, p.w.y);
-  const sc = Math.max(Math.abs(one.o.t.sx), Math.abs(one.o.t.sy), 1e-6), tol = 8 / (S.view.z * sc);
-  let best = null;
-  one.o.contours.forEach((c, ci) => {
-    const cnt = c.closed ? c.nodes.length : c.nodes.length - 1;
-    for (let i = 0; i < cnt; i++) {
-      const a = c.nodes[i], b = c.nodes[(i + 1) % c.nodes.length];
-      for (let k = 1; k < 40; k++) {
-        const q = C.bezPt(a, b, k / 40), dd = Math.hypot(q[0] - lp[0], q[1] - lp[1]);
-        if (dd < tol && (!best || dd < best.d)) best = { ci, i, t: k / 40, d: dd };
-      }
-    }
-  });
-  if (!best) return;
+  const curve=kCurveHit(one.o,p.sx,p.sy);
+  if (!curve) return;
+  const best={ci:curve.ci,i:curve.ni,t:Math.max(0.001,Math.min(0.999,curve.t))};
   pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame);
   const o = findEditable(one.lid, one.id), c = o.contours[best.ci];
   const j = (best.i + 1) % c.nodes.length;
@@ -5720,6 +5745,31 @@ const EYE = '<svg viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 
 const EYE_OFF = '<svg viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" opacity=".35"/><path d="M3 13L13 3"/></svg>';
 const LOCK = '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>';
 const UNLOCK = '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2" opacity=".35"/><path d="M5.5 7V5a2.5 2.5 0 014.7-1.2" opacity=".6"/></svg>';
+// Global controls apply one uniform state to every layer in the current timeline.
+function refreshAllLayerButtons() {
+  const ls = layers();
+  const allVisible = ls.every(l => l.visible !== false);
+  const allLocked = ls.length > 0 && ls.every(l => !!l.locked);
+  const vis = $('#lVisAll'), lock = $('#lLockAll');
+  if (vis) { vis.innerHTML = allVisible ? EYE : EYE_OFF; vis.title = allVisible ? 'Hide all layers' : 'Show all layers'; vis.setAttribute('aria-pressed', String(!allVisible)); }
+  if (lock) { lock.innerHTML = allLocked ? LOCK : UNLOCK; lock.title = allLocked ? 'Unlock all layers' : 'Lock all layers'; lock.setAttribute('aria-pressed', String(allLocked)); }
+}
+function setAllLayerVisibility() {
+  const ls = layers(); if (!ls.length) return;
+  const show = !ls.every(l => l.visible !== false);
+  pushUndo(); ls.forEach(l => { l.visible = show; });
+  if (!show) pruneSel();
+  buildLayerList(); commit();
+}
+function setAllLayerLocks() {
+  const ls = layers(); if (!ls.length) return;
+  const lock = !ls.every(l => !!l.locked);
+  pushUndo(); ls.forEach(l => { l.locked = lock; });
+  if (lock) pruneSel();
+  buildLayerList(); commit();
+}
+$('#lVisAll').addEventListener('click', setAllLayerVisibility);
+$('#lLockAll').addEventListener('click', setAllLayerLocks);
 function buildLayerList() {
   const box = $('#tlLayers');
   box.textContent = '';
@@ -5742,6 +5792,7 @@ function buildLayerList() {
     nm.addEventListener('dblclick', () => renameLayer(l, nm));
     box.appendChild(row);
   }
+  refreshAllLayerButtons();
 }
 function renameLayer(l, el) {
   const inp = document.createElement('input');
@@ -6447,13 +6498,20 @@ function bindProps() {
     const ty = e.target.value;
     styleEdit({ fillType: ty }, (p) => {
       if (p.kind !== 'path') return;
-      if (ty === 'solid') { delete p.grad; return; }
+      if (ty === 'solid') { if (p.grad) p.kSavedGradient = JSON.parse(JSON.stringify(p.grad)); delete p.grad; return; }
       if (!p.fill) { p.fill = S.style.fill; p.fa = 1; }
-      const c2 = $('#fill2').value || '#FFFFFF', old = p.grad;
-      const g = makeGrad(ty, p.contours, p.fill, c2);
-      if (!g) return;
-      if (old && old.stops && old.stops.length > 2) { g.stops = old.stops.map((x) => Object.assign({}, x)); }
-      p.grad = g;
+      const c2 = $('#fill2').value || '#FFFFFF', old = p.grad || p.kSavedGradient;
+      // Restore the prior gradient when switching Solid -> Linear/Radial.
+      // Keep the stops and placement, changing only the requested type.
+      if (old && old.m && old.stops) {
+        p.grad = JSON.parse(JSON.stringify(old));
+        p.grad.type = ty;
+      } else {
+        const g = makeGrad(ty, p.contours, p.fill, c2);
+        if (!g) return;
+        p.grad = g;
+      }
+      p.kSavedGradient = JSON.parse(JSON.stringify(p.grad));
     });
     refreshProps();
   });
@@ -7037,7 +7095,13 @@ function updateCrumb() {
 }
 function enterSym(sym) {
   if (S.playing) stopPlay();
+  // Remember the parent timeline viewport before switching to the symbol.
+  const parentTimelineLeft = tlScroll.scrollLeft;
+  const parentTimelineTop = tlScroll.scrollTop;
   if (!enterSymRaw(sym)) { toast('That symbol is not in the library.'); return; }
+  const parentEntry = S.edit[S.edit.length - 1];
+  parentEntry.timelineLeft = parentTimelineLeft;
+  parentEntry.timelineTop = parentTimelineTop;
   S.frame = 0; S.layerId = layers()[layers().length - 1].id; S.sel = []; S.nodeSel = null; S.pen = null; S.draw = null;
   buildLayerList(); fitView(); refreshAll(); updateCrumb();
   if (S.doc.frames === 1 && !enterSym.hinted) { enterSym.hinted = true; toast('This symbol has 1 frame. Press F5 (or + Frame) to add frames, then F6 for keyframes, to animate it.'); }
@@ -7048,6 +7112,19 @@ function exitSym() {
   const e = exitSymRaw();
   S.frame = clamp(e.frame, 0, S.doc.frames - 1); S.layerId = getLayer(e.layerId) ? e.layerId : layers()[layers().length - 1].id; S.sel = []; S.nodeSel = null;
   buildLayerList(); fitView(); refreshAll(); updateCrumb();
+  // Restore the parent level and place its saved playhead near the viewport center.
+  // The saved horizontal scroll is a fallback when the timeline is too short to center.
+  requestAnimationFrame(() => {
+    const rulerWidth = $('#tlLayers').offsetWidth;
+    const available = Math.max(0, tlScroll.clientWidth - rulerWidth);
+    const playheadX = rulerWidth + (S.frame + 0.5) * CW;
+    const centeredLeft = playheadX - rulerWidth - available / 2;
+    const maxLeft = Math.max(0, tlScroll.scrollWidth - tlScroll.clientWidth);
+    tlScroll.scrollLeft = Math.max(0, Math.min(maxLeft, centeredLeft));
+    // Keep the saved viewport for short timelines where centering is impossible.
+    if (maxLeft === 0) tlScroll.scrollLeft = e.timelineLeft || 0;
+    tlScroll.scrollTop = e.timelineTop || 0;
+  });
 }
 function exitAllSyms() { while (S.edit.length) exitSym(); }
 function newDoc() {

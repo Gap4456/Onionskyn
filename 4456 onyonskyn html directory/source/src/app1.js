@@ -333,7 +333,7 @@ function drawOverlay(ctx) {
   }
   const one = sels.length === 1 ? sels[0] : null;
   if (one && S.tool === 'select' && rigEditing(one.o)) drawRigHandles(ctx, one.o);
-  if (one && (S.tool === 'select' || S.tool === 'gradient') && gradEditing(one.o)) drawGradHandles(ctx, one.o);
+  if (one && S.tool === 'gradient' && gradEditing(one.o)) drawGradHandles(ctx, one.o);
   else if (one && S.tool === 'select') {
     const hs = getHandles(one.o);
     const rot = hs.find((h) => h.id === 'rot'), nh = hs.find((h) => h.id === 'n');
@@ -386,7 +386,7 @@ function drawOverlay(ctx) {
             if (!(w === 'in' ? n.ix || n.iy : n.ox || n.oy)) continue;
             const a = nodeScreen(one.o, n, 'anchor'), b = nodeScreen(one.o, n, w);
             ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
-            ctx.beginPath(); ctx.arc(b[0], b[1], 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(b[0], b[1], 5.33, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           }
         }
         const p = nodeScreen(one.o, n, 'anchor');
@@ -396,7 +396,7 @@ function drawOverlay(ctx) {
     });
   }
   const d = S.drag;
-  if (d && d.type === 'marquee') {
+  if (d && (d.type === 'marquee' || d.type === 'node-marquee')) {
     const a = w2s(d.start.x, d.start.y), b = w2s(d.cur.x, d.cur.y);
     ctx.save(); ctx.fillStyle = acc; ctx.globalAlpha = 0.12;
     ctx.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); ctx.restore();

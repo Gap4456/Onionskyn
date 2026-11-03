@@ -231,7 +231,7 @@ function onMove(e) {
 	else
     if (d.type === 'move') moveDrag(p.w, e);
     else if (d.type === 'scale' || d.type === 'rotate') xformDrag(p.w, e);
-    else if (d.type === 'marquee') { d.cur = p.w; invalidate(); }
+    else if (d.type === 'marquee' || d.type === 'node-marquee') { d.cur = p.w; invalidate(); }
     else if (d.type === 'node') nodeDrag(p.w, e);
     else if (d.type === 'curve-bend') kCurveDrag(p.w);
     else if (d.type === 'grad') gradDrag(p.w);
@@ -252,9 +252,7 @@ function onMove(e) {
     const one = singleSel();
     let cur = 'default';
     if (one && !getLayer(one.lid).locked && rigEditing(one.o) && rigHit(one.o, p.sx, p.sy)) cur = 'pointer';
-    else if (one && !getLayer(one.lid).locked && gradEditing(one.o)) {
-      cur = gradHit(one.o, p.sx, p.sy) ? 'pointer' : hitAt(p.w.x, p.w.y, 5) ? 'move' : 'default';
-    } else if (one && !getLayer(one.lid).locked) {
+    else if (one && !getLayer(one.lid).locked) {
       const h = hitHandle(getHandles(one.o), p.sx, p.sy);
       if (h) cur = h.id === 'rot' ? 'grab' : (h.id === 'n' || h.id === 's') ? 'ns-resize' : (h.id === 'e' || h.id === 'w') ? 'ew-resize' : (h.id === 'nw' || h.id === 'se') ? 'nwse-resize' : 'nesw-resize';
       else if (hitAt(p.w.x, p.w.y, 5)) cur = 'move';
@@ -269,6 +267,7 @@ function onUp(e) {
     C.freeBind.clear();
     if (d.type === 'pan') { const t = TOOLS.find((x) => x.id === S.tool); stage.style.cursor = S.space ? 'grab' : t.cur; }
     if (d.type === 'marquee') marqueeUp(d);
+    if (d.type === 'node-marquee') kNodeMarqueeUp(d);
     if ((d.type === 'node' || d.type === 'curve-bend' || d.type === 'grad' || d.type === 'rig' || d.type === 'kgrad-create') && d.started) { commit(); }
     // Saglabājam arī pabeigtu pivot pārvietošanu.
     if ((d.type === 'move' || d.type === 'scale' ||
@@ -404,7 +403,7 @@ function selDown(e, p) {
   const w = p.w, one = singleSel();
 	// Ja nospiests uz pivot, sākam pārvietot tikai krustiņu.
 	if (one && !getLayer(one.lid).locked &&
-    !gradEditing(one.o) && !rigEditing(one.o) &&
+    !rigEditing(one.o) &&
     pivotHit(one.o, p.sx, p.sy)) {
 
 	// Atceramies atlasīto figūru un sākuma punktu.
@@ -419,8 +418,7 @@ function selDown(e, p) {
   return; // Beidzam selDown(), lai nesāktos figūras pārvietošana.
 }
   if (one && !getLayer(one.lid).locked && rigEditing(one.o)) { const part = rigHit(one.o, p.sx, p.sy); if (part) { S.drag = { type: 'rig', part, lid: one.lid, id: one.id, start: p.w, started: false }; return; } }
-  if (one && !getLayer(one.lid).locked && gradEditing(one.o) && gradDown(e, p, one)) { refreshProps(); return; }
-  if (one && !getLayer(one.lid).locked && !gradEditing(one.o)) {
+  if (one && !getLayer(one.lid).locked) {
     const h = hitHandle(getHandles(one.o), p.sx, p.sy);
     if (h) { S.drag = { type: h.id === 'rot' ? 'rotate' : 'scale', h, start: w, started: false, lid: one.lid, id: one.id }; return; }
   }
@@ -1129,6 +1127,11 @@ function nodeDown(e, p) {
       return;
     }
   }
+  // Dragging empty space in Node mode selects enclosed anchors only.
+  if (one && one.o.kind === 'path' && !getLayer(one.lid).locked && !hitAt(p.w.x, p.w.y, 6)) {
+    S.drag = {type:'node-marquee', start:p.w, cur:p.w, lid:one.lid, id:one.id, base:e.shiftKey ? kNodeKeys().slice() : []};
+    return;
+  }
   const h = hitAt(p.w.x, p.w.y, 6);
   if (h && h.o.kind === 'path') { S.sel = [{ lid: h.lid, id: h.id }]; selectLayer(h.lid, true); }
   else if (h) toast('Ungroup (Ctrl+Shift+G) to edit nodes inside a group.');
@@ -1136,17 +1139,44 @@ function nodeDown(e, p) {
   S.nodeSel = null; S.kNodeSelection = []; refreshProps();
 }
 function hitNodePart(o, sx, sy) {
-  const near = (a) => Math.hypot(a[0] - sx, a[1] - sy) <= 9;
+  const near = (a, r) => Math.hypot(a[0] - sx, a[1] - sy) <= r;
+  // Anchor ALWAYS wins, even if a large handle sits directly on it.
+  for (let ci = 0; ci < o.contours.length; ci++)
+    for (let ni = 0; ni < o.contours[ci].nodes.length; ni++)
+      if (near(nodeScreen(o, o.contours[ci].nodes[ni], 'anchor'), 9))
+        return {ci, ni, part:'anchor'};
+  // Handles are editable only for the currently selected node.
   if (S.nodeSel) {
-    const n = o.contours[S.nodeSel.ci] && o.contours[S.nodeSel.ci].nodes[S.nodeSel.ni];
+    const {ci, ni} = S.nodeSel;
+    const n = o.contours[ci]?.nodes[ni];
     if (n) {
-      if ((n.ox || n.oy) && near(nodeScreen(o, n, 'out'))) return { ci: S.nodeSel.ci, ni: S.nodeSel.ni, part: 'out' };
-      if ((n.ix || n.iy) && near(nodeScreen(o, n, 'in'))) return { ci: S.nodeSel.ci, ni: S.nodeSel.ni, part: 'in' };
+      if ((n.ox || n.oy) && near(nodeScreen(o, n, 'out'), 10)) return {ci, ni, part:'out'};
+      if ((n.ix || n.iy) && near(nodeScreen(o, n, 'in'), 10)) return {ci, ni, part:'in'};
     }
   }
-  for (let ci = 0; ci < o.contours.length; ci++) for (let ni = 0; ni < o.contours[ci].nodes.length; ni++) if (near(nodeScreen(o, o.contours[ci].nodes[ni], 'anchor'))) return { ci, ni, part: 'anchor' };
   return null;
 }
+function kNodeMarqueeUp(d) {
+  const one=singleSel();
+  if (!one || one.o.kind!=='path' || one.id!==d.id || one.lid!==d.lid) return;
+  const a=w2s(d.start.x,d.start.y), b=w2s(d.cur.x,d.cur.y);
+  const x0=Math.min(a[0],b[0]), x1=Math.max(a[0],b[0]);
+  const y0=Math.min(a[1],b[1]), y1=Math.max(a[1],b[1]);
+  if (x1-x0<3 && y1-y0<3) {
+    if (!d.base.length) { S.sel=[]; S.nodeSel=null; S.kNodeSelection=[]; refreshProps(); invalidate(); }
+    return;
+  }
+  const keys=d.base.slice(), radius=5; // entire 8px node square plus border
+  one.o.contours.forEach((c,ci)=>c.nodes.forEach((n,ni)=>{
+    const [x,y]=nodeScreen(one.o,n,'anchor');
+    const key=ci+':'+ni;
+    if (x-radius>=x0 && x+radius<=x1 && y-radius>=y0 && y+radius<=y1 && !keys.includes(key)) keys.push(key);
+  }));
+  S.kNodeSelection=keys;
+  S.nodeSel=keys.length?kNodeFromKey(keys[keys.length-1]):null;
+  refreshProps(); invalidate();
+}
+
 function nodeDrag(w, e) {
   const d = S.drag;
   if (!d.started) {
@@ -1210,20 +1240,9 @@ function nodeDbl(p) {
     commit(); return;
   }
   if (hit) return;
-  const m = minv(matOf(one.o.t)), lp = mapply(m, p.w.x, p.w.y);
-  const sc = Math.max(Math.abs(one.o.t.sx), Math.abs(one.o.t.sy), 1e-6), tol = 8 / (S.view.z * sc);
-  let best = null;
-  one.o.contours.forEach((c, ci) => {
-    const cnt = c.closed ? c.nodes.length : c.nodes.length - 1;
-    for (let i = 0; i < cnt; i++) {
-      const a = c.nodes[i], b = c.nodes[(i + 1) % c.nodes.length];
-      for (let k = 1; k < 40; k++) {
-        const q = C.bezPt(a, b, k / 40), dd = Math.hypot(q[0] - lp[0], q[1] - lp[1]);
-        if (dd < tol && (!best || dd < best.d)) best = { ci, i, t: k / 40, d: dd };
-      }
-    }
-  });
-  if (!best) return;
+  const curve=kCurveHit(one.o,p.sx,p.sy);
+  if (!curve) return;
+  const best={ci:curve.ci,i:curve.ni,t:Math.max(0.001,Math.min(0.999,curve.t))};
   pushUndo(); C.ensureEditable(getLayer(one.lid), S.frame);
   const o = findEditable(one.lid, one.id), c = o.contours[best.ci];
   const j = (best.i + 1) % c.nodes.length;
